@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>چت‌بات (On-Device)</title>
+  <style>
+    @font-face{
+      font-family:'IRANYekanX';
+      src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
+      font-weight:300;font-style:normal;font-display:swap;
+    }
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:20px}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
+    .wrap{max-width:920px;margin:28px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.06);overflow:hidden}
+    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef2f7}
+    .title{font-weight:700}
+    .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
+    .status{font-size:12px;color:#64748b}
+    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
+    .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
+    .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
+    .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
+    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff}
+    .foot input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
+    .foot button{padding:12px 16px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+    .foot button[disabled]{opacity:.6;cursor:not-allowed}
+    .spinner{width:16px;height:16px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .hint{font-size:12px;color:#6b7280;margin:10px 14px 0}
+    .progress{font-size:12px;color:#6b7280}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="title">چت‌بات</div>
+          <span class="badge">On-Device</span>
+        </div>
+        <div id="status" class="status">در حال آماده‌سازی مدل…</div>
+      </div>
+
+      <div id="msgs" class="msgs"></div>
+
+      <div class="foot">
+        <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
+        <button id="sendBtn" disabled>ارسال</button>
+      </div>
+    </div>
+    <div class="hint">
+      بار اول دانلود مدل کمی طول می‌کشه (بعداً کش می‌شه). اگر پاسخی نیومد، پشتیبانی WebGPU مرورگر رو چک کن.
+    </div>
+  </div>
+
+  <!-- اسکریپت اصلی: WebLLM را مستقیم از CDN می‌آوریم -->
+  <script type="module">
+    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+
+    // ⚙️ یک مدل سبک و چندزبانه (فارسی‌دوست) – اگر مدل‌های جدیدتر خواستی، بگو عوضش کنم.
+    const MODEL = "Qwen2-1.5B-Instruct-q4f16_1-MLC";
+
+    const msgsEl = document.getElementById("msgs");
+    const inp = document.getElementById("inp");
+    const btn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("status");
+
+    // پیام‌ها به سبک OpenAI
+    const messages = [
+      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها رو کوتاه، شفاف و مودبانه بده." }
+    ];
+
+    // پیام کمکی UI
+    function addMsg(role, text){
+      const div = document.createElement("div");
+      div.className = "m " + (role==="user"?"user":"bot");
+      div.textContent = text;
+      msgsEl.appendChild(div);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      return div;
+    }
+    function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
+
+    // 🔄 راه‌اندازی موتور + نمایش پیشرفت دانلود
+    let engine;
+    const initProgressCallback = (p)=>{
+      // p: { progress, text, timeElapsed, timeRemaining, ... }
+      statusEl.textContent = `دانلود/آماده‌سازی مدل: ${Math.round((p.progress||0)*100)}% - ${p.text||""}`;
+    };
+    (async ()=>{
+      try{
+        engine = await CreateMLCEngine(MODEL, { initProgressCallback });
+        statusEl.textContent = "مدل آماده است";
+        btn.disabled = false;
+      }catch(err){
+        statusEl.textContent = "خطا در بارگذاری مدل: " + err.message;
+        console.error(err);
+      }
+    })();
+
+    // ✉️ ارسال پیام
+    async function send(){
+      const text = inp.value.trim();
+      if(!text || !engine) return;
+      inp.value = "";
+      const u = addMsg("user", text);
+      const b = addMsg("assistant", ""); // ظرف پاسخ
+      setBusy(true);
+
+      try{
+        const stream = await engine.chat.completions.create({
+          messages: [...messages, { role: "user", content: text }],
+          stream: true,
+          temperature: 0.7
+        });
+        let reply = "";
+        for await (const chunk of stream){
+          const delta = chunk.choices?.[0]?.delta?.content || "";
+          reply += delta;
+          b.textContent = reply;
+        }
+        // پیام کاملِ بات
+        messages.push({ role:"user", content:text });
+        messages.push({ role:"assistant", content:reply });
+      }catch(err){
+        b.textContent = "خطا: " + err.message;
+        console.error(err);
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    btn.addEventListener("click", send);
+    inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
+
+    // پیام خوش‌آمد
+    addMsg("assistant","سلام! من آماده‌ام 🙂 هر چی دوست داری بپرس.");
+  </script>
+</body>
+</html>
