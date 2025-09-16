@@ -58,7 +58,7 @@
 
   <!-- اسکریپت اصلی: WebLLM را مستقیم از CDN می‌آوریم -->
   <script type="module">
-    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+    import { CreateMLCEngine } from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.55/dist/index.min.js";
   
     const MODELS = [
       { id: "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC", label: "TinyLlama 1.1B (سبک/سریع)" },
@@ -187,3 +187,4 @@
   
 </body>
 </html>
+
