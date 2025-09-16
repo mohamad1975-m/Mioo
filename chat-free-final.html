@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>گفت‌وگو</title>
+  <style>
+    @font-face {
+      font-family: 'IRANYekanX';
+      src: url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
+      font-weight: 300; font-style: normal; font-display: swap;
+    }
+    :root { --bg:#f6f7fb; --card:#ffffff; --muted:#6b7280; --primary:#111; --radius:16px; }
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body { margin:0; background: var(--bg); font-family: 'IRANYekanX', Tahoma, sans-serif; color:#111; }
+    .wrap { max-width: 920px; margin: 28px auto; padding: 0 16px; }
+    .card { background: var(--card); border-radius: 22px; box-shadow: 0 12px 34px rgba(0,0,0,.06); overflow: hidden; }
+    .head { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom:1px solid #eef2f7; }
+    .title { font-weight:700; }
+    .badge { font-size: 12px; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; }
+    .msgs { height: 62vh; overflow:auto; padding: 18px; display:flex; flex-direction:column; gap:12px; background:#fafbff; }
+    .m { max-width: 75%; padding: 12px 14px; border-radius: 14px; line-height: 1.9; white-space: pre-wrap; word-wrap: break-word; }
+    .user { align-self: flex-end; background:#111; color:#fff; border-bottom-right-radius: 6px; }
+    .bot  { align-self: flex-start; background:#fff; border:1px solid #eef2f7; border-bottom-left-radius: 6px; }
+    .foot { display:flex; gap:10px; padding: 12px; border-top:1px solid #eef2f7; background:#fff; }
+    .foot input { flex:1; padding: 12px 14px; border:1px solid #e5e7eb; border-radius: 12px; outline: none; background:#fff; }
+    .foot button { padding: 12px 16px; border:0; border-radius: 12px; background: var(--primary); color:#fff; cursor:pointer; }
+    .foot button[disabled] { opacity:.6; cursor:not-allowed; }
+    .hint { font-size: 12px; color:#6b7280; margin: 10px 14px 0; }
+    .spinner { width:16px; height:16px; border:3px solid #e5e7eb; border-top-color:#111; border-radius:50%; animation:spin .9s linear infinite; display:inline-block; vertical-align:middle }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .status { font-size:12px; color:#64748b; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div style="display:flex; align-items:center; gap:8px">
+          <div class="title">چت‌بات</div>
+          <span class="badge">Free Plan</span>
+        </div>
+        <div id="status" class="status">آماده</div>
+      </div>
+
+      <div id="msgs" class="msgs"></div>
+
+      <div class="foot">
+        <input id="inp" placeholder="بنویس... (Enter = ارسال)" />
+        <button id="sendBtn">ارسال</button>
+      </div>
+    </div>
+    <div class="hint">
+      پاسخ‌ها از Google Sheets خوانده می‌شوند. اگر پاسخ نیامد، ستون‌ها و دسترسی Sheet را چک کن.
+    </div>
+  </div>
+
+<script>
+const HOOK_URL = "https://hooks.zapier.com/hooks/catch/19831740/umiptnv/";
+const SHEET_ID   = "1n8fEN2YGncs1p9roxNU7gnQC5JOSB6XBiJOwBYm--oU";
+const SHEET_NAME = "Replies";
+const SHEET_JSON_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+const POLL_INTERVAL_MS = 2500;
+const POLL_TIMEOUT_MS  = 60000;
+
+const msgsEl = document.getElementById("msgs");
+const inp = document.getElementById("inp");
+const sendBtn = document.getElementById("sendBtn");
+const statusEl = document.getElementById("status");
+
+function uuid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+let session_id = localStorage.getItem("chat_session_id");
+if (!session_id) { session_id = uuid(); localStorage.setItem("chat_session_id", session_id); }
+
+function addMsg(role, content) {
+  const div = document.createElement("div");
+  div.className = "m " + (role === "user" ? "user" : "bot");
+  div.textContent = content;
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+function setBusy(b){ sendBtn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال ارسال...' : 'آماده'; }
+
+async function send() {
+  const text = inp.value.trim();
+  if (!text) return;
+  addMsg("user", text);
+  inp.value = "";
+  setBusy(true);
+
+  const message_id = uuid();
+  const payload = { session_id, message_id, text, created_at: new Date().toISOString() };
+
+  try {
+    await fetch(HOOK_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    const reply = await waitForReply({ session_id, message_id });
+    if (reply) addMsg("assistant", reply);
+    else addMsg("assistant", "⏳ پاسخی از بات دریافت نشد. لطفاً دوباره تلاش کنید.");
+  } catch (e) {
+    console.error(e);
+    addMsg("assistant", "خطا در ارسال/دریافت: " + e.message);
+  } finally { setBusy(false); }
+}
+
+async function waitForReply({ session_id, message_id }) {
+  const start = Date.now();
+  while (Date.now() - start < POLL_TIMEOUT_MS) {
+    try {
+      const text = await fetchSheetJSON();
+      const rows = parseGvizJSON(text);
+      for (const row of rows) {
+        const o = rowToObject(row);
+        if (!o) continue;
+        if (o.session_id === session_id && o.message_id === message_id && (o.role||"").toLowerCase()==="assistant") {
+          return o.text;
+        }
+      }
+    } catch(e){ console.warn("poll error:", e.message); }
+    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+  }
+  return null;
+}
+
+async function fetchSheetJSON() { const res = await fetch(SHEET_JSON_URL, { cache:"no-store" }); return await res.text(); }
+
+function parseGvizJSON(rawText) {
+  const start = rawText.indexOf("{");
+  const end = rawText.lastIndexOf("}");
+  const json = JSON.parse(rawText.slice(start, end+1));
+  const table = json.table || {};
+  return table.rows || [];
+}
+function rowToObject(row) {
+  if (!row || !row.c) return null;
+  const c = row.c;
+  return {
+    session_id: (c[0] && c[0].v) || "",
+    message_id: (c[1] && c[1].v) || "",
+    role:       (c[2] && c[2].v) || "",
+    text:       (c[3] && c[3].v) || "",
+    created_at: (c[4] && c[4].v) || ""
+  };
+}
+
+sendBtn.addEventListener("click", send);
+inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+addMsg("assistant", "سلام! هر سؤالی داری بنویس.");
+</script>
+</body>
+</html>
