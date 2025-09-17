@@ -3,34 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>چت‌بات (On-Device)</title>
+  <title>چت‌بات</title>
   <style>
     @font-face{
       font-family:'IRANYekanX';
       src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
       font-weight:300;font-style:normal;font-display:swap;
     }
-    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:20px}
+    :root{--bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--ink:#e2e8f0;--accent:#6366f1;--radius:20px}
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
     .wrap{max-width:920px;margin:28px auto;padding:0 16px}
-    .card{background:var(--card);border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.06);overflow:hidden}
-    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef2f7}
+    .card{background:var(--card);border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.25);overflow:hidden;border:1px solid #1f2937}
+    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937}
     .title{font-weight:700}
-    .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
-    .status{font-size:12px;color:#64748b}
-    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
+    .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#1f2937;color:#c7d2fe}
+    .status{font-size:12px;color:#94a3b8}
+    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#0b1220}
     .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
-    .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
-    .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
-    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff}
-    .foot input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
-    .foot button{padding:12px 16px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+    .user{align-self:flex-end;background:#1d4ed8;color:#fff;border-bottom-right-radius:6px}
+    .bot{align-self:flex-start;background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-bottom-left-radius:6px}
+    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #1f2937;background:#0f172a}
+    .foot input{flex:1;padding:12px 14px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:12px;outline:none}
+    .foot button{padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
     .foot button[disabled]{opacity:.6;cursor:not-allowed}
-    .spinner{width:16px;height:16px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
+    .spinner{width:16px;height:16px;border:3px solid #334155;border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .hint{font-size:12px;color:#6b7280;margin:10px 14px 0}
-    .progress{font-size:12px;color:#6b7280}
+    .hint{font-size:12px;color:#94a3b8;margin:10px 14px 0}
   </style>
 </head>
 <body>
@@ -39,163 +38,78 @@
       <div class="head">
         <div style="display:flex;align-items:center;gap:8px">
           <div class="title">چت‌بات</div>
-          <span class="badge">On-Device</span>
+          <span class="badge">Server (Cloudflare AI)</span>
         </div>
-        <div id="status" class="status">در حال آماده‌سازی مدل…</div>
+        <div id="status" class="status">آماده</div>
       </div>
 
       <div id="msgs" class="msgs"></div>
 
       <div class="foot">
         <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
-        <button id="sendBtn" disabled>ارسال</button>
+        <button id="sendBtn">ارسال</button>
       </div>
     </div>
     <div class="hint">
-      بار اول دانلود مدل کمی طول می‌کشه (بعداً کش می‌شه). اگر پاسخی نیومد، پشتیبانی WebGPU مرورگر رو چک کن.
+      پاسخ‌ها روی سرور Cloudflare Workers AI تولید می‌شود؛ نیازی به WebGPU کاربر نیست.
     </div>
   </div>
 
-  <!-- اسکریپت اصلی: WebLLM را مستقیم از CDN می‌آوریم -->
-  <script type="module">
-  // 1) فقط یک لودر داینامیک با fallback
-  const cdnList = [
-    "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm",
-    "https://unpkg.com/@mlc-ai/web-llm?module",
-    "https://esm.run/@mlc-ai/web-llm"
-  ];
+  <script>
+    // آدرس Worker تو:
+    const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/";
 
-  async function loadWebLLM() {
-    let lastErr;
-    for (const url of cdnList) {
-      try {
-        console.log("Trying:", url);
-        const m = await import(url);
-        console.log("Loaded from:", url);
-        return m;
-      } catch (e) {
-        console.warn("Failed:", url, e);
-        lastErr = e;
+    const msgsEl = document.getElementById("msgs");
+    const inp = document.getElementById("inp");
+    const btn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("status");
+
+    const messages = [
+      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }
+    ];
+
+    function addMsg(role, text){
+      const div = document.createElement("div");
+      div.className = "m " + (role==="user"?"user":"bot");
+      div.textContent = text;
+      msgsEl.appendChild(div);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      return div;
+    }
+    function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
+
+    async function send(){
+      const text = inp.value.trim();
+      if(!text) return;
+      inp.value = "";
+      addMsg("user", text);
+      const b = addMsg("assistant", "…");
+      setBusy(true);
+      try{
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system: messages[0].content,
+            messages: [...messages, { role: "user", content: text }]
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Server error");
+        b.textContent = data.reply || "(بدون پاسخ)";
+        messages.push({ role: "user", content: text });
+        messages.push({ role: "assistant", content: String(data.reply || "") });
+      }catch(err){
+        b.textContent = "خطا: " + err.message;
+        console.error(err);
+      }finally{
+        setBusy(false);
       }
     }
-    throw lastErr || new Error("Failed to load @mlc-ai/web-llm from all CDNs");
-  }
 
-  // ---- از اینجا به بعد کدت (بدون import ثابت) ----
-  const { CreateMLCEngine } = await loadWebLLM();
-
-  const MODELS = [
-    { id: "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC", label: "TinyLlama 1.1B (سبک/سریع)" },
-    { id: "Qwen2-1.5B-Instruct-q4f16_1-MLC",      label: "Qwen2 1.5B (سنگین‌تر)" }
-  ];
-
-  const msgsEl = document.getElementById("msgs");
-  const inp = document.getElementById("inp");
-  const btn = document.getElementById("sendBtn");
-  const statusEl = document.getElementById("status");
-
-  const head = document.querySelector(".head");
-  const sel = document.createElement("select");
-  sel.style.fontFamily = "inherit";
-  sel.style.padding = "6px 8px";
-  sel.style.border = "1px solid #e5e7eb";
-  sel.style.borderRadius = "8px";
-  sel.title = "انتخاب مدل";
-  MODELS.forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
-  sel.value = MODELS[0].id;
-  head.appendChild(sel);
-
-  const messages = [
-    { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها رو کوتاه و شفاف بده." }
-  ];
-
-  function addMsg(role, text){
-    const div = document.createElement("div");
-    div.className = "m " + (role==="user"?"user":"bot");
-    div.textContent = text;
-    msgsEl.appendChild(div);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-    return div;
-  }
-  function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
-
-  let engine = null;
-
-  async function loadModel(modelId, {timeoutMs=20000} = {}){
-    statusEl.textContent = "دانلود/آماده‌سازی مدل…";
-    btn.disabled = true;
-    let done = false;
-    const timer = setTimeout(() => { if (!done) statusEl.textContent = "هنوز آماده نشده… (در حال تلاش)"; }, 5000);
-
-    const initProgressCallback = (p)=>{
-      statusEl.textContent = `دانلود/آماده‌سازی: ${Math.round((p.progress||0)*100)}% - ${p.text||""}`;
-    };
-
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs));
-
-    try {
-      engine = await Promise.race([ CreateMLCEngine(modelId, { initProgressCallback }), timeout ]);
-      done = true;
-      clearTimeout(timer);
-      statusEl.textContent = "مدل آماده است";
-      btn.disabled = false;
-      return true;
-    } catch (e) {
-      clearTimeout(timer);
-      console.error("loadModel error:", e);
-      return false;
-    }
-  }
-
-  async function ensureEngine(){
-    const chosen = sel.value;
-    let ok = await loadModel(chosen, {timeoutMs: 20000});
-    if (!ok && chosen !== MODELS[0].id){
-      statusEl.textContent = "دیر شد؛ سوییچ به مدل سبک‌تر…";
-      sel.value = MODELS[0].id;
-      ok = await loadModel(sel.value, {timeoutMs: 25000});
-    }
-    if (!ok) statusEl.textContent = "خطا در بارگذاری مدل. لطفاً اینترنت/مرورگر را بررسی کنید.";
-  }
-
-  await ensureEngine();
-
-  async function send(){
-    const text = inp.value.trim();
-    if(!text || !engine) return;
-    inp.value = "";
-    addMsg("user", text);
-    const b = addMsg("assistant", "");
-    setBusy(true);
-    try{
-      const stream = await engine.chat.completions.create({
-        messages: [...messages, { role:"user", content:text }],
-        stream: true,
-        temperature: 0.7
-      });
-      let reply = "";
-      for await (const chunk of stream){
-        const delta = chunk.choices?.[0]?.delta?.content || "";
-        reply += delta; b.textContent = reply;
-      }
-      messages.push({ role:"user", content:text });
-      messages.push({ role:"assistant", content:reply });
-    }catch(err){
-      b.textContent = "خطا: " + err.message;
-      console.error(err);
-    }finally{
-      setBusy(false);
-    }
-  }
-
-  btn.addEventListener("click", send);
-  inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
-  addMsg("assistant","سلام! اگر آماده‌سازی طول کشید، از منوی بالا مدل سبک‌تر را انتخاب کن.");
-</script>
-
-  
+    btn.addEventListener("click", send);
+    inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
+    addMsg("assistant","سلام! من آماده‌ام 🙂 هر چه دوست داری بپرس.");
+  </script>
 </body>
 </html>
-
-
-
