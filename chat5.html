@@ -58,8 +58,30 @@
 
   <!-- اسکریپت اصلی: WebLLM را مستقیم از CDN می‌آوریم -->
   <script type="module">
-    import { CreateMLCEngine } from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.55/dist/index.min.js";
-  
+    import { CreateMLCEngine } from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
+   const cdnList = [
+    "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm",
+    "https://unpkg.com/@mlc-ai/web-llm?module",
+    "https://esm.run/@mlc-ai/web-llm"
+  ];
+
+  async function loadWebLLM() {
+    let lastErr;
+    for (const url of cdnList) {
+      try {
+        console.log("Trying:", url);
+        const m = await import(url);
+        console.log("Loaded from:", url);
+        return m;
+      } catch (e) {
+        console.warn("Failed:", url, e);
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Failed to load @mlc-ai/web-llm from all CDNs");
+  }
+
+  const { CreateMLCEngine } = await loadWebLLM();
     const MODELS = [
       { id: "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC", label: "TinyLlama 1.1B (سبک/سریع)" },
       { id: "Qwen2-1.5B-Instruct-q4f16_1-MLC",      label: "Qwen2 1.5B (کیفیت بهتر، سنگین‌تر)" }
@@ -187,4 +209,5 @@
   
 </body>
 </html>
+
 
