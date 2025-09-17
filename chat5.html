@@ -3,313 +3,261 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>چت‌بات (Streaming)</title>
+  <title>چت‌بات چند-ارائه‌دهنده</title>
   <style>
-    @font-face{
-      font-family:'IRANYekanX';
-      src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
-      font-weight:300;font-style:normal;font-display:swap;
-    }
-    :root{--bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--ink:#e2e8f0;--accent:#6366f1}
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:20px}
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
-    .wrap{max-width:920px;margin:28px auto;padding:0 16px}
-    .card{background:#0f172a;border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.25);overflow:hidden;border:1px solid #1f2937}
-    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937}
-    .title{font-weight:700}
-    .status{font-size:12px;color:#94a3b8}
-    .icon{cursor:pointer;opacity:.9}
-    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#0b1220}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma, sans-serif}
+    .wrap{max-width:980px;margin:28px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.06);overflow:hidden}
+    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef2f7;gap:8px}
+    .left{display:flex;align-items:center;gap:8px}
+    .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
+    .status{font-size:12px;color:#64748b}
+    .controls{display:flex;align-items:center;gap:8px}
+
+    select, input[type="text"]{
+      padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit
+    }
+
+    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
     .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
-    .user{align-self:flex-end;background:#1d4ed8;color:#fff;border-bottom-right-radius:6px}
-    .bot{align-self:flex-start;background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-bottom-left-radius:6px}
-    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #1f2937;background:#0f172a}
-    .foot input{flex:1;padding:12px 14px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:12px;outline:none}
-    .btn{padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px}
+    .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
+    .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
+
+    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff;align-items:center}
+    .foot input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:11px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
-    .btn.secondary{background:#334155}
-    .hint{font-size:12px;color:#94a3b8;margin:10px 14px 0}
-    .panel{position:fixed;top:20px;left:20px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:14px;width:360px;display:none;z-index:10}
-    .panel h4{margin:0 0 10px;font-weight:700}
-    .panel label{font-size:13px;display:block;margin-top:8px;color:#cbd5e1}
-    .panel input,.panel textarea,.panel select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0}
-    .row{display:flex;gap:8px}
-    .row > *{flex:1}
+    .ghost{background:#f3f4f6;color:#111}
+    .hidden{display:none}
+    .hint{font-size:12px;color:#6b7280;margin:10px 14px 0}
+    .countdown{font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fed7aa;padding:6px 10px;border-radius:8px}
+    .spinner{width:16px;height:16px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* tiny svg button */
+    .send-icon{width:18px;height:18px;display:block}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <div class="head">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="title">چت‌بات</div>
+        <div class="left">
+          <span class="badge">Multi-Provider</span>
           <span class="status" id="status">آماده</span>
         </div>
-        <div class="icon" id="gear" title="تنظیمات">⚙️</div>
+        <div class="controls">
+          <select id="provider">
+            <option value="github">GitHub Models</option>
+            <option value="gemini">Gemini</option>
+            <option value="deepseek">DeepSeek (direct)</option>
+          </select>
+          <input id="model" type="text" placeholder="نام مدل (مثلاً: gpt-4.1-mini یا deepseek-v3-0324)" style="width:260px" />
+        </div>
       </div>
 
       <div id="msgs" class="msgs"></div>
 
       <div class="foot">
-        <input id="inp" placeholder="بنویس… (Enter = ارسال). /help" />
-        <button id="sendBtn" class="btn" title="ارسال">
-          <!-- آیکن وکتوری کاغذ-موشک -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M2 21L23 12L2 3L2 10L17 12L2 14L2 21Z" fill="currentColor"/>
+        <button id="stopBtn" class="btn ghost hidden">❚❚ توقف</button>
+        <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
+        <button id="sendBtn" class="btn">
+          <!-- ارسال با آیکن -->
+          <svg class="send-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M4 12L20 4l-5 8 5 8-16-8z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
           </svg>
-          <span>ارسال</span>
+          ارسال
         </button>
-        <button id="stopBtn" class="btn secondary" style="display:none" title="توقف پاسخ">⏹ توقف</button>
       </div>
     </div>
-    <div class="hint">استریم فعال است برای GitHub/DeepSeek. Gemini پاسخ را یک‌جا برمی‌گرداند.</div>
-  </div>
-
-  <!-- پنل تنظیمات -->
-  <div class="panel" id="panel">
-    <h4>تنظیمات</h4>
-    <label>ارائه‌دهنده (Provider)</label>
-    <select id="provider">
-      <option value="github">GitHub Models (Copilot)</option>
-      <option value="deepseek">DeepSeek</option>
-      <option value="gemini">Gemini (Google)</option>
-    </select>
-
-    <label style="margin-top:8px">نام مدل (اختیاری)</label>
-    <input id="model" placeholder="github: gpt-4.1-mini | deepseek: deepseek-chat | gemini: gemini-1.5-flash-latest">
-
-    <label>لحن (style)</label>
-    <select id="style">
-      <option>کوتاه، شفاف، مؤدبانه</option>
-      <option>رسمی</option>
-      <option>دوستانه</option>
-      <option>آموزشی و قدم‌به‌قدم</option>
-      <option>خیلی خلاصه</option>
-    </select>
-
-    <div class="row">
-      <div>
-        <label>max_tokens</label>
-        <input id="max" type="number" min="32" max="4096" value="512" />
-      </div>
-      <div>
-        <label>temperature</label>
-        <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7" />
-      </div>
-    </div>
-
-    <label>دستورالعمل‌های اختصاصی (System)</label>
-    <textarea id="sys" rows="6" placeholder="قوانین/قالب پاسخ‌ها…"></textarea>
-
-    <div class="row" style="margin-top:10px">
-      <button id="save" class="btn">ذخیره</button>
-      <button id="close" class="btn secondary">بستن</button>
+    <div class="hint">
+      اگر GitHub Models گفت «Rate limit»، تایمر می‌آید و خودش بعد از اتمام، دوباره تلاش می‌کند. می‌توانی لغو کنی.
     </div>
   </div>
 
   <script>
-    // === تنظیمات ===
-    const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
-
-    // عناصر UI
     const msgsEl = document.getElementById("msgs");
     const inp = document.getElementById("inp");
     const sendBtn = document.getElementById("sendBtn");
     const stopBtn = document.getElementById("stopBtn");
     const statusEl = document.getElementById("status");
-    const panel = document.getElementById("panel");
-    const gear = document.getElementById("gear");
-
     const providerSel = document.getElementById("provider");
     const modelInp = document.getElementById("model");
-    const styleSel = document.getElementById("style");
-    const maxInp = document.getElementById("max");
-    const tempInp = document.getElementById("temp");
-    const sysTa = document.getElementById("sys");
-    const saveBtn = document.getElementById("save");
-    const closeBtn = document.getElementById("close");
 
-    // لود تنظیمات ذخیره‌شده
-    const store = JSON.parse(localStorage.getItem("chat_settings_stream") || "{}");
-    providerSel.value = store.provider || "github";
-    modelInp.value    = store.model || "";
-    styleSel.value    = store.style || "کوتاه، شفاف، مؤدبانه";
-    maxInp.value      = store.max_tokens || 512;
-    tempInp.value     = store.temperature || 0.7;
-    sysTa.value       = store.system || "";
+    const messages = [
+      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }
+    ];
 
-    const history = []; // تاریخچه سمت کلاینت
-    let abortCtrl = null; // برای توقف استریم
-    let streaming = false;
+    // مقدارهای پیش‌فرض برای راحتی تست
+    providerSel.value = "github";
+    modelInp.value = "deepseek-v3-0324"; // می‌تونی بگذاری gpt-4.1-mini یا هر مدل دیگری
 
-    function addMsg(role, text){
+    let controller = null; // برای توقف استریم
+
+    function addMsg(role, text) {
       const div = document.createElement("div");
-      div.className = "m " + (role==="user" ? "user" : "bot");
-      div.textContent = text;
+      div.className = "m " + (role === "user" ? "user" : "bot");
+      div.textContent = text || "";
       msgsEl.appendChild(div);
       msgsEl.scrollTop = msgsEl.scrollHeight;
       return div;
     }
-    function setBusy(b){
-      streaming = b;
+
+    function setBusy(b, infoText) {
       sendBtn.disabled = b;
-      stopBtn.style.display = b ? "inline-flex" : "none";
-      statusEl.textContent = b ? "در حال پاسخ‌دهی…" : "آماده";
+      inp.disabled = b;
+      stopBtn.classList.toggle("hidden", !b);
+      statusEl.innerHTML = b ? `<span class="spinner"></span> ${infoText || "در حال پاسخ…"}` : "آماده";
     }
 
-    gear.onclick = () => panel.style.display = "block";
-    closeBtn.onclick = () => panel.style.display = "none";
-    saveBtn.onclick = ()=>{
-      const cfg = {
-        provider: providerSel.value,
-        model: modelInp.value.trim(),
-        style: styleSel.value,
-        max_tokens: Number(maxInp.value || 512),
-        temperature: Number(tempInp.value || 0.7),
-        system: sysTa.value
-      };
-      localStorage.setItem("chat_settings_stream", JSON.stringify(cfg));
-      panel.style.display = "none";
-      addMsg("assistant","✅ تنظیمات ذخیره شد.");
-    };
+    function countdownUI(seconds, onCancel, onNow) {
+      const bar = document.createElement("div");
+      bar.className = "countdown";
+      let s = seconds;
+      const render = () => bar.innerHTML = `سقف رایگان GitHub رسیدیم؛ تلاش خودکار تا <b>${s}</b> ثانیه دیگر… 
+        <button id="retryNow" style="margin-right:8px">همین الان تلاش کن</button>
+        <button id="cancelRetry" class="ghost" style="margin-right:6px">لغو</button>`;
+      render();
+      const iv = setInterval(() => {
+        s--; if (s <= 0) { clearInterval(iv); bar.remove(); onNow(); }
+        else render();
+      }, 1000);
 
-    stopBtn.onclick = ()=>{
-      if (abortCtrl) {
-        abortCtrl.abort(); // درخواست در حال استریم قطع می‌شود
-      }
-    };
+      bar.addEventListener("click", (e) => {
+        if (e.target.id === "cancelRetry") { clearInterval(iv); bar.remove(); onCancel?.(); }
+        if (e.target.id === "retryNow")   { clearInterval(iv); bar.remove(); onNow?.(); }
+      });
 
-    async function send(){
+      msgsEl.appendChild(bar);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      return () => { clearInterval(iv); bar.remove(); };
+    }
+
+    async function send() {
       const text = inp.value.trim();
-      if(!text || streaming) return;
-
-      // کامندهای ساده
-      if (text === "/clear") {
-        msgsEl.innerHTML = "";
-        history.length = 0;
-        inp.value = ""; addMsg("assistant", "تاریخچه پاک شد.");
-        return;
-      }
-      if (text === "/help") {
-        inp.value = "";
-        addMsg("assistant", "راهنما:\n/help, /clear\nاز ⚙️ Provider/Model/Style/Max/Temp/System را تنظیم کن.");
-        return;
-      }
-
-      const cfg = JSON.parse(localStorage.getItem("chat_settings_stream") || "{}");
-      const provider = cfg.provider || "github";
-      let model = (cfg.model || "").trim();
-      if (!model) {
-        model = provider === "github" ? "gpt-4.1-mini" :
-                provider === "deepseek" ? "deepseek-chat" :
-                "gemini-1.5-flash-latest";
-      }
-
+      if (!text) return;
       inp.value = "";
-      addMsg("user", text);
-      const botDiv = addMsg("assistant", "");
-      setBusy(true);
 
-      const body = {
-        provider,
-        model,
-        style: cfg.style || "کوتاه، شفاف، مؤدبانه",
-        max_tokens: Number(cfg.max_tokens || 512),
-        temperature: Number(cfg.temperature || 0.7),
-        system: cfg.system || "",
-        messages: [...history, { role: "user", content: text }],
-        stream: true // درخواست استریم
-      };
+      const u = addMsg("user", text);
+      const b = addMsg("assistant", "");
+      setBusy(true, "در حال پاسخ…");
 
-      abortCtrl = new AbortController();
-      let fullText = "";
+      messages.push({ role: "user", content: text });
 
-      try{
-        // برای Gemini استریم نداریم؛ یک‌جا می‌آید
-        const isStreamProvider = (provider === "github" || provider === "deepseek");
+      const provider = providerSel.value;
+      const model = modelInp.value.trim();
+      let attempts = 0;
+      const maxAttempts = 3;
 
-        if (isStreamProvider) {
-          const res = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            signal: abortCtrl.signal
-          });
+      controller = new AbortController();
 
-          if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(errText || `HTTP ${res.status}`);
+      const tryOnce = async () => {
+        attempts++;
+        const resp = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider, model, messages, stream: true }),
+          signal: controller.signal
+        });
+
+        // هندلینگ Rate Limit از طرف سرور
+        if (resp.status === 429) {
+          const data = await resp.json().catch(() => ({}));
+          if (data?.error === "rate_limit" && data?.waitSeconds && attempts < maxAttempts) {
+            return { rateLimit: true, waitSeconds: data.waitSeconds };
           }
+          // سایر خطاهای 429
+          throw new Error(data?.error || "429");
+        }
 
-          const ctype = res.headers.get("content-type") || "";
-          if (ctype.includes("text/event-stream")) {
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) break;
-              const chunk = decoder.decode(value, { stream: true });
-              // SSE: خطوطی که با "data:" شروع می‌شود
-              const lines = chunk.split(/\r?\n/);
-              for (const ln of lines) {
-                if (!ln.startsWith("data:")) continue;
-                const data = ln.slice(5).trim();
-                if (data === "[DONE]") break;
-                if (!data) continue;
-                try {
-                  const obj = JSON.parse(data);
-                  const delta = obj.choices?.[0]?.delta?.content || obj.choices?.[0]?.message?.content || "";
-                  if (delta) {
-                    fullText += delta;
-                    botDiv.textContent = fullText;
+        // اگر استریم است:
+        const ct = resp.headers.get("content-type") || "";
+        if (ct.includes("text/event-stream")) {
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          let done = false;
+          try {
+            while (!done) {
+              const { value, done: d } = await reader.read();
+              done = d;
+              if (value) {
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split(/\r?\n/).filter(Boolean);
+                for (const line of lines) {
+                  if (!line.startsWith("data:")) continue;
+                  const payload = line.slice(5).trim();
+                  if (payload === "[DONE]") continue;
+                  try {
+                    const obj = JSON.parse(payload);
+                    const delta = obj?.choices?.[0]?.delta?.content || "";
+                    if (delta) b.textContent += delta;
                     msgsEl.scrollTop = msgsEl.scrollHeight;
-                  }
-                } catch {}
+                  } catch {}
+                }
               }
             }
-          } else {
-            // اگر SSE نبود، احتمالاً JSON کامل است:
-            const j = await res.json();
-            const txt = j?.choices?.[0]?.message?.content || j?.reply || "";
-            fullText = txt || "";
-            botDiv.textContent = fullText || "(بدون پاسخ)";
+          } finally {
+            // تمام
           }
-        } else {
-          // Gemini (غیر استریم)
-          const res = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            signal: abortCtrl.signal
-          });
-          const j = await res.json();
-          if (!j.ok && !j.choices) throw new Error(j.error || "Server error");
-          const txt = j?.reply || j?.choices?.[0]?.message?.content || "";
-          fullText = txt || "";
-          botDiv.textContent = fullText || "(بدون پاسخ)";
+          return { ok: true };
         }
 
-        // update history
-        history.push({ role: "user", content: text });
-        history.push({ role: "assistant", content: fullText });
+        // non-stream JSON
+        const data = await resp.json().catch(() => ({}));
+        const text = data?.choices?.[0]?.message?.content || "(no content)";
+        b.textContent = text;
+        return { ok: true };
+      };
 
-      } catch(err){
-        if (err.name === "AbortError") {
-          botDiv.textContent = fullText ? fullText + " [⏹ متوقف شد]" : "⏹ متوقف شد";
-        } else {
-          botDiv.textContent = "خطا: " + err.message;
-          console.error(err);
+      let stopCountdown = null;
+
+      while (attempts < maxAttempts) {
+        try {
+          const result = await tryOnce();
+          if (result?.rateLimit) {
+            // نمایش شمارش و تلاش دوباره
+            await new Promise((resolve, reject) => {
+              stopCountdown = countdownUI(result.waitSeconds, () => reject(new Error("cancelled")), () => resolve());
+            });
+            // دوباره تلاش
+            continue;
+          }
+          // موفق
+          break;
+        } catch (err) {
+          if (String(err?.message) === "cancelled") {
+            b.textContent += "\n(لغو شد)";
+            break;
+          }
+          if (attempts >= maxAttempts) {
+            b.textContent = "خطا: " + (err?.message || err);
+            console.error(err);
+            break;
+          } else {
+            // تلاش مجدد کوتاه
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        } finally {
+          if (stopCountdown) { try { stopCountdown(); } catch {} }
         }
-      } finally {
-        setBusy(false);
-        abortCtrl = null;
       }
+
+      setBusy(false);
+      controller = null;
+      messages.push({ role: "assistant", content: b.textContent });
     }
 
     sendBtn.addEventListener("click", send);
-    inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+    stopBtn.addEventListener("click", () => {
+      if (controller) controller.abort();
+      setBusy(false, "");
+    });
 
-    addMsg("assistant","سلام! استریم فعاله. از ⚙️ Provider/Model/Style را تنظیم کن. /help");
+    // پیام خوش‌آمد
+    addMsg("assistant", "سلام! یک ارائه‌دهنده و مدل انتخاب کن و پیام بده. اگر لیمیت رایگان GitHub برسد، خودش با شمارش معکوس دوباره تلاش می‌کند.");
   </script>
 </body>
 </html>
