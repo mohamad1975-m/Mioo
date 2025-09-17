@@ -58,8 +58,8 @@
 
   <!-- اسکریپت اصلی: WebLLM را مستقیم از CDN می‌آوریم -->
   <script type="module">
-    import { CreateMLCEngine } from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
-   const cdnList = [
+  // 1) فقط یک لودر داینامیک با fallback
+  const cdnList = [
     "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm",
     "https://unpkg.com/@mlc-ai/web-llm?module",
     "https://esm.run/@mlc-ai/web-llm"
@@ -81,133 +81,121 @@
     throw lastErr || new Error("Failed to load @mlc-ai/web-llm from all CDNs");
   }
 
+  // ---- از اینجا به بعد کدت (بدون import ثابت) ----
   const { CreateMLCEngine } = await loadWebLLM();
-    const MODELS = [
-      { id: "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC", label: "TinyLlama 1.1B (سبک/سریع)" },
-      { id: "Qwen2-1.5B-Instruct-q4f16_1-MLC",      label: "Qwen2 1.5B (کیفیت بهتر، سنگین‌تر)" }
-      // اگر خواستی بعداً مدل‌های بیشتری اضافه می‌کنیم
-    ];
-  
-    // UI
-    const msgsEl = document.getElementById("msgs");
-    const inp = document.getElementById("inp");
-    const btn = document.getElementById("sendBtn");
-    const statusEl = document.getElementById("status");
-  
-    // یک سوییچر ساده مدل
-    const head = document.querySelector(".head");
-    const sel = document.createElement("select");
-    sel.style.fontFamily = "inherit";
-    sel.style.padding = "6px 8px";
-    sel.style.border = "1px solid #e5e7eb";
-    sel.style.borderRadius = "8px";
-    sel.title = "انتخاب مدل";
-    MODELS.forEach(m => {
-      const o = document.createElement("option");
-      o.value = m.id; o.textContent = m.label; sel.appendChild(o);
-    });
-    sel.value = MODELS[0].id;
-    head.appendChild(sel);
-  
-    const messages = [
-      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها رو کوتاه و شفاف بده." }
-    ];
-  
-    function addMsg(role, text){
-      const div = document.createElement("div");
-      div.className = "m " + (role==="user"?"user":"bot");
-      div.textContent = text;
-      msgsEl.appendChild(div);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-      return div;
+
+  const MODELS = [
+    { id: "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC", label: "TinyLlama 1.1B (سبک/سریع)" },
+    { id: "Qwen2-1.5B-Instruct-q4f16_1-MLC",      label: "Qwen2 1.5B (سنگین‌تر)" }
+  ];
+
+  const msgsEl = document.getElementById("msgs");
+  const inp = document.getElementById("inp");
+  const btn = document.getElementById("sendBtn");
+  const statusEl = document.getElementById("status");
+
+  const head = document.querySelector(".head");
+  const sel = document.createElement("select");
+  sel.style.fontFamily = "inherit";
+  sel.style.padding = "6px 8px";
+  sel.style.border = "1px solid #e5e7eb";
+  sel.style.borderRadius = "8px";
+  sel.title = "انتخاب مدل";
+  MODELS.forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
+  sel.value = MODELS[0].id;
+  head.appendChild(sel);
+
+  const messages = [
+    { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها رو کوتاه و شفاف بده." }
+  ];
+
+  function addMsg(role, text){
+    const div = document.createElement("div");
+    div.className = "m " + (role==="user"?"user":"bot");
+    div.textContent = text;
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    return div;
+  }
+  function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
+
+  let engine = null;
+
+  async function loadModel(modelId, {timeoutMs=20000} = {}){
+    statusEl.textContent = "دانلود/آماده‌سازی مدل…";
+    btn.disabled = true;
+    let done = false;
+    const timer = setTimeout(() => { if (!done) statusEl.textContent = "هنوز آماده نشده… (در حال تلاش)"; }, 5000);
+
+    const initProgressCallback = (p)=>{
+      statusEl.textContent = `دانلود/آماده‌سازی: ${Math.round((p.progress||0)*100)}% - ${p.text||""}`;
+    };
+
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs));
+
+    try {
+      engine = await Promise.race([ CreateMLCEngine(modelId, { initProgressCallback }), timeout ]);
+      done = true;
+      clearTimeout(timer);
+      statusEl.textContent = "مدل آماده است";
+      btn.disabled = false;
+      return true;
+    } catch (e) {
+      clearTimeout(timer);
+      console.error("loadModel error:", e);
+      return false;
     }
-    function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
-  
-    let engine = null;
-  
-    async function loadModel(modelId, {timeoutMs=20000} = {}){
-      statusEl.textContent = "دانلود/آماده‌سازی مدل…";
-      btn.disabled = true;
-      let done = false;
-      const timer = setTimeout(() => {
-        if (!done) statusEl.textContent = "هنوز آماده نشده… (در حال تلاش)";
-      }, 5000);
-  
-      const initProgressCallback = (p)=>{
-        statusEl.textContent = `دانلود/آماده‌سازی: ${Math.round((p.progress||0)*100)}% - ${p.text||""}`;
-      };
-  
-      // تایم‌اوت کلی برای سوییچ خودکار
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs));
-  
-      try {
-        engine = await Promise.race([
-          CreateMLCEngine(modelId, { initProgressCallback }),
-          timeout
-        ]);
-        done = true;
-        clearTimeout(timer);
-        statusEl.textContent = "مدل آماده است";
-        btn.disabled = false;
-        return true;
-      } catch (e) {
-        clearTimeout(timer);
-        return false;
-      }
+  }
+
+  async function ensureEngine(){
+    const chosen = sel.value;
+    let ok = await loadModel(chosen, {timeoutMs: 20000});
+    if (!ok && chosen !== MODELS[0].id){
+      statusEl.textContent = "دیر شد؛ سوییچ به مدل سبک‌تر…";
+      sel.value = MODELS[0].id;
+      ok = await loadModel(sel.value, {timeoutMs: 25000});
     }
-  
-    async function ensureEngine(){
-      // اگر مدل انتخابی کار نداد، خودکار به TinyLlama می‌ره
-      const chosen = sel.value;
-      let ok = await loadModel(chosen, {timeoutMs: 20000}); // ۲۰ ثانیه مهلت
-      if (!ok && chosen !== MODELS[0].id){
-        statusEl.textContent = "دیر شد؛ سوییچ به مدل سبک‌تر…";
-        sel.value = MODELS[0].id;
-        ok = await loadModel(sel.value, {timeoutMs: 25000});
+    if (!ok) statusEl.textContent = "خطا در بارگذاری مدل. لطفاً اینترنت/مرورگر را بررسی کنید.";
+  }
+
+  await ensureEngine();
+
+  async function send(){
+    const text = inp.value.trim();
+    if(!text || !engine) return;
+    inp.value = "";
+    addMsg("user", text);
+    const b = addMsg("assistant", "");
+    setBusy(true);
+    try{
+      const stream = await engine.chat.completions.create({
+        messages: [...messages, { role:"user", content:text }],
+        stream: true,
+        temperature: 0.7
+      });
+      let reply = "";
+      for await (const chunk of stream){
+        const delta = chunk.choices?.[0]?.delta?.content || "";
+        reply += delta; b.textContent = reply;
       }
-      if (!ok) {
-        statusEl.textContent = "خطا در بارگذاری مدل. لطفاً اینترنت/مرورگر را بررسی کنید.";
-      }
+      messages.push({ role:"user", content:text });
+      messages.push({ role:"assistant", content:reply });
+    }catch(err){
+      b.textContent = "خطا: " + err.message;
+      console.error(err);
+    }finally{
+      setBusy(false);
     }
-  
-    await ensureEngine();
-  
-    async function send(){
-      const text = inp.value.trim();
-      if(!text || !engine) return;
-      inp.value = "";
-      const u = addMsg("user", text);
-      const b = addMsg("assistant", "");
-      setBusy(true);
-      try{
-        const stream = await engine.chat.completions.create({
-          messages: [...messages, { role:"user", content:text }],
-          stream: true,
-          temperature: 0.7
-        });
-        let reply = "";
-        for await (const chunk of stream){
-          const delta = chunk.choices?.[0]?.delta?.content || "";
-          reply += delta; b.textContent = reply;
-        }
-        messages.push({ role:"user", content:text });
-        messages.push({ role:"assistant", content:reply });
-      }catch(err){
-        b.textContent = "خطا: " + err.message;
-        console.error(err);
-      }finally{
-        setBusy(false);
-      }
-    }
-  
-    btn.addEventListener("click", send);
-    inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
-  
-    // پیام خوش‌آمد
-    addMsg("assistant", "سلام! اگر آماده‌سازی طول کشید، از منوی بالا مدل سبک‌تر را انتخاب کن.");
-  </script>
+  }
+
+  btn.addEventListener("click", send);
+  inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
+  addMsg("assistant","سلام! اگر آماده‌سازی طول کشید، از منوی بالا مدل سبک‌تر را انتخاب کن.");
+</script>
+
   
 </body>
 </html>
+
 
 
