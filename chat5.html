@@ -1,210 +1,222 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>چت‌بات شما</title>
-<style>
-  @font-face{
-    font-family:'IRANYekanX';
-    src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
-    font-weight:300;font-style:normal;font-display:swap;
-  }
-  :root{--bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--ink:#e2e8f0;--accent:#6366f1}
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
-  .wrap{max-width:920px;margin:28px auto;padding:0 16px}
-  .card{background:#0f172a;border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.25);overflow:hidden;border:1px solid #1f2937}
-  .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937}
-  .title{font-weight:700}
-  .status{font-size:12px;color:#94a3b8}
-  .icon{cursor:pointer;opacity:.8}
-  .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#0b1220}
-  .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
-  .user{align-self:flex-end;background:#1d4ed8;color:#fff;border-bottom-right-radius:6px}
-  .bot{align-self:flex-start;background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-bottom-left-radius:6px}
-  .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #1f2937;background:#0f172a}
-  .foot input{flex:1;padding:12px 14px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:12px;outline:none}
-  .foot button{padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
-  .foot button[disabled]{opacity:.6;cursor:not-allowed}
-  .spinner{width:16px;height:16px;border:3px solid #334155;border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .panel{position:fixed;top:20px;left:20px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:14px;width:320px;display:none;z-index:10}
-  .panel h4{margin:0 0 10px;font-weight:700}
-  .panel label{font-size:13px;display:block;margin-top:8px;color:#cbd5e1}
-  .panel input,.panel textarea,.panel select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0}
-  .row{display:flex;gap:8px}
-  .row > *{flex:1}
-  .hint{font-size:12px;color:#94a3b8;margin:10px 14px 0}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>چت‌بات (Gemini / DeepSeek)</title>
+  <style>
+    @font-face{
+      font-family:'IRANYekanX';
+      src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
+      font-weight:300;font-style:normal;font-display:swap;
+    }
+    :root{--bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--ink:#e2e8f0;--accent:#6366f1}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
+    .wrap{max-width:920px;margin:28px auto;padding:0 16px}
+    .card{background:#0f172a;border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.25);overflow:hidden;border:1px solid #1f2937}
+    .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1f2937}
+    .title{font-weight:700}
+    .status{font-size:12px;color:#94a3b8}
+    .icon{cursor:pointer;opacity:.9}
+    .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#0b1220}
+    .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
+    .user{align-self:flex-end;background:#1d4ed8;color:#fff;border-bottom-right-radius:6px}
+    .bot{align-self:flex-start;background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-bottom-left-radius:6px}
+    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #1f2937;background:#0f172a}
+    .foot input{flex:1;padding:12px 14px;border:1px solid #334155;background:#0b1220;color:#e2e8f0;border-radius:12px;outline:none}
+    .foot button{padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
+    .foot button[disabled]{opacity:.6;cursor:not-allowed}
+    .spinner{width:16px;height:16px;border:3px solid #334155;border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .panel{position:fixed;top:20px;left:20px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:14px;width:340px;display:none;z-index:10}
+    .panel h4{margin:0 0 10px;font-weight:700}
+    .panel label{font-size:13px;display:block;margin-top:8px;color:#cbd5e1}
+    .panel input,.panel textarea,.panel select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e2e8f0}
+    .row{display:flex;gap:8px}
+    .row > *{flex:1}
+    .hint{font-size:12px;color:#94a3b8;margin:10px 14px 0}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div class="head">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="title">چت‌بات</div>
-        <span class="status" id="status">آماده</span>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="title">چت‌بات</div>
+          <span class="status" id="status">آماده</span>
+        </div>
+        <div class="icon" id="gear" title="تنظیمات">⚙️</div>
       </div>
-      <div class="icon" id="gear" title="تنظیمات">⚙️</div>
-    </div>
 
-    <div id="msgs" class="msgs"></div>
+      <div id="msgs" class="msgs"></div>
 
-    <div class="foot">
-      <input id="inp" placeholder="بنویس… (Enter = ارسال). برای راهنما: /help" />
-      <button id="sendBtn">ارسال</button>
+      <div class="foot">
+        <input id="inp" placeholder="بنویس… (Enter = ارسال). راهنما: /help" />
+        <button id="sendBtn">ارسال</button>
+      </div>
     </div>
-  </div>
-  <div class="hint">پردازش روی Cloudflare Workers AI انجام می‌شود. نیازی به WebGPU کاربر نیست.</div>
-</div>
-
-<!-- پنل تنظیمات -->
-<div class="panel" id="panel">
-  <h4>دستورالعمل‌ها و تنظیمات</h4>
-  <label>لحن (style)</label>
-  <select id="style">
-    <option>کوتاه، شفاف، مؤدبانه</option>
-    <option>رسمی</option>
-    <option>دوستانه</option>
-    <option>آموزشی و قدم‌به‌قدم</option>
-    <option>خیلی خلاصه</option>
-  </select>
-  <div class="row">
-    <div>
-      <label>max_tokens</label>
-      <input id="max" type="number" min="64" max="2048" value="512" />
-    </div>
-    <div>
-      <label>temperature</label>
-      <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7" />
+    <div class="hint">
+      Provider از ⚙️ انتخاب می‌شود (Gemini یا DeepSeek). کلیدها در Worker به‌صورت Secret ذخیره شده‌اند.
     </div>
   </div>
-  <label>دستورالعمل‌های اختصاصی (System)</label>
-  <textarea id="sys" rows="6" placeholder="اینجا قوانین/شخصی‌سازی خودت را بنویس…"></textarea>
-  <div class="row" style="margin-top:10px">
-    <button id="save">ذخیره</button>
-    <button id="close">بستن</button>
+
+  <!-- پنل تنظیمات -->
+  <div class="panel" id="panel">
+    <h4>تنظیمات</h4>
+
+    <label>ارائه‌دهنده (Provider)</label>
+    <select id="provider">
+      <option value="gemini">Gemini (Google)</option>
+      <option value="deepseek">DeepSeek</option>
+    </select>
+
+    <label style="margin-top:8px">نام مدل (اختیاری)</label>
+    <input id="model" placeholder="Gemini: gemini-1.5-flash | DeepSeek: deepseek-chat">
+
+    <label>لحن (style)</label>
+    <select id="style">
+      <option>کوتاه، شفاف، مؤدبانه</option>
+      <option>رسمی</option>
+      <option>دوستانه</option>
+      <option>آموزشی و قدم‌به‌قدم</option>
+      <option>خیلی خلاصه</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>max_tokens</label>
+        <input id="max" type="number" min="64" max="4096" value="512" />
+      </div>
+      <div>
+        <label>temperature</label>
+        <input id="temp" type="number" min="0" max="2" step="0.1" value="0.7" />
+      </div>
+    </div>
+
+    <label>دستورالعمل‌های اختصاصی (System)</label>
+    <textarea id="sys" rows="6" placeholder="قوانین/پالیسی/قالب پاسخ‌ها…"></textarea>
+
+    <div class="row" style="margin-top:10px">
+      <button id="save">ذخیره</button>
+      <button id="close">بستن</button>
+    </div>
   </div>
-</div>
 
-<script>
-  // ===== تنظیمات =====
-  const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/";
-  const msgsEl = document.getElementById("msgs");
-  const inp = document.getElementById("inp");
-  const btn = document.getElementById("sendBtn");
-  const statusEl = document.getElementById("status");
-  const panel = document.getElementById("panel");
-  const gear = document.getElementById("gear");
-  const styleSel = document.getElementById("style");
-  const maxInp   = document.getElementById("max");
-  const tempInp  = document.getElementById("temp");
-  const sysTa    = document.getElementById("sys");
-  const saveBtn  = document.getElementById("save");
-  const closeBtn = document.getElementById("close");
+  <script>
+    // آدرس ورکر خودت:
+    const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/";
 
-  // لود از LocalStorage
-  const store = JSON.parse(localStorage.getItem("chat_settings") || "{}");
-  styleSel.value = store.style || "کوتاه، شفاف، مؤدبانه";
-  maxInp.value   = store.max_tokens || 512;
-  tempInp.value  = store.temperature || 0.7;
-  sysTa.value    = store.system || "";
+    // عناصر
+    const msgsEl = document.getElementById("msgs");
+    const inp = document.getElementById("inp");
+    const btn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("status");
+    const panel = document.getElementById("panel");
+    const gear = document.getElementById("gear");
+    const providerSel = document.getElementById("provider");
+    const modelInp = document.getElementById("model");
+    const styleSel = document.getElementById("style");
+    const maxInp = document.getElementById("max");
+    const tempInp = document.getElementById("temp");
+    const sysTa = document.getElementById("sys");
+    const saveBtn = document.getElementById("save");
+    const closeBtn = document.getElementById("close");
 
-  const messages = [];
+    // لود تنظیمات
+    const store = JSON.parse(localStorage.getItem("chat_settings_v2") || "{}");
+    providerSel.value = store.provider || "gemini";
+    modelInp.value    = store.model || "";
+    styleSel.value    = store.style || "کوتاه، شفاف، مؤدبانه";
+    maxInp.value      = store.max_tokens || 512;
+    tempInp.value     = store.temperature || 0.7;
+    sysTa.value       = store.system || "";
 
-  function addMsg(role, text){
-    const div = document.createElement("div");
-    div.className = "m " + (role==="user"?"user":"bot");
-    div.textContent = text;
-    msgsEl.appendChild(div);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-    return div;
-  }
-  function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
+    const messages = [];
 
-  gear.onclick = ()=> panel.style.display = "block";
-  closeBtn.onclick = ()=> panel.style.display = "none";
-  saveBtn.onclick = ()=>{
-    const cfg = {
-      style: styleSel.value,
-      max_tokens: Number(maxInp.value || 512),
-      temperature: Number(tempInp.value || 0.7),
-      system: sysTa.value
+    function addMsg(role, text){
+      const div = document.createElement("div");
+      div.className = "m " + (role==="user"?"user":"bot");
+      div.textContent = text;
+      msgsEl.appendChild(div);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      return div;
+    }
+    function setBusy(b){ btn.disabled = b; statusEl.innerHTML = b ? '<span class="spinner"></span> در حال فکر کردن…' : 'آماده'; }
+
+    gear.onclick  = () => panel.style.display = "block";
+    closeBtn.onclick = () => panel.style.display = "none";
+    saveBtn.onclick  = () => {
+      const cfg = {
+        provider: providerSel.value,
+        model: modelInp.value.trim(),
+        style: styleSel.value,
+        max_tokens: Number(maxInp.value || 512),
+        temperature: Number(tempInp.value || 0.7),
+        system: sysTa.value
+      };
+      localStorage.setItem("chat_settings_v2", JSON.stringify(cfg));
+      panel.style.display = "none";
+      addMsg("assistant","✅ تنظیمات ذخیره شد.");
     };
-    localStorage.setItem("chat_settings", JSON.stringify(cfg));
-    panel.style.display = "none";
-    addMsg("assistant","✅ تنظیمات ذخیره شد.");
-  };
 
-  async function send(){
-    const text = inp.value.trim();
-    if(!text) return;
+    async function send(){
+      const text = inp.value.trim();
+      if(!text) return;
 
-    // واکنش به کامند /clear سمت کلاینت
-    if (text === "/clear") {
-      msgsEl.innerHTML = "";
-      messages.length = 0;
-      addMsg("assistant","تاریخچه پاک شد.");
+      if (text === "/clear"){
+        msgsEl.innerHTML = "";
+        messages.length = 0;
+        addMsg("assistant","تاریخچه پاک شد.");
+        inp.value = "";
+        return;
+      }
+      if (text === "/help"){
+        addMsg("assistant", "راهنما:\n/help، /clear\nاز ⚙️ Provider را انتخاب کن (Gemini یا DeepSeek).");
+        inp.value = "";
+        return;
+      }
+
+      const cfg = JSON.parse(localStorage.getItem("chat_settings_v2") || "{}");
       inp.value = "";
-      return;
+      addMsg("user", text);
+      const b = addMsg("assistant", "…");
+      setBusy(true);
+
+      try{
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: cfg.provider || "gemini",
+            model: (cfg.model || "").trim(),
+            style: cfg.style || "کوتاه، شفاف، مؤدبانه",
+            max_tokens: Number(cfg.max_tokens || 512),
+            temperature: Number(cfg.temperature || 0.7),
+            system: cfg.system || "",
+            messages: [...messages, { role: "user", content: text }]
+          })
+        });
+
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Server error");
+
+        b.textContent = data.reply || "(بدون پاسخ)";
+        messages.push({ role: "user", content: text });
+        messages.push({ role: "assistant", content: String(data.reply || "") });
+
+      }catch(err){
+        b.textContent = "خطا: " + err.message;
+        console.error(err);
+      }finally{
+        setBusy(false);
+      }
     }
 
-    const cfg = JSON.parse(localStorage.getItem("chat_settings") || "{}");
-    const style = cfg.style || "کوتاه، شفاف، مؤدبانه";
-    const max_tokens = Number(cfg.max_tokens || 512);
-    const temperature = Number(cfg.temperature || 0.7);
-    const system = cfg.system || "";
+    btn.addEventListener("click", send);
+    inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
 
-    inp.value = "";
-    addMsg("user", text);
-    const b = addMsg("assistant", "…");
-    setBusy(true);
-
-    try{
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          style, max_tokens, temperature, system,
-          messages: [...messages, { role: "user", content: text }]
-        })
-      });
-      const data = await res.json();
-
-      // متادیتای کامندها
-      if (data?.meta?.action === "set-style") {
-        styleSel.value = data.meta.style; saveBtn.click();
-      }
-      if (data?.meta?.action === "set-max") {
-        maxInp.value = data.meta.max; saveBtn.click();
-      }
-      if (data?.meta?.action === "set-temp") {
-        tempInp.value = data.meta.temp; saveBtn.click();
-      }
-      if (data?.meta?.action === "help") {
-        b.textContent = data.reply; setBusy(false); return;
-      }
-      if (data?.meta?.action === "clear") {
-        msgsEl.innerHTML = ""; messages.length = 0; addMsg("assistant","تاریخچه پاک شد."); setBusy(false); return;
-      }
-
-      if (!data.ok) throw new Error(data.error || "Server error");
-      b.textContent = data.reply || "(بدون پاسخ)";
-      messages.push({ role: "user", content: text });
-      messages.push({ role: "assistant", content: String(data.reply || "") });
-
-    }catch(err){
-      b.textContent = "خطا: " + err.message;
-      console.error(err);
-    }finally{
-      setBusy(false);
-    }
-  }
-
-  btn.addEventListener("click", send);
-  inp.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }});
-  addMsg("assistant","سلام! تنظیمات را از ⚙️ باز کن. راهنما: /help");
-</script>
+    addMsg("assistant","سلام! از ⚙️ یکی از ارائه‌دهنده‌ها (Gemini/DeepSeek) را انتخاب کن. پیش‌فرض: Gemini (gemini-1.5-flash).");
+  </script>
 </body>
 </html>
