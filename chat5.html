@@ -1,242 +1,247 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>چت‌بات</title>
   <style>
-    body{margin:0;background:#f6f7fb;color:#111;font-family:tahoma,Arial,sans-serif}
-    .wrap{max-width:920px;margin:24px auto;padding:0 16px}
-    .card{background:#fff;border-radius:20px;box-shadow:0 8px 28px rgba(0,0,0,.06);overflow:hidden}
-    .head{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7}
-    .status{font-size:12px;color:#64748b}
-    .row{display:flex;gap:8px;align-items:center}
-    select{padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px}
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:18px}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,system-ui,sans-serif}
+    .wrap{max-width:940px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden}
+    .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
+    .head .right{display:flex;gap:8px;align-items:center}
+    select{padding:6px 8px;border:1px solid #e5e7eb;border-radius:10px}
     .msgs{height:64vh;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
-    .m{max-width:75%;padding:10px 12px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
+    .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:normal;word-wrap:break-word}
     .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
     .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
+    .bot h1,.bot h2,.bot h3{margin:.4em 0 .2em}
+    .bot ul{margin:.3em 1.2em}
     .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff}
-    .foot input{flex:1;padding:12px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
-    .btn{padding:12px 16px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px}
-    .btn[disabled]{opacity:.6;cursor:not-allowed}
-    .hint{font-size:12px;color:#6b7280;margin:10px 14px 0}
-    .spinner{width:14px;height:14px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block}
+    .foot input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
+    .iconbtn{width:44px;min-width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+    .iconbtn[disabled]{opacity:.6;cursor:not-allowed}
+    .hint{font-size:12px;color:#6b7280;margin:8px 12px}
+    .err{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px}
+    .ok{color:#16a34a;font-size:12px}
+    .spin{width:16px;height:16px;border:3px solid #e5e7eb;border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 10px;border-radius:10px;font-size:13px}
-    .bot .md *{direction: rtl;}
-    .bot .md h1,.bot .md h2,.bot .md h3{margin:8px 0}
-    .bot .md ul{padding-right:20px}
-    .topbar{display:flex;align-items:center;gap:8px}
-    textarea{width:100%;min-height:80px;border:1px dashed #cbd5e1;border-radius:8px;padding:8px;font-family:inherit}
   </style>
-  <!-- Markdown + Sanitizer -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.4/dist/purify.min.js"></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="head">
-        <div class="topbar">
-          <div style="font-weight:700">چت‌بات</div>
-          <span class="status" id="status">آماده</span>
-        </div>
-        <div class="row">
-          <select id="provider">
-            <option value="github">GitHub Models</option>
-            <option value="gemini">Gemini</option>
-          </select>
-          <select id="model">
-            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-            <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-          </select>
-        </div>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div class="right">
+        <select id="provider">
+          <option value="github">GitHub Models</option>
+          <option value="gemini">Gemini</option>
+        </select>
+        <select id="model"></select>
+        <span id="ready" class="ok"></span>
       </div>
-
-      <div class="msgs" id="msgs"></div>
-
-      <div style="padding:8px 12px;border-top:1px dashed #e5e7eb;background:#fff">
-        <div style="font-size:12px;color:#6b7280;margin-bottom:6px">قوانین اختصاصی (System):</div>
-        <textarea id="rulesBox" placeholder="قوانین دلخواه را اینجا Paste کنید. (اختیاری)"></textarea>
-      </div>
-
-      <div class="foot">
-        <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
-        <button id="sendBtn" class="btn">
-          <span id="sendIcon">➤</span>
-          <span id="stopIcon" style="display:none">⏹</span>
-          <span id="btnText">ارسال</span>
-        </button>
-      </div>
+      <div style="font-weight:700">چت‌بات</div>
     </div>
+
+    <div id="msgs" class="msgs"></div>
+
     <div class="hint">
-      - پاسخ‌ها با Markdown رندر می‌شود (بولد/تیتر/لیست و …).<br>
-      - وقتی مدل مشغول است، دکمه‌ی ارسال به توقف تبدیل می‌شود.
+      قوانین اختصاصی (System):<br/>
+      <textarea id="rules" rows="2" style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px" placeholder="قوانین دلخواه را اینجا بنویسید (اختیاری)…"></textarea>
+    </div>
+
+    <div class="foot">
+      <button id="sendBtn" class="iconbtn" title="ارسال">
+        <svg id="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        <svg id="stopIcon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+      <input id="inp" placeholder="بنویس… (Enter = ارسال)"/>
     </div>
   </div>
+</div>
 
 <script>
-  // --- DOM
-  const msgsEl = document.getElementById('msgs');
-  const inp = document.getElementById('inp');
-  const btn = document.getElementById('sendBtn');
-  const statusEl = document.getElementById('status');
-  const providerSel = document.getElementById('provider');
-  const modelSel = document.getElementById('model');
-  const rulesBox = document.getElementById('rulesBox');
-  const sendIcon = document.getElementById('sendIcon');
-  const stopIcon = document.getElementById('stopIcon');
-  const btnText = document.getElementById('btnText');
+  // --- تنظیم آدرس Worker شما (مطلق) ---
+  const API_BASE = "https://mioo-chat.mohamadgpt19.workers.dev";
 
-  // حالت: درحال استریم؟
-  let streaming = false;
+  // مدل‌ها
+  const MODELS = {
+    github: [
+      "gpt-4.1-mini",
+      "gpt-4o-mini",
+      "deepseek-v3-0324" // اگر سهمیه رایگان مدل دیپ‌سیک محدود بود، کمتر استفاده کنید
+    ],
+    gemini: [
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-pro-latest"
+    ]
+  };
+
+  // رندر Markdown ساده
+  function renderMarkdown(text){
+    let html = text
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+    // headings
+    html = html.replace(/^###\s?(.*)$/gm,'<h3>$1</h3>');
+    html = html.replace(/^##\s?(.*)$/gm,'<h2>$1</h2>');
+    html = html.replace(/^#\s?(.*)$/gm,'<h1>$1</h1>');
+
+    // bold
+    html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+
+    // unordered lists
+    html = html.replace(/^(?:-|\*)\s+(.*)$/gm,'<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)(?![\s\S]*<li>)/g, m => `<ul>${m}</ul>`);
+    // paragraphs
+    html = html.replace(/\n{2,}/g,'</p><p>');
+    html = `<p>${html}</p>`;
+    // cleanup nested <p> around headings/lists
+    html = html.replace(/<p>(\s*<(h[1-3]|ul)>)/g,'$1')
+               .replace(/(<\/h[1-3]|<\/ul>)\s*<\/p>/g,'$1');
+
+    return html;
+  }
+
+  const providerSel = document.getElementById("provider");
+  const modelSel = document.getElementById("model");
+  const readyEl = document.getElementById("ready");
+  const msgsEl = document.getElementById("msgs");
+  const inp = document.getElementById("inp");
+  const btn = document.getElementById("sendBtn");
+  const sendIcon = document.getElementById("sendIcon");
+  const stopIcon = document.getElementById("stopIcon");
+  const rulesEl = document.getElementById("rules");
+
   let abortController = null;
 
-  // همواره فارسی؛ گفتگو:
-  const messages = []; // شامل system در سمت سرور تزریق می‌شود
+  function fillModels(){
+    const prov = providerSel.value;
+    modelSel.innerHTML = "";
+    MODELS[prov].forEach(m=>{
+      const o = document.createElement("option");
+      o.value = o.textContent = m;
+      modelSel.appendChild(o);
+    });
+  }
+  providerSel.addEventListener("change", fillModels);
+  fillModels();
 
-  function addMsg(role, html, isMarkdown=false){
-    const div = document.createElement('div');
-    div.className = 'm ' + (role === 'user' ? 'user' : 'bot');
-
-    if(isMarkdown){
-      const safe = DOMPurify.sanitize(marked.parse(html));
-      const wrap = document.createElement('div');
-      wrap.className = 'md';
-      wrap.innerHTML = safe;
-      div.appendChild(wrap);
-    } else {
-      div.textContent = html;
-    }
-
+  function addMsg(role, html, isHTML=false){
+    const div = document.createElement("div");
+    div.className = "m " + (role==="user" ? "user" : "bot");
+    if(isHTML) div.innerHTML = html; else div.textContent = html;
     msgsEl.appendChild(div);
     msgsEl.scrollTop = msgsEl.scrollHeight;
     return div;
   }
 
   function setBusy(b){
-    streaming = b;
     if (b){
-      statusEl.innerHTML = '<span class="spinner"></span> در حال پاسخ‌دهی…';
-      sendIcon.style.display = 'none';
-      stopIcon.style.display = 'inline';
-      btnText.textContent = 'توقف';
+      sendIcon.style.display = "none";
+      stopIcon.style.display = "block";
     } else {
-      statusEl.textContent = 'آماده';
-      sendIcon.style.display = 'inline';
-      stopIcon.style.display = 'none';
-      btnText.textContent = 'ارسال';
+      stopIcon.style.display = "none";
+      sendIcon.style.display = "block";
     }
-    btn.disabled = false;
+    btn.dataset.state = b ? "stop" : "send";
   }
 
-  providerSel.addEventListener('change', syncModelForProvider);
-  function syncModelForProvider(){
-    const p = providerSel.value;
-    modelSel.innerHTML = '';
-    if (p === 'github'){
-      modelSel.append(new Option('gpt-4.1-mini','gpt-4.1-mini'));
-    } else {
-      modelSel.append(new Option('gemini-1.5-flash-latest','gemini-1.5-flash-latest'));
-    }
-  }
-  syncModelForProvider();
-
-  async function send(){
-    if (streaming){
-      // توقف
+  btn.addEventListener("click", ()=>{
+    if (btn.dataset.state === "stop"){
       if (abortController) abortController.abort();
       return;
     }
+    send();
+  });
+  inp.addEventListener("keydown", e=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); }
+  });
 
+  // تست آماده‌بودن
+  async function ping(){
+    try{
+      const r = await fetch(`${API_BASE}/`, {method:"GET"});
+      readyEl.textContent = r.ok ? "آماده" : "مشکل در اتصال";
+    }catch{
+      readyEl.textContent = "مشکل در اتصال";
+    }
+  }
+  ping();
+
+  async function send(){
     const text = inp.value.trim();
     if(!text) return;
-
-    // push local
-    messages.push({ role: 'user', content: text });
-    addMsg('user', text);
-    inp.value = '';
-
-    const botDiv = addMsg('assistant', '', true);
-
-    setBusy(true);
-
     const provider = providerSel.value;
     const model = modelSel.value;
-    const rules = rulesBox.value || "";
+    const rules = rulesEl.value;
+
+    inp.value = "";
+    addMsg("user", text);
+    const bot = addMsg("assistant", "", true);
+    setBusy(true);
 
     abortController = new AbortController();
 
     try{
-      const resp = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ provider, model, messages, rules }),
+      const resp = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider, model,
+          messages: [{role:"user", content:text}],
+          rules
+        }),
         signal: abortController.signal
       });
 
-      if (!resp.ok || !resp.body){
-        const raw = await tryText(resp);
-        botDiv.innerHTML = `<div class="err">خطا: خروجی خالی از سرور دریافت شد. Raw: ${escapeHtml(raw)}</div>`;
-        setBusy(false); return;
+      if(!resp.ok){
+        let raw;
+        try{ raw = await resp.text(); }catch{ raw = null; }
+        bot.innerHTML = `<div class="err">خطا: خروجی خالی از سرور دریافت شد.<br/>Raw: ${raw}</div>`;
+        return;
       }
 
       const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let acc = "";
+      const dec = new TextDecoder();
+      let buf = "";
 
       while(true){
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-        for (const ln of lines){
-          const line = ln.trim();
-          if (!line.startsWith("data:")) continue;
-          const dataStr = line.slice(5).trim();
-          if (!dataStr) continue;
+        const {value, done} = await reader.read();
+        if(done) break;
+        buf += dec.decode(value, {stream:true});
+
+        const parts = buf.split("\n\n");
+        buf = parts.pop() || "";
+
+        for(const chunk of parts){
+          if(!chunk.startsWith("data:")) continue;
+          const payload = chunk.slice(5).trim();
+          if(payload === "[DONE]") continue;
 
           try{
-            const obj = JSON.parse(dataStr);
-            if (obj.error){
-              botDiv.innerHTML = `<div class="err">خطا: ${escapeHtml(obj.error)} ${obj.detail ? (' | Raw: ' + escapeHtml(JSON.stringify(obj.detail))) : ''}</div>`;
-            }else if (typeof obj.delta === 'string'){
-              acc += obj.delta;
-              botDiv.innerHTML = DOMPurify.sanitize(marked.parse(acc));
-              msgsEl.scrollTop = msgsEl.scrollHeight;
+            const obj = JSON.parse(payload);
+            const delta = obj.choices?.[0]?.delta?.content ?? null;
+            if(delta !== null){
+              // رندر تدریجی
+              bot.innerHTML = renderMarkdown(bot.textContent + delta);
             }
-          }catch{}
+          }catch(e){
+            // پاسخ Gemini در SSE ممکن است ساختار دیگری داشته باشد؛
+            // اگر JSON نبود، صرف‌نظر می‌کنیم.
+          }
         }
+        msgsEl.scrollTop = msgsEl.scrollHeight;
       }
-
-      const content = acc.trim();
-      if (content){
-        messages.push({ role: 'assistant', content });
-      } else if (!botDiv.innerHTML){
-        botDiv.innerHTML = `<div class="err">(no content)</div>`;
-      }
-
-    }catch(e){
-      if (e.name === 'AbortError'){
-        botDiv.innerHTML = `<div class="err">پاسخ متوقف شد.</div>`;
-      } else {
-        botDiv.innerHTML = `<div class="err">خطای شبکه/مرورگر: ${escapeHtml(String(e))}</div>`;
-      }
+    }catch(err){
+      bot.innerHTML = `<div class="err">خطای شبکه/مرورگر: ${err.message}</div>`;
     }finally{
       setBusy(false);
       abortController = null;
     }
   }
-
-  btn.addEventListener('click', send);
-  inp.addEventListener('keydown', (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
-
-  // util
-  async function tryText(resp){
-    try{ return await resp.text(); }catch{ return null; }
-  }
-  function escapeHtml(s){ return (s||"").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 </script>
 </body>
 </html>
