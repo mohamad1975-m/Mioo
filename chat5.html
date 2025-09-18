@@ -5,284 +5,238 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>چت‌بات</title>
   <style>
-    :root{--bg:#f7f8fb;--card:#fff;--ink:#0f172a;--muted:#64748b;--accent:#111827;--bubble:#111827;--bubbleText:#fff}
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma, system-ui, -apple-system, Segoe UI, Roboto, 'IRANSans', sans-serif}
-    .wrap{max-width:980px;margin:24px auto;padding:0 14px}
-    .board{background:var(--card);border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08);overflow:hidden}
-    .head{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px solid #eef2f7;padding:10px 12px}
-    .head .left{display:flex;gap:8px;align-items:center}
-    .badge{font-size:12px;background:#eef2ff;color:#334155;border-radius:999px;padding:3px 8px}
-    .sel{padding:6px 8px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-    .msgs{height:65vh;overflow:auto;background:#fafbff;padding:16px;display:flex;flex-direction:column;gap:12px}
-    .m{max-width:78%;padding:12px 14px;border-radius:14px;line-height:1.85;white-space:pre-wrap;word-wrap:break-word}
-    .m.user{align-self:flex-end;background:var(--bubble);color:var(--bubbleText);border-bottom-right-radius:6px}
-    .m.bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
-    .foot{display:flex;gap:8px;padding:12px;border-top:1px solid #eef2f7;background:#fff}
-    .inp{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
-    .btn{width:44px;height:44px;border-radius:12px;border:0;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    body{margin:0;background:#f6f7fb;color:#111;font-family:tahoma,Arial,sans-serif}
+    .wrap{max-width:920px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border-radius:20px;box-shadow:0 8px 28px rgba(0,0,0,.06);overflow:hidden}
+    .head{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7}
+    .status{font-size:12px;color:#64748b}
+    .row{display:flex;gap:8px;align-items:center}
+    select{padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px}
+    .msgs{height:64vh;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
+    .m{max-width:75%;padding:10px 12px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
+    .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
+    .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
+    .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff}
+    .foot input{flex:1;padding:12px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
+    .btn{padding:12px 16px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
-    .hint{font-size:12px;color:var(--muted);text-align:center;margin:10px}
-    .codeblock{background:#0b1220;color:#e5e7eb;border-radius:10px;padding:10px;overflow:auto}
-    .m.bot h1,.m.bot h2,.m.bot h3{margin:.4rem 0 .3rem;font-weight:700}
-    .m.bot ul{margin:.4rem 1rem .6rem}
-    .m.bot pre{margin:.4rem 0}
+    .hint{font-size:12px;color:#6b7280;margin:10px 14px 0}
+    .spinner{width:14px;height:14px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 10px;border-radius:10px;font-size:13px}
+    .bot .md *{direction: rtl;}
+    .bot .md h1,.bot .md h2,.bot .md h3{margin:8px 0}
+    .bot .md ul{padding-right:20px}
+    .topbar{display:flex;align-items:center;gap:8px}
+    textarea{width:100%;min-height:80px;border:1px dashed #cbd5e1;border-radius:8px;padding:8px;font-family:inherit}
   </style>
-  <!-- Markdown renderer + Sanitizer -->
+  <!-- Markdown + Sanitizer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.4/dist/purify.min.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <div class="board">
-    <div class="head">
-      <div class="left">
-        <span class="badge">Multi-Provider</span>
-        <select id="modelSel" class="sel">
-          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-          <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-        </select>
-        <select id="providerSel" class="sel">
-          <option value="github">GitHub Models</option>
-          <option value="gemini">Gemini</option>
-        </select>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div class="topbar">
+          <div style="font-weight:700">چت‌بات</div>
+          <span class="status" id="status">آماده</span>
+        </div>
+        <div class="row">
+          <select id="provider">
+            <option value="github">GitHub Models</option>
+            <option value="gemini">Gemini</option>
+          </select>
+          <select id="model">
+            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
+          </select>
+        </div>
       </div>
-      <div id="status" class="badge">آماده</div>
+
+      <div class="msgs" id="msgs"></div>
+
+      <div style="padding:8px 12px;border-top:1px dashed #e5e7eb;background:#fff">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:6px">قوانین اختصاصی (System):</div>
+        <textarea id="rulesBox" placeholder="قوانین دلخواه را اینجا Paste کنید. (اختیاری)"></textarea>
+      </div>
+
+      <div class="foot">
+        <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
+        <button id="sendBtn" class="btn">
+          <span id="sendIcon">➤</span>
+          <span id="stopIcon" style="display:none">⏹</span>
+          <span id="btnText">ارسال</span>
+        </button>
+      </div>
     </div>
-
-    <div id="msgs" class="msgs"></div>
-
-    <div class="foot">
-      <input id="inp" class="inp" placeholder="بنویس… (Enter = ارسال)" />
-      <button id="sendBtn" class="btn" title="ارسال">
-        <!-- آیکن ارسال -->
-        <svg id="iconSend" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-        <!-- آیکن توقف -->
-        <svg id="iconStop" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-      </button>
+    <div class="hint">
+      - پاسخ‌ها با Markdown رندر می‌شود (بولد/تیتر/لیست و …).<br>
+      - وقتی مدل مشغول است، دکمه‌ی ارسال به توقف تبدیل می‌شود.
     </div>
   </div>
-  <div class="hint">
-    پیش‌فرض فارسی است. اگر GitHub Models پیامی نداد، PAT را در Worker با نام <b>GITHUB_MODELS_TOKEN</b> بررسی کن. برای Gemini از <b>GEMINI_API_KEY</b> استفاده می‌شود.
-  </div>
-</div>
 
 <script>
-  // ---- UI refs
+  // --- DOM
   const msgsEl = document.getElementById('msgs');
   const inp = document.getElementById('inp');
   const btn = document.getElementById('sendBtn');
   const statusEl = document.getElementById('status');
-  const modelSel = document.getElementById('modelSel');
-  const providerSel = document.getElementById('providerSel');
-  const iconSend = document.getElementById('iconSend');
-  const iconStop = document.getElementById('iconStop');
+  const providerSel = document.getElementById('provider');
+  const modelSel = document.getElementById('model');
+  const rulesBox = document.getElementById('rulesBox');
+  const sendIcon = document.getElementById('sendIcon');
+  const stopIcon = document.getElementById('stopIcon');
+  const btnText = document.getElementById('btnText');
 
-  // پیش‌فرض فارسی
-  const SYSTEM_RULES = `- همیشه پاسخ‌ها را به فارسی بده.
-- اگر مناسب است از Markdown استفاده کن (تیتر، بولد، لیست، کد).
-- پاسخ‌ها را منظم، خلاصه و مرحله‌ای ارائه بده.`;
+  // حالت: درحال استریم؟
+  let streaming = false;
+  let abortController = null;
 
-  // رندر Markdown امن
-  function renderMarkdown(md) {
-    const raw = marked.parse(md || "");
-    const clean = DOMPurify.sanitize(raw, {USE_PROFILES: {html: true}});
-    return clean;
-  }
+  // همواره فارسی؛ گفتگو:
+  const messages = []; // شامل system در سمت سرور تزریق می‌شود
 
-  function addMsg(role, text) {
+  function addMsg(role, html, isMarkdown=false){
     const div = document.createElement('div');
     div.className = 'm ' + (role === 'user' ? 'user' : 'bot');
-    if (role === 'bot') {
-      div.innerHTML = renderMarkdown(text || '');
+
+    if(isMarkdown){
+      const safe = DOMPurify.sanitize(marked.parse(html));
+      const wrap = document.createElement('div');
+      wrap.className = 'md';
+      wrap.innerHTML = safe;
+      div.appendChild(wrap);
     } else {
-      div.textContent = text || '';
+      div.textContent = html;
     }
+
     msgsEl.appendChild(div);
     msgsEl.scrollTop = msgsEl.scrollHeight;
     return div;
   }
 
   function setBusy(b){
-    btn.disabled = false;
+    streaming = b;
     if (b){
-      iconSend.style.display = 'none';
-      iconStop.style.display = '';
-      statusEl.textContent = 'در حال دریافت…';
+      statusEl.innerHTML = '<span class="spinner"></span> در حال پاسخ‌دهی…';
+      sendIcon.style.display = 'none';
+      stopIcon.style.display = 'inline';
+      btnText.textContent = 'توقف';
     } else {
-      iconSend.style.display = '';
-      iconStop.style.display = 'none';
       statusEl.textContent = 'آماده';
+      sendIcon.style.display = 'inline';
+      stopIcon.style.display = 'none';
+      btnText.textContent = 'ارسال';
     }
+    btn.disabled = false;
   }
 
-  let aborter = null;
-  let historyMsgs = [];
-
-  function currentProvider(){
+  providerSel.addEventListener('change', syncModelForProvider);
+  function syncModelForProvider(){
     const p = providerSel.value;
-    return p;
-  }
-  function currentModel(){
-    return modelSel.value;
-  }
-
-  // ارسال
-  async function send(){
-    const text = (inp.value || '').trim();
-    if(!text) return;
-    inp.value = '';
-    const u = addMsg('user', text);
-    const b = addMsg('bot', '...');
-    setBusy(true);
-
-    // اضافه به هیستوری
-    historyMsgs.push({ role: 'user', content: text });
-
-    const provider = currentProvider();
-    const model = currentModel();
-
-    aborter = new AbortController();
-    const signal = aborter.signal;
-
-    try{
-      // اگر provider = github و model = gemini-... ناسازگار است، اصلاح کن
-      let finalProvider = provider;
-      let finalModel = model;
-      if (provider === 'github' && model.startsWith('gemini')) {
-        finalModel = 'gpt-4.1-mini';
-      }
-      if (provider === 'gemini' && !model.startsWith('gemini')) {
-        finalModel = 'gemini-1.5-flash-latest';
-      }
-
-      // اگر GitHub => سعی می‌کنیم استریم بخوانیم (text/event-stream)
-      let reply = '';
-
-      if (finalProvider === 'github') {
-        const resp = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            provider: 'github',
-            model: finalModel,
-            messages: historyMsgs,
-            rules: SYSTEM_RULES,
-            stream: true
-          }),
-          signal
-        });
-
-        // اگر SSE نبود، JSON بخوان
-        const ctype = resp.headers.get('content-type') || '';
-        if (ctype.includes('text/event-stream')) {
-          const reader = resp.body.getReader();
-          const dec = new TextDecoder();
-          b.innerHTML = '';
-          while(true){
-            const {value, done} = await reader.read();
-            if(done) break;
-            const chunk = dec.decode(value, {stream: true});
-            // GitHub Models از OpenAI chunk پیروی می‌کند: خطوط با "data: ..."
-            const lines = chunk.split(/\r?\n/).filter(Boolean);
-            for (const ln of lines){
-              if (!ln.startsWith('data:')) continue;
-              const dataStr = ln.slice(5).trim();
-              if (dataStr === '[DONE]') continue;
-              try {
-                const data = JSON.parse(dataStr);
-                const delta = data?.choices?.[0]?.delta?.content || '';
-                if (delta) {
-                  reply += delta;
-                  b.innerHTML = renderMarkdown(reply);
-                  msgsEl.scrollTop = msgsEl.scrollHeight;
-                }
-              } catch {}
-            }
-          }
-        } else {
-          const j = await resp.json().catch(()=>null);
-          if(!resp.ok){
-            throw new Error('خطا: ' + (JSON.stringify(j) || 'Unknown'));
-          }
-          reply = j?.reply || '';
-          b.innerHTML = renderMarkdown(reply || '(no content)');
-        }
-
-      } else {
-        // Gemini (non-stream برای پایداری)
-        const resp = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            provider: 'gemini',
-            model: finalModel,
-            messages: historyMsgs,
-            rules: SYSTEM_RULES,
-            stream: false
-          }),
-          signal
-        });
-        const j = await resp.json().catch(()=>null);
-        if(!resp.ok){
-          throw new Error('خطا از Gemini: ' + (j?.error || 'Unknown'));
-        }
-        reply = j?.reply || '';
-        b.innerHTML = renderMarkdown(reply || '(no content)');
-      }
-
-      // اضافه کردن پاسخ به هیستوری
-      historyMsgs.push({ role: 'assistant', content: reply });
-
-    } catch(err){
-      b.textContent = String(err?.message || err || 'خطا');
-    } finally {
-      setBusy(false);
-      aborter = null;
+    modelSel.innerHTML = '';
+    if (p === 'github'){
+      modelSel.append(new Option('gpt-4.1-mini','gpt-4.1-mini'));
+    } else {
+      modelSel.append(new Option('gemini-1.5-flash-latest','gemini-1.5-flash-latest'));
     }
   }
+  syncModelForProvider();
 
-  // توقف
-  btn.addEventListener('click', () => {
-    // اگر در حالت در حال دریافت هستیم، توقف کن
-    if (iconStop.style.display !== 'none' && aborter){
-      aborter.abort();
-      setBusy(false);
+  async function send(){
+    if (streaming){
+      // توقف
+      if (abortController) abortController.abort();
       return;
     }
-    // در غیر این صورت ارسال کن
-    send();
-  });
 
-  inp.addEventListener('keydown', (e)=>{
-    if (e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      send();
-    }
-  });
+    const text = inp.value.trim();
+    if(!text) return;
 
-  // هم‌ترازی provider و مدل
-  modelSel.addEventListener('change', ()=>{
-    const m = modelSel.value;
-    if (m.startsWith('gemini')){
-      providerSel.value = 'gemini';
-    } else {
-      providerSel.value = 'github';
-    }
-  });
-  providerSel.addEventListener('change', ()=>{
-    const p = providerSel.value;
-    if (p === 'gemini' && !modelSel.value.startsWith('gemini')){
-      modelSel.value = 'gemini-1.5-flash-latest';
-    }
-    if (p === 'github' && modelSel.value.startsWith('gemini')){
-      modelSel.value = 'gpt-4.1-mini';
-    }
-  });
+    // push local
+    messages.push({ role: 'user', content: text });
+    addMsg('user', text);
+    inp.value = '';
 
-  // پیام خوش‌آمد
-  addMsg('bot', 'سلام! من آماده‌ام. پاسخ‌ها با Markdown نمایش داده می‌شوند. سؤال بعدی؟');
+    const botDiv = addMsg('assistant', '', true);
+
+    setBusy(true);
+
+    const provider = providerSel.value;
+    const model = modelSel.value;
+    const rules = rulesBox.value || "";
+
+    abortController = new AbortController();
+
+    try{
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ provider, model, messages, rules }),
+        signal: abortController.signal
+      });
+
+      if (!resp.ok || !resp.body){
+        const raw = await tryText(resp);
+        botDiv.innerHTML = `<div class="err">خطا: خروجی خالی از سرور دریافت شد. Raw: ${escapeHtml(raw)}</div>`;
+        setBusy(false); return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+
+      while(true){
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+        for (const ln of lines){
+          const line = ln.trim();
+          if (!line.startsWith("data:")) continue;
+          const dataStr = line.slice(5).trim();
+          if (!dataStr) continue;
+
+          try{
+            const obj = JSON.parse(dataStr);
+            if (obj.error){
+              botDiv.innerHTML = `<div class="err">خطا: ${escapeHtml(obj.error)} ${obj.detail ? (' | Raw: ' + escapeHtml(JSON.stringify(obj.detail))) : ''}</div>`;
+            }else if (typeof obj.delta === 'string'){
+              acc += obj.delta;
+              botDiv.innerHTML = DOMPurify.sanitize(marked.parse(acc));
+              msgsEl.scrollTop = msgsEl.scrollHeight;
+            }
+          }catch{}
+        }
+      }
+
+      const content = acc.trim();
+      if (content){
+        messages.push({ role: 'assistant', content });
+      } else if (!botDiv.innerHTML){
+        botDiv.innerHTML = `<div class="err">(no content)</div>`;
+      }
+
+    }catch(e){
+      if (e.name === 'AbortError'){
+        botDiv.innerHTML = `<div class="err">پاسخ متوقف شد.</div>`;
+      } else {
+        botDiv.innerHTML = `<div class="err">خطای شبکه/مرورگر: ${escapeHtml(String(e))}</div>`;
+      }
+    }finally{
+      setBusy(false);
+      abortController = null;
+    }
+  }
+
+  btn.addEventListener('click', send);
+  inp.addEventListener('keydown', (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+
+  // util
+  async function tryText(resp){
+    try{ return await resp.text(); }catch{ return null; }
+  }
+  function escapeHtml(s){ return (s||"").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 </script>
 </body>
 </html>
