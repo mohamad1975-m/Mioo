@@ -5,14 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>چت‌بات چند-ارائه‌دهنده</title>
   <style>
-        @font-face{
-      font-family:'IRANYekanX';
-      src:url('https://s34.picofile.com/file/8486538992/IRANYekanX_Light_woff2.html') format('woff2');
-      font-weight:300;font-style:normal;font-display:swap;
-    }
     :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:20px}
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:'IRANYekanX',Tahoma,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma, sans-serif}
     .wrap{max-width:980px;margin:28px auto;padding:0 16px}
     .card{background:var(--card);border-radius:22px;box-shadow:0 12px 34px rgba(0,0,0,.06);overflow:hidden}
     .head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef2f7;gap:8px}
@@ -21,9 +16,7 @@
     .status{font-size:12px;color:#64748b}
     .controls{display:flex;align-items:center;gap:8px}
 
-    select, input[type="text"]{
-      padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit
-    }
+    select, input[type="text"]{ padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit }
 
     .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
     .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
@@ -40,9 +33,8 @@
     .countdown{font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fed7aa;padding:6px 10px;border-radius:8px}
     .spinner{width:16px;height:16px;border:3px solid #e5e7eb;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;vertical-align:middle}
     @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* tiny svg button */
     .send-icon{width:18px;height:18px;display:block}
+    .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 10px;border-radius:8px}
   </style>
 </head>
 <body>
@@ -59,7 +51,7 @@
             <option value="gemini">Gemini</option>
             <option value="deepseek">DeepSeek (direct)</option>
           </select>
-          <input id="model" type="text" placeholder="نام مدل (مثلاً: gpt-4.1-mini یا deepseek-v3-0324)" style="width:260px" />
+          <input id="model" type="text" placeholder="نام مدل (مثل gpt-4.1-mini یا deepseek-v3-0324)" style="width:260px" />
         </div>
       </div>
 
@@ -68,8 +60,7 @@
       <div class="foot">
         <button id="stopBtn" class="btn ghost hidden">❚❚ توقف</button>
         <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
-        <button id="sendBtn" class="btn">
-          <!-- ارسال با آیکن -->
+        <button id="sendBtn" class="btn" title="ارسال">
           <svg class="send-icon" viewBox="0 0 24 24" fill="none">
             <path d="M4 12L20 4l-5 8 5 8-16-8z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
           </svg>
@@ -77,12 +68,13 @@
         </button>
       </div>
     </div>
-    <div class="hint">
-      اگر GitHub Models گفت «Rate limit»، تایمر می‌آید و خودش بعد از اتمام، دوباره تلاش می‌کند. می‌توانی لغو کنی.
-    </div>
+    <div class="hint">آدرس API را مطلق گذاشتیم تا از هر دامنه‌ای کار کند.</div>
   </div>
 
   <script>
+    // 1) آدرس مطلق API (دامنه‌ی ورکرِ خودت)
+    const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
+
     const msgsEl = document.getElementById("msgs");
     const inp = document.getElementById("inp");
     const sendBtn = document.getElementById("sendBtn");
@@ -91,19 +83,16 @@
     const providerSel = document.getElementById("provider");
     const modelInp = document.getElementById("model");
 
-    const messages = [
-      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }
-    ];
+    const messages = [{ role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }];
 
-    // مقدارهای پیش‌فرض برای راحتی تست
     providerSel.value = "github";
-    modelInp.value = "deepseek-v3-0324"; // می‌تونی بگذاری gpt-4.1-mini یا هر مدل دیگری
+    modelInp.value = "deepseek-v3-0324";
 
-    let controller = null; // برای توقف استریم
+    let controller = null;
 
-    function addMsg(role, text) {
+    function addMsg(role, text, cls="") {
       const div = document.createElement("div");
-      div.className = "m " + (role === "user" ? "user" : "bot");
+      div.className = "m " + (role === "user" ? "user" : "bot") + (cls ? " "+cls : "");
       div.textContent = text || "";
       msgsEl.appendChild(div);
       msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -111,8 +100,7 @@
     }
 
     function setBusy(b, infoText) {
-      sendBtn.disabled = b;
-      inp.disabled = b;
+      sendBtn.disabled = b; inp.disabled = b;
       stopBtn.classList.toggle("hidden", !b);
       statusEl.innerHTML = b ? `<span class="spinner"></span> ${infoText || "در حال پاسخ…"}` : "آماده";
     }
@@ -125,18 +113,12 @@
         <button id="retryNow" style="margin-right:8px">همین الان تلاش کن</button>
         <button id="cancelRetry" class="ghost" style="margin-right:6px">لغو</button>`;
       render();
-      const iv = setInterval(() => {
-        s--; if (s <= 0) { clearInterval(iv); bar.remove(); onNow(); }
-        else render();
-      }, 1000);
-
+      const iv = setInterval(() => { s--; if (s <= 0) { clearInterval(iv); bar.remove(); onNow(); } else render(); }, 1000);
       bar.addEventListener("click", (e) => {
         if (e.target.id === "cancelRetry") { clearInterval(iv); bar.remove(); onCancel?.(); }
         if (e.target.id === "retryNow")   { clearInterval(iv); bar.remove(); onNow?.(); }
       });
-
-      msgsEl.appendChild(bar);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
+      msgsEl.appendChild(bar); msgsEl.scrollTop = msgsEl.scrollHeight;
       return () => { clearInterval(iv); bar.remove(); };
     }
 
@@ -145,103 +127,89 @@
       if (!text) return;
       inp.value = "";
 
-      const u = addMsg("user", text);
-      const b = addMsg("assistant", "");
+      addMsg("user", text);
+      const botDiv = addMsg("assistant", "");
       setBusy(true, "در حال پاسخ…");
-
       messages.push({ role: "user", content: text });
 
       const provider = providerSel.value;
-      const model = modelInp.value.trim();
-      let attempts = 0;
-      const maxAttempts = 3;
+      const model = modelInp.value.trim() || (provider === "github" ? "gpt-4.1-mini" : provider === "deepseek" ? "deepseek-chat" : "gemini-1.5-flash-latest");
 
       controller = new AbortController();
+      let attempts = 0, stopCountdown;
 
       const tryOnce = async () => {
         attempts++;
-        const resp = await fetch("/api/chat", {
+        const resp = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ provider, model, messages, stream: true }),
           signal: controller.signal
         });
 
-        // هندلینگ Rate Limit از طرف سرور
         if (resp.status === 429) {
-          const data = await resp.json().catch(() => ({}));
-          if (data?.error === "rate_limit" && data?.waitSeconds && attempts < maxAttempts) {
+          const data = await safeJSON(resp);
+          if (data?.error === "rate_limit" && data?.waitSeconds) {
             return { rateLimit: true, waitSeconds: data.waitSeconds };
           }
-          // سایر خطاهای 429
-          throw new Error(data?.error || "429");
+          throw new Error("429");
         }
 
-        // اگر استریم است:
         const ct = resp.headers.get("content-type") || "";
         if (ct.includes("text/event-stream")) {
           const reader = resp.body.getReader();
           const decoder = new TextDecoder("utf-8");
-          let done = false;
-          try {
-            while (!done) {
-              const { value, done: d } = await reader.read();
-              done = d;
-              if (value) {
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split(/\r?\n/).filter(Boolean);
-                for (const line of lines) {
-                  if (!line.startsWith("data:")) continue;
-                  const payload = line.slice(5).trim();
-                  if (payload === "[DONE]") continue;
-                  try {
-                    const obj = JSON.parse(payload);
-                    const delta = obj?.choices?.[0]?.delta?.content || "";
-                    if (delta) b.textContent += delta;
-                    msgsEl.scrollTop = msgsEl.scrollHeight;
-                  } catch {}
-                }
-              }
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split(/\r?\n/);
+            for (const ln of lines) {
+              if (!ln.startsWith("data:")) continue;
+              const payload = ln.slice(5).trim();
+              if (!payload || payload === "[DONE]") continue;
+              try {
+                const obj = JSON.parse(payload);
+                const delta = obj?.choices?.[0]?.delta?.content || "";
+                if (delta) { botDiv.textContent += delta; msgsEl.scrollTop = msgsEl.scrollHeight; }
+              } catch {}
             }
-          } finally {
-            // تمام
           }
           return { ok: true };
         }
 
-        // non-stream JSON
-        const data = await resp.json().catch(() => ({}));
-        const text = data?.choices?.[0]?.message?.content || "(no content)";
-        b.textContent = text;
+        // non-stream: تلاش برای استخراج متن — اگر نبود، خطا نشان بده
+        const data = await safeJSON(resp);
+        const txt = data?.choices?.[0]?.message?.content ?? data?.reply ?? "";
+        if (!txt) {
+          throw new Error("خروجی خالی از سرور دریافت شد. Raw: " + truncate(JSON.stringify(data)));
+        }
+        botDiv.textContent = txt;
         return { ok: true };
       };
 
-      let stopCountdown = null;
-
-      while (attempts < maxAttempts) {
+      while (attempts < 3) {
         try {
-          const result = await tryOnce();
-          if (result?.rateLimit) {
-            // نمایش شمارش و تلاش دوباره
+          const r = await tryOnce();
+          if (r?.rateLimit) {
             await new Promise((resolve, reject) => {
-              stopCountdown = countdownUI(result.waitSeconds, () => reject(new Error("cancelled")), () => resolve());
+              stopCountdown = countdownUI(r.waitSeconds, () => reject(new Error("cancelled")), () => resolve());
             });
-            // دوباره تلاش
-            continue;
+            continue; // retry after countdown
           }
-          // موفق
-          break;
+          break; // success
         } catch (err) {
           if (String(err?.message) === "cancelled") {
-            b.textContent += "\n(لغو شد)";
+            botDiv.textContent += "\n(لغو شد)";
             break;
           }
-          if (attempts >= maxAttempts) {
-            b.textContent = "خطا: " + (err?.message || err);
+          if (attempts >= 3) {
+            botDiv.classList.add("err");
+            botDiv.textContent = "خطا: " + (err?.message || err);
             console.error(err);
             break;
           } else {
-            // تلاش مجدد کوتاه
             await new Promise(r => setTimeout(r, 1000));
           }
         } finally {
@@ -251,19 +219,20 @@
 
       setBusy(false);
       controller = null;
-      messages.push({ role: "assistant", content: b.textContent });
+      // تاریخچه را با پاسخ نهایی ذخیره کن
+      if (botDiv.textContent) messages.push({ role: "assistant", content: botDiv.textContent });
     }
 
+    stopBtn.addEventListener("click", () => { if (controller) controller.abort(); setBusy(false); });
     sendBtn.addEventListener("click", send);
-    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-    stopBtn.addEventListener("click", () => {
-      if (controller) controller.abort();
-      setBusy(false, "");
-    });
+    inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
 
-    // پیام خوش‌آمد
-    addMsg("assistant", "سلام! یک ارائه‌دهنده و مدل انتخاب کن و پیام بده. اگر لیمیت رایگان GitHub برسد، خودش با شمارش معکوس دوباره تلاش می‌کند.");
+    addMsg("assistant", "سلام! Provider/Model را تنظیم کن و پیام بده. اگر به Rate Limit GitHub بخوری، شمارش‌معکوس می‌آید و خودش دوباره تلاش می‌کند.");
+
+    function truncate(s, n=300){ return s && s.length>n ? s.slice(0,n)+" …" : s; }
+    async function safeJSON(resp){
+      try { return await resp.json(); } catch { return null; }
+    }
   </script>
 </body>
 </html>
-
