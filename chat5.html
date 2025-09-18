@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>چت‌بات چند-ارائه‌دهنده</title>
   <style>
-    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111;--radius:20px}
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--ink:#111}
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma, sans-serif}
     .wrap{max-width:980px;margin:28px auto;padding:0 16px}
@@ -14,15 +14,12 @@
     .left{display:flex;align-items:center;gap:8px}
     .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
     .status{font-size:12px;color:#64748b}
-    .controls{display:flex;align-items:center;gap:8px}
-
+    .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     select, input[type="text"]{ padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit }
-
     .msgs{height:62vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#fafbff}
     .m{max-width:75%;padding:12px 14px;border-radius:14px;line-height:1.9;white-space:pre-wrap;word-wrap:break-word}
     .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:6px}
     .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:6px}
-
     .foot{display:flex;gap:10px;padding:12px;border-top:1px solid #eef2f7;background:#fff;align-items:center}
     .foot input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
     .btn{display:inline-flex;align-items:center;gap:6px;padding:11px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
@@ -35,6 +32,7 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .send-icon{width:18px;height:18px;display:block}
     .err{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 10px;border-radius:8px}
+    .ok{color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;padding:6px 10px;border-radius:8px}
   </style>
 </head>
 <body>
@@ -46,12 +44,13 @@
           <span class="status" id="status">آماده</span>
         </div>
         <div class="controls">
-          <select id="provider">
+          <select id="provider" title="Provider">
             <option value="github">GitHub Models</option>
             <option value="gemini">Gemini</option>
             <option value="deepseek">DeepSeek (direct)</option>
           </select>
-          <input id="model" type="text" placeholder="نام مدل (مثل gpt-4.1-mini یا deepseek-v3-0324)" style="width:260px" />
+          <select id="preset" title="مدل‌های آماده"></select>
+          <input id="model" type="text" placeholder="نام مدل…" style="width:260px" />
         </div>
       </div>
 
@@ -68,25 +67,65 @@
         </button>
       </div>
     </div>
-    <div class="hint">آدرس API را مطلق گذاشتیم تا از هر دامنه‌ای کار کند.</div>
+    <div class="hint">
+      نکته: اگر GitHub Models به سقف رایگان برسد، شمارش‌معکوس می‌بینی و ارسال خودکار دوباره انجام می‌شود. خطاها با جزئیات نمایش داده می‌شوند.
+    </div>
   </div>
 
   <script>
-    // 1) آدرس مطلق API (دامنه‌ی ورکرِ خودت)
+    // ————— تنظیم: آدرس مطلق API ورکر خودت —————
     const API_URL = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
 
+    // ————— UI refs —————
     const msgsEl = document.getElementById("msgs");
     const inp = document.getElementById("inp");
     const sendBtn = document.getElementById("sendBtn");
     const stopBtn = document.getElementById("stopBtn");
     const statusEl = document.getElementById("status");
     const providerSel = document.getElementById("provider");
+    const presetSel = document.getElementById("preset");
     const modelInp = document.getElementById("model");
 
-    const messages = [{ role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }];
+    // ————— مدل‌های پیشنهادی بر اساس Provider —————
+    const PRESETS = {
+      github: [
+        "gpt-4.1-mini",
+        "deepseek-v3-0324",
+        "llama-3.1-70b-instruct",
+        "mistral-large-2407",
+        "gemma2-9b-it"
+      ],
+      gemini: [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest"
+      ],
+      deepseek: [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ]
+    };
 
+    function fillPresets() {
+      const p = providerSel.value;
+      presetSel.innerHTML = "";
+      PRESETS[p].forEach(m => {
+        const o = document.createElement("option");
+        o.value = m; o.textContent = m; presetSel.appendChild(o);
+      });
+      // مقدار پیش‌فرض مدل
+      modelInp.value = PRESETS[p][0] || "";
+    }
+
+    providerSel.addEventListener("change", fillPresets);
+    presetSel.addEventListener("change", ()=> { modelInp.value = presetSel.value; });
+
+    // پیش‌فرض: GitHub + deepseek-v3-0324
     providerSel.value = "github";
-    modelInp.value = "deepseek-v3-0324";
+    fillPresets();
+
+    const messages = [
+      { role: "system", content: "تو یک دستیار فارسی‌بلد و کمک‌حالی. پاسخ‌ها را کوتاه و شفاف بده." }
+    ];
 
     let controller = null;
 
@@ -122,6 +161,44 @@
       return () => { clearInterval(iv); bar.remove(); };
     }
 
+    function validateProviderModel(provider, model) {
+      const m = (model||"").toLowerCase();
+      if (!m) throw new Error("نام مدل را وارد کن یا از لیست انتخاب کن.");
+      if (provider === "gemini" && !m.startsWith("gemini-")) {
+        throw new Error("مدل Gemini نامعتبر است. نمونه درست: gemini-1.5-flash-latest");
+      }
+      if (provider === "deepseek" && !(m === "deepseek-chat" || m === "deepseek-reasoner")) {
+        throw new Error("برای DeepSeek مستقیم از deepseek-chat یا deepseek-reasoner استفاده کن.");
+      }
+      // GitHub انعطاف دارد؛ هشدار خاصی نمی‌دهیم.
+    }
+
+    function showHelpfulError(rawObj, botDiv) {
+      // تلاش برای پیام انسانی‌تر بر اساس خطای رایج
+      if (!rawObj || typeof rawObj !== "object") return;
+      if (rawObj.error === "missing_github_pat") {
+        botDiv.classList.add("err");
+        botDiv.textContent = "خطا: کلید GitHub Models ست نشده. در Cloudflare → Worker → Settings → Variables and Secrets یک Secret با نام «GITHUB_MODELS_PAT» و مقدار github_pat_... بساز.";
+      } else if (rawObj.error === "gemini_error") {
+        const msg = rawObj?.detail?.error?.message || JSON.stringify(rawObj.detail||"");
+        botDiv.classList.add("err");
+        botDiv.textContent = "خطا از Gemini: " + msg;
+      } else if (rawObj.error === "deepseek_error") {
+        const msg = rawObj?.detail?.error?.message || JSON.stringify(rawObj.detail||"");
+        botDiv.classList.add("err");
+        botDiv.textContent = "خطا از DeepSeek (مستقیم): " + msg + " — اگر «Insufficient Balance» بود، از Provider=GitHub استفاده کن تا رایگان باشه.";
+      } else if (rawObj.error === "github_error") {
+        const msg = JSON.stringify(rawObj.detail || "");
+        botDiv.classList.add("err");
+        botDiv.textContent = "خطا از GitHub Models: " + msg;
+      } else if (rawObj.error === "rate_limit") {
+        // ریت‌لیمیت را فرایند اصلی هندل می‌کند؛ اینجا لازم نیست
+      }
+    }
+
+    function truncate(s, n=300){ return s && s.length>n ? s.slice(0,n)+" …" : s; }
+    async function safeJSON(resp){ try { return await resp.json(); } catch { return null; } }
+
     async function send() {
       const text = inp.value.trim();
       if (!text) return;
@@ -133,7 +210,10 @@
       messages.push({ role: "user", content: text });
 
       const provider = providerSel.value;
-      const model = modelInp.value.trim() || (provider === "github" ? "gpt-4.1-mini" : provider === "deepseek" ? "deepseek-chat" : "gemini-1.5-flash-latest");
+      const model = modelInp.value.trim();
+
+      try { validateProviderModel(provider, model); }
+      catch (e) { botDiv.classList.add("err"); botDiv.textContent = "خطا: " + e.message; setBusy(false); return; }
 
       controller = new AbortController();
       let attempts = 0, stopCountdown;
@@ -179,13 +259,19 @@
           return { ok: true };
         }
 
-        // non-stream: تلاش برای استخراج متن — اگر نبود، خطا نشان بده
+        // non-stream: اگر خروجی خالی بود، پیام واضح بده و خام را نشان بده
         const data = await safeJSON(resp);
         const txt = data?.choices?.[0]?.message?.content ?? data?.reply ?? "";
         if (!txt) {
-          throw new Error("خروجی خالی از سرور دریافت شد. Raw: " + truncate(JSON.stringify(data)));
+          // تلاش برای خطای انسانی‌تر
+          showHelpfulError(data, botDiv);
+          if (!botDiv.textContent) {
+            botDiv.classList.add("err");
+            botDiv.textContent = "خطا: خروجی خالی از سرور دریافت شد. Raw: " + truncate(JSON.stringify(data));
+          }
+        } else {
+          botDiv.textContent = txt;
         }
-        botDiv.textContent = txt;
         return { ok: true };
       };
 
@@ -198,7 +284,7 @@
             });
             continue; // retry after countdown
           }
-          break; // success
+          break; // success or handled
         } catch (err) {
           if (String(err?.message) === "cancelled") {
             botDiv.textContent += "\n(لغو شد)";
@@ -219,7 +305,6 @@
 
       setBusy(false);
       controller = null;
-      // تاریخچه را با پاسخ نهایی ذخیره کن
       if (botDiv.textContent) messages.push({ role: "assistant", content: botDiv.textContent });
     }
 
@@ -227,12 +312,8 @@
     sendBtn.addEventListener("click", send);
     inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
 
-    addMsg("assistant", "سلام! Provider/Model را تنظیم کن و پیام بده. اگر به Rate Limit GitHub بخوری، شمارش‌معکوس می‌آید و خودش دوباره تلاش می‌کند.");
-
-    function truncate(s, n=300){ return s && s.length>n ? s.slice(0,n)+" …" : s; }
-    async function safeJSON(resp){
-      try { return await resp.json(); } catch { return null; }
-    }
+    // پیام خوش‌آمد
+    addMsg("assistant", "سلام! Provider و مدل را از بالا انتخاب کن. اگر GitHub PAT تنظیم نشده باشد یا مدل اشتباه باشد، همین‌جا راهنمای دقیق می‌گیری.");
   </script>
 </body>
 </html>
