@@ -13,85 +13,172 @@
       font-display: swap;
     }
 
-    :root { --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz:16px; }
+    :root{
+      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz:16px;
+      --bubble-user:#111; --bubble-user-ink:#fff; --bubble-bot:#fff; --bubble-bot-bd:#eef2f7;
+      --shadow:0 10px 30px rgba(0,0,0,.06);
+      --tool: .86rem;
+      --snack-bg:#111; --snack-ink:#fff;
+    }
+    .dark{
+      --bg:#0b1220; --card:#0f172a; --ink:#e5e7eb; --muted:#9aa4b2;
+      --bubble-user:#1f2937; --bubble-user-ink:#e5e7eb;
+      --bubble-bot:#0b1220; --bubble-bot-bd:#1f2937;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --snack-bg:#0b1220; --snack-ink:#e5e7eb;
+    }
+
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
     .wrap{max-width:1000px;margin:24px auto;padding:0 14px}
     .head{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    select, textarea{border:1px solid #e5e7eb;border-radius:10px;padding:8px}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 10px 30px rgba(0,0,0,.06);padding:0}
+    select, textarea, input, button{border:1px solid #e5e7eb;border-radius:10px;padding:8px;font-family:IRANYekanX, Tahoma, Arial, sans-serif}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:0}
     .msgs{height:60vh;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-    .bubble{max-width:80%;padding:12px 14px;border-radius:14px;line-height:1.9;position:relative}
-    .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:8px}
-    .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:8px}
+    .bubble{max-width:68%;padding:12px 14px;border-radius:14px;line-height:1.9;position:relative}
+    .user{align-self:flex-end;background:var(--bubble-user);color:var(--bubble-user-ink);border-bottom-right-radius:8px}
+    .bot{align-self:flex-start;background:var(--bubble-bot);border:1px solid var(--bubble-bot-bd);border-bottom-left-radius:8px}
     .foot{display:flex;gap:10px;padding:10px;border-top:1px solid #eef2f7}
-    .foot input{flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;outline:none}
+    .foot input{flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;outline:none;background:transparent;color:var(--ink)}
     .btn{border:0;background:#111;color:#fff;border-radius:12px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:6px}
+    .dark .btn{background:#334155}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
     .pill{font-size:12px;color:#475569;background:#eef2ff;padding:2px 8px;border-radius:999px}
+    .dark .pill{background:#1f2937;color:#cbd5e1}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:12px;color:#0f172a}
-    .sys{border-top:1px dashed #e5e7eb;padding:10px;display:grid;gap:6px}
-    .sys label{font-size:12px;color:#64748b}
+    .dark .mono{color:#cbd5e1}
     .err{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d}
+    .dark .err{background:#3f1d1d;border-color:#6b1d1d;color:#fecaca}
     .rendered :is(h1,h2,h3){margin:8px 0}
     .rendered h2{font-size:18px}
     .rendered ul{padding-inline-start:22px}
     .rendered code{background:#f1f5f9;padding:1px 4px;border-radius:6px}
-    .rendered pre{background:#0f172a;color:#e2e8f0;padding:10px;border-radius:10px;overflow:auto}
+    .dark .rendered code{background:#1f2937;color:#e5e7eb}
+    .rendered pre{background:#0f172a;color:#e2e8f0;padding:10px;border-radius:10px;overflow:auto;position:relative;margin-top:8px}
+    .dark .rendered pre{background:#111827;color:#e5e7eb}
+    .rendered pre code{background:transparent !important}
 
-    /* ابزار پیام (کپی) */
-    .msg-tools{display:flex;gap:8px;margin-top:6px;opacity:.8}
-    .copy-btn{background:transparent;border:0;cursor:pointer;font-size:12px;color:#475569;padding:0}
-    .copy-btn:hover{color:#111}
+    /* ابزار پیام‌ها بیرون حباب (دو ستونه) */
+    .msg-row{display:flex;gap:8px;align-items:flex-start}
+    .msg-actions{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap:6px;
+      opacity:.9;
+      min-width:54px;
+      align-items:center;
+      margin-top:4px
+    }
+    .tool-btn{background:transparent;border:0;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center}
+    .tool-btn svg{width:var(--tool);height:var(--tool);fill:currentColor}
+    .liked .thumb{color:#16a34a}
 
-    /* پنل تنظیمات */
-    .gear{cursor:pointer;font-size:18px;user-select:none}
+    .code-copy{position:absolute; top:6px; inset-inline-end:6px;background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);color:#e2e8f0; border-radius:8px; padding:3px 6px; font-size:12px; cursor:pointer;display:flex; align-items:center; gap:6px; backdrop-filter: blur(2px)}
+    .dark .code-copy{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.15)}
+    .code-copy svg{width:12px;height:12px}
+
+    .gear{cursor:pointer;font-size:0;user-select:none;border:none;background:transparent;padding:6px;display:inline-flex;align-items:center;justify-content:center}
+    .gear svg{width:20px;height:20px;fill:var(--ink)}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
     .modal.show{display:flex}
     .modal-card{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+    .dark .modal-card{background:#0b1220;color:#e5e7eb}
     .modal-card h3{margin:0 0 10px 0;font-size:18px}
     .modal-row{display:grid;gap:8px;margin:12px 0}
     .modal .actions{display:flex;gap:8px;justify-content:flex-end}
-    .link{background:#0f172a;color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+    .link{background:#0f172a;color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer;font-family:IRANYekanX, Tahoma, Arial, sans-serif}
+    .dark .link{background:#334155}
     .ghost{background:#eef2f7;color:#111}
+    .dark .ghost{background:#1f2937;color:#e5e7eb}
+
+    /* فهرست گفتگوها (پنجره با اسکرول و جست‌وجو) */
+    .chats{display:flex;gap:6px;align-items:center}
+    .icon-btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .dark .icon-btn{background:#0f172a;border-color:#1f2937}
+    .icon-btn svg{width:16px;height:16px;fill:var(--ink)}
+    .chat-list{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
+    .chat-list.show{display:flex}
+    .chat-panel{background:#fff;border-radius:16px;max-width:700px;width:100%;padding:16px;max-height:80vh;display:flex;flex-direction:column}
+    .dark .chat-panel{background:#0b1220;color:#e5e7eb}
+    .chat-list-header{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .chat-search{display:flex;gap:8px;align-items:center}
+    .chat-items{overflow:auto}
+    .chat-item{padding:10px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+    .dark .chat-item{border-color:#1f2937}
+    .chat-item h4{margin:0 0 4px 0;font-size:15px}
+    .chat-item small{color:var(--muted)}
+    .chat-del{border:0;background:transparent;cursor:pointer}
+    .chat-del svg{width:16px;height:16px;fill:#b91c1c}
+
+    /* اسنک‌بار واگرد */
+    .snack{position:fixed;inset-inline:0;bottom:12px;display:flex;justify-content:center;z-index:70}
+    .snack-inner{background:var(--snack-bg);color:var(--snack-ink);padding:10px 14px;border-radius:12px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow)}
+    .snack button{background:#fff;color:#111;border:0;border-radius:8px;padding:6px 10px;cursor:pointer;font-family:IRANYekanX}
   </style>
-  <!-- Markdown renderer -->
+
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- های‌لایت کدها -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <div class="row">
+      <div class="chats">
+        <button id="openChatList" class="icon-btn" title="فهرست گفتگوها" aria-label="Chats">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h12v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+        </button>
+        <button id="newChat" class="icon-btn" title="گفت‌وگوی جدید" aria-label="New Chat">
+          <svg viewBox="0 0 24 24"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
+        </button>
+      </div>
+
       <select id="model">
         <option value="gpt-4.1-mini">gpt-4.1-mini</option>
         <option value="gpt-4o-mini">gpt-4o-mini</option>
-        <option value="phi-3.5-mini-instruct">phi-3.5-mini-instruct</option>
         <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-
-    
       </select>
-      <!-- انتخاب Provider حذف شد؛ تعیین Provider خودکار بر اساس مدل انجام می‌شود -->
       <span id="status" class="pill">آماده</span>
     </div>
     <div class="row">
       <small class="mono" id="probe"></small>
-      <span id="openSettings" class="gear" title="تنظیمات">⚙️</span>
+      <button id="openSettings" class="gear" title="تنظیمات" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><path d="M19.14,12.94a7.73,7.73,0,0,0,.05-.94,7.73,7.73,0,0,0-.05-.94l2.11-1.65a.5.5,0,0,0,.12-.64l-2-3.46a.5.5,0,0,0-.6-.22l-2.49,1a7.28,7.28,0,0,0-1.63-.94l-.38-2.65A.5.5,0,0,0,13.8,1H10.2a.5.5,0,0,0-.5.42L9.32,4.07a7.28,7.28,0,0,0-1.63.94l-2.49-1a.5.5,0,0,0-.6.22l-2,3.46a.5.5,0,0,0,.12.64L4.86,11.06a7.73,7.73,0,0,0-.05.94,7.73,7.73,0,0,0,.05.94L2.75,14.59a.5.5,0,0,0-.12.64l2,3.46a.5.5,0,0,0,.6.22l2.49-1a7.28,7.28,0,0,0,1.63.94l.38,2.65a.5.5,0,0,0,.5.42h3.6a.5.5,0,0,0,.5-.42l.38-2.65a7.28,7.28,0,0,0,1.63-.94l2.49,1a.5.5,0,0,0,.6-.22l2-3.46a.5.5,0,0,0-.12-.64Zm-7.14,2.56A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>
+      </button>
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="position:relative">
     <div id="msgs" class="msgs"></div>
-    <div class="sys">
-      <div>
-        <label>قوانین اختصاصی (System):</label>
-        <textarea id="rules" rows="2" placeholder="(اختیاری) قوانین دلخواه را اینجا Paste کنید."></textarea>
-      </div>
-    </div>
     <div class="foot">
       <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
-      <button class="btn" id="sendBtn" title="ارسال"><span id="sendIcon">➤</span><span id="stopIcon" style="display:none">■ توقف</span></button>
+      <button class="btn" id="sendBtn" title="ارسال">
+        <span id="sendIcon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </span>
+        <span id="stopIcon" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M6 6h12v12H6z"/></svg>
+        </span>
+      </button>
     </div>
+  </div>
+</div>
+
+<!-- پنجره فهرست گفتگوها -->
+<div id="chatList" class="chat-list" aria-hidden="true">
+  <div class="chat-panel">
+    <div class="chat-list-header">
+      <h3 style="margin:0">گفت‌وگوهای من</h3>
+      <div class="chat-search">
+        <input id="chatSearch" placeholder="جست‌وجو در عنوان و پیام‌ها…" style="min-width:280px">
+        <button id="closeChatList" class="icon-btn" title="بستن">
+          <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="chatItems" class="chat-items"></div>
   </div>
 </div>
 
@@ -100,12 +187,41 @@
   <div class="modal-card">
     <h3>تنظیمات</h3>
     <div class="modal-row">
-      <label>قوانین اختصاصی (همان فیلد روی صفحه، اینجا هم همگام است):</label>
-      <textarea id="rulesSettings" rows="4" style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px"></textarea>
+      <label>قوانین اختصاصی (System):</label>
+      <textarea id="rulesSettings" rows="4" style="width:100%"></textarea>
     </div>
     <div class="modal-row">
       <label>اندازه نوشته‌ها: <span id="fzVal">16</span>px</label>
       <input id="fzRange" type="range" min="12" max="22" value="16">
+    </div>
+    <div class="modal-row">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="typewriterToggle" checked>
+        نمایش کاراکتر به کاراکتر پاسخ
+      </label>
+    </div>
+    <div class="modal-row">
+      <label>میانبر ارسال:</label>
+      <select id="sendShortcut">
+        <option value="enter">Enter</option>
+        <option value="ctrlenter">Ctrl + Enter</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="animToggle" checked>
+        انیمیشن‌های رابط فعال باشد
+      </label>
+    </div>
+    <div class="modal-row">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="autoTheme" checked>
+        حالت خودکار روز/شب (۱۹ تا ۵:۳۰ شب = تیره)
+      </label>
+      <div style="display:flex;gap:8px">
+        <button id="forceLight" class="ghost link">روشن</button>
+        <button id="forceDark" class="ghost link">تاریک</button>
+      </div>
     </div>
     <div class="actions">
       <button id="closeSettings" class="link ghost">بستن</button>
@@ -114,221 +230,512 @@
   </div>
 </div>
 
+<!-- مودال اطلاعات پیام -->
+<div id="msgInfo" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>اطلاعات پیام</h3>
+    <div id="msgInfoBody" class="modal-row"></div>
+    <div class="actions">
+      <button id="closeMsgInfo" class="link">باشه</button>
+    </div>
+  </div>
+</div>
+
+<!-- اسنک‌بار واگرد -->
+<div id="snack" class="snack" style="display:none">
+  <div class="snack-inner">
+    <span id="snackText"></span>
+    <button id="snackUndo">واگرد</button>
+  </div>
+</div>
+
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
-const el = (id)=>document.getElementById(id);
-const msgsEl = el("msgs");
-const modelSel = el("model");
-// const providerSel = el("provider");  // حذف شد
-const inp = el("inp");
-const btn = el("sendBtn");
-const sendIcon = el("sendIcon");
-const stopIcon = el("stopIcon");
-const rulesTA = el("rules");
-const statusEl = el("status");
-const probe = el("probe");
+const $ = id => document.getElementById(id);
 
-// Settings elements
-const openSettingsBtn = el("openSettings");
-const settingsModal = el("settings");
-const rulesSettings = el("rulesSettings");
-const saveSettings = el("saveSettings");
-const closeSettings = el("closeSettings");
-const fzRange = el("fzRange");
-const fzVal = el("fzVal");
+const msgsEl = $("msgs");
+const modelSel = $("model");
+const inp = $("inp");
+const btn = $("sendBtn");
+const sendIcon = $("sendIcon");
+const stopIcon = $("stopIcon");
+const statusEl = $("status");
+const probe = $("probe");
 
-let busy = false;
-let controller = null;
-const KEY_RULES = "custom_rules_v1";
-const KEY_FZ = "ui_font_size_v1";
+// settings
+const openSettingsBtn = $("openSettings");
+const settingsModal = $("settings");
+const rulesSettings = $("rulesSettings");
+const saveSettings = $("saveSettings");
+const closeSettings = $("closeSettings");
+const fzRange = $("fzRange");
+const fzVal = $("fzVal");
+const typewriterToggle = $("typewriterToggle");
+const sendShortcutSel = $("sendShortcut");
+const animToggle = $("animToggle");
+const autoTheme = $("autoTheme");
+const forceLight = $("forceLight");
+const forceDark  = $("forceDark");
 
-/* =========================
-   قوانین کلی (سراسری/اولویت بالا)
-   👉 قوانین کلی خودتان را بین backtickها پیست کنید:
-========================= */
+// chats UI
+const openChatList = $("openChatList");
+const chatList = $("chatList");
+const closeChatList = $("closeChatList");
+const chatItems = $("chatItems");
+const chatSearch = $("chatSearch");
+const newChatBtn = $("newChat");
+
+// message info
+const msgInfo = $("msgInfo");
+const msgInfoBody = $("msgInfoBody");
+const closeMsgInfo = $("closeMsgInfo");
+
+// snackbar
+const snack = $("snack");
+const snackText = $("snackText");
+const snackUndo = $("snackUndo");
+
+let busy=false, controller=null, stoppedByUser=false, shouldStopStreaming=false;
+
+const KEY_RULES="custom_rules_v1";
+const KEY_FZ="ui_font_size_v1";
+const KEY_TW="typewriter_v1";
+const KEY_CHATS="chats_v2";
+const KEY_ACTIVE_CHAT="active_chat_v1";
+const KEY_SHORTCUT="send_shortcut_v1";
+const KEY_ANIM="ui_anim_v1";
+const KEY_THEME_AUTO="ui_theme_auto_v1";
+const KEY_THEME_FORCE="ui_theme_force_v1";
+
+// قوانین کلی
 const GLOBAL_RULES = `
 # قوانین کلی (سراسری)
-- پاسخ‌ها همیشه فارسی و با Markdown تمیز باشند.
-- تیترهای فهرست بولد شوند و زیر هر تیتر، توضیح کوتاه، موجز و کاربردی بیاید.
-- از فهرست‌های مرتب و نامرتب برای خوانایی بهتر استفاده شود.
-- اگر کاربر صراحتاً قالب دیگری نخواست، همین استاندارد حفظ شود.
+- همیشه پاسخ‌ها را فارسی و با Markdown تمیز بنویس.
+- تیترها را **بولد** کن و زیر هر تیتر توضیح کوتاه بده.
+- برای کد، فقط بلاک کد بده؛ از توضیح اضافی پرهیز کن مگر لازم باشد.
 `;
-// (می‌توانید این بلوک را با قوانین خود جایگزین کنید)
 
-
-// بارگذاری قوانین اختصاصی کاربر از localStorage
-rulesTA.value = localStorage.getItem(KEY_RULES) || "";
-rulesTA.addEventListener("change", ()=> localStorage.setItem(KEY_RULES, rulesTA.value));
-
-// بارگذاری و اعمال سایز فونت از localStorage
-const storedFz = parseInt(localStorage.getItem(KEY_FZ) || "16", 10);
-document.documentElement.style.setProperty('--fz', storedFz + "px");
-fzRange.value = storedFz;
-fzVal.textContent = storedFz;
-
-// پیام خوش‌آمد
-addBot(`سلام! 👋
-- پاسخ‌ها **همیشه فارسی** و به **Markdown تمیز** هستند.
-- برای دسته‌بندی‌ها، تیترها **بولد** می‌شوند و زیر هر تیتر توضیح کوتاه می‌آید.
-- می‌توانید قوانین اختصاصی خودتان را در بخش بالا یا از طریق ⚙️ «تنظیمات» ذخیره کنید.
-`);
-
-// رندر حباب کاربر/بات + ابزار کپی
-function addUser(text){
-  const d=document.createElement("div");
-  d.className="bubble user";
-  d.textContent=text;
-  attachTools(d, ()=>text);
-  msgsEl.appendChild(d);
-  msgsEl.scrollTop=msgsEl.scrollHeight;
+// تم
+function applyTheme(){
+  const force = localStorage.getItem(KEY_THEME_FORCE) || "";
+  const auto = localStorage.getItem(KEY_THEME_AUTO)!=="0";
+  let dark=false;
+  if (force==="dark") dark=true;
+  else if (force==="light") dark=false;
+  else if (auto){
+    const now=new Date(); const h=now.getHours()+now.getMinutes()/60;
+    dark=(h>=19 || h<5.5);
+  }
+  document.documentElement.classList.toggle("dark", dark);
 }
-function addBot(markdown, asError=false){
-  const d=document.createElement("div");
-  d.className="bubble bot" + (asError?" err":"");
-  const rendered = document.createElement("div");
-  rendered.className="rendered";
-  if (asError) rendered.innerText = markdown;
-  else rendered.innerHTML = marked.parse(markdown || "");
-  d.appendChild(rendered);
+autoTheme.checked = localStorage.getItem(KEY_THEME_AUTO)!=="0";
+applyTheme();
+// اگر Auto روشن باشد و کاربر دستی حالت را بزند: اعمال و خاموش‌کردن Auto
+forceLight.onclick=()=>{ localStorage.setItem(KEY_THEME_FORCE,"light"); localStorage.setItem(KEY_THEME_AUTO,"0"); autoTheme.checked=false; applyTheme(); };
+forceDark.onclick =()=>{ localStorage.setItem(KEY_THEME_FORCE,"dark");  localStorage.setItem(KEY_THEME_AUTO,"0"); autoTheme.checked=false; applyTheme();  };
 
-  attachTools(d, ()=> rendered.innerText);
+// init settings
+rulesSettings.value = localStorage.getItem(KEY_RULES) || "";
+const storedFz = parseInt(localStorage.getItem(KEY_FZ)||"16",10);
+document.documentElement.style.setProperty('--fz', storedFz+"px");
+document.documentElement.style.setProperty('--tool', (Math.max(12, storedFz-4))+"px");
+fzRange.value=storedFz; fzVal.textContent=storedFz;
+const storedTW = localStorage.getItem(KEY_TW);
+if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
+sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
+animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
+// نمایش زنده مقدار فونت
+fzRange.oninput=()=>{
+  const v=parseInt(fzRange.value,10)||16;
+  fzVal.textContent=String(v);
+  document.documentElement.style.setProperty('--fz', v+"px");
+  document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
+};
 
-  msgsEl.appendChild(d);
-  msgsEl.scrollTop=msgsEl.scrollHeight;
-  return d;
+// dialogs open/close
+openSettingsBtn.onclick=()=>{ settingsModal.classList.add("show"); settingsModal.setAttribute("aria-hidden","false"); };
+closeSettings.onclick = closeModal;
+function closeModal(){ settingsModal.classList.remove("show"); settingsModal.setAttribute("aria-hidden","true"); }
+saveSettings.onclick=()=>{
+  localStorage.setItem(KEY_RULES, rulesSettings.value||"");
+  const v=parseInt(fzRange.value,10);
+  document.documentElement.style.setProperty('--fz', v+"px");
+  document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
+  localStorage.setItem(KEY_FZ, String(v));
+  localStorage.setItem(KEY_TW, typewriterToggle.checked ? "1":"0");
+  localStorage.setItem(KEY_SHORTCUT, sendShortcutSel.value);
+  localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
+  localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
+  if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,""); // بازگشت به حالت خودکار
+  applyTheme();
+  closeModal();
+};
+settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) closeModal(); });
+
+// chat storage helpers
+const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
+const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
+const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
+const saveChats=(chs)=> localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
+function createNewActiveChat(){
+  const id=uid(); const chs=loadChats();
+  chs.unshift({id, title:"گفت‌وگوی جدید", messages:[], updatedAt:Date.now()});
+  saveChats(chs); localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  msgsEl.innerHTML=""; // بلافاصله وارد گفت‌وگوی جدید شو
 }
+function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return loadChats().find(c=>c.id===id); }
+function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
+function setActiveChat(id){ localStorage.setItem(KEY_ACTIVE_CHAT, id); renderActiveChat(); }
 
-// دکمه کپی زیر پیام
-function attachTools(bubble, getText){
-  const tools = document.createElement("div");
-  tools.className = "msg-tools";
-  const copyBtn = document.createElement("button");
-  copyBtn.className = "copy-btn";
-  copyBtn.textContent = "📋 کپی";
-  copyBtn.addEventListener("click", async ()=>{
-    try{
-      await navigator.clipboard.writeText(getText());
-      const old = copyBtn.textContent;
-      copyBtn.textContent = "✅ کپی شد";
-      setTimeout(()=> copyBtn.textContent = old, 3000);
-    }catch{}
+// رندر همه پیام‌های گفتگو هنگام ورود
+function renderActiveChat(){
+  msgsEl.innerHTML="";
+  const chat=currentChat(); if(!chat) return;
+  chat.messages.forEach(m=>{
+    if(m.role==="user"){
+      const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=m.versions[m.active].content; row.appendChild(b); msgsEl.appendChild(row); row.dataset.id=m.id; attachActions(row,b,m);
+    } else {
+      const row=makeRow(); const b=document.createElement("div"); b.className="bubble bot"; const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(m.versions[m.active].content); b.appendChild(r); msgsEl.appendChild(row); row.appendChild(b); row.dataset.id=m.id; attachActions(row,b,m); normalizeLinks(r);
+      r.querySelectorAll("pre").forEach(pre=>{
+        const btn=document.createElement("button"); btn.className="code-copy"; btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span style="font-family:IRANYekanX">کپی کد</span>`;
+        btn.onclick=async()=>{ const code=pre.querySelector("code")?.innerText||""; await navigator.clipboard.writeText(code); btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M9 16.17l-3.5-3.5L4 14.17l5 5 12-12-1.41-1.41z"/></svg><span style="font-family:IRANYekanX">کپی شد</span>`; setTimeout(()=>btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span style="font-family:IRANYekanX">کپی کد</span>`,1200); };
+        pre.appendChild(btn);
+      });
+    }
   });
-  tools.appendChild(copyBtn);
-  bubble.appendChild(tools);
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  try{ hljs.highlightAll(); }catch{}
 }
 
-function setBusy(b){
-  busy = b;
-  btn.disabled = false; // فقط آیکون را عوض می‌کنیم
-  sendIcon.style.display = b ? "none" : "inline";
-  stopIcon.style.display = b ? "inline" : "none";
-  statusEl.textContent = b ? "درحال پاسخ…" : "آماده";
-}
-btn.addEventListener("click", ()=> busy ? stop() : send());
-inp.addEventListener("keydown", (e)=>{
-  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); busy?stop():send(); }
-});
+// first start: always new chat
+createNewActiveChat();
 
-function stop(){
-  if (controller) controller.abort();
-  setBusy(false);
+// chat list modal
+openChatList.onclick=()=>{ renderChatList(); chatList.classList.add("show"); chatList.setAttribute("aria-hidden","false"); };
+closeChatList.onclick=()=>{ chatList.classList.remove("show"); chatList.setAttribute("aria-hidden","true"); };
+chatList.addEventListener("click",(e)=>{ if(e.target===chatList){ closeChatList.onclick(); } });
+
+function renderChatList(filter=""){
+  const chs=loadChats();
+  const fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{dateStyle:"medium", timeStyle:"short"});
+  const q=filter.trim();
+  chatItems.innerHTML="";
+  chs.forEach(c=>{
+    const hay = (c.title+" "+(c.messages||[]).map(m=>m.versions?.[m.active||0]?.content||"").join(" ")).toLowerCase();
+    if(q && !hay.includes(q.toLowerCase())) return;
+
+    const div=document.createElement("div"); div.className="chat-item";
+    const last= c.updatedAt? fmt.format(new Date(c.updatedAt)) : "-";
+    div.innerHTML=`<div><h4>${c.title}</h4><small>آخرین فعالیت: ${last}</small></div>`;
+    const delBtn=document.createElement("button"); delBtn.className="chat-del"; delBtn.title="حذف";
+    delBtn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9z"/></svg>`;
+    delBtn.onclick=(ev)=>{ ev.stopPropagation(); deleteChatWithUndo(c.id, c.title); renderChatList(chatSearch.value); };
+    div.appendChild(delBtn);
+    div.onclick=()=>{ setActiveChat(c.id); closeChatList.onclick(); };
+    chatItems.appendChild(div);
+  });
+}
+chatSearch.oninput=()=> renderChatList(chatSearch.value);
+newChatBtn.onclick=()=>{ createNewActiveChat(); renderChatList(chatSearch.value); };
+
+// snackbar undo
+let undoTimer=null;
+function showSnack(text, onUndo){
+  snackText.textContent=text;
+  snack.style.display="flex";
+  snackUndo.onclick=()=>{
+    clearTimeout(undoTimer); snack.style.display="none"; onUndo && onUndo();
+  };
+  clearTimeout(undoTimer);
+  undoTimer=setTimeout(()=>{ snack.style.display="none"; },5000);
+}
+function deleteChatWithUndo(id, title){
+  const chs=loadChats(); const idx=chs.findIndex(c=>c.id===id);
+  if(idx<0) return;
+  const removed = chs.splice(idx,1)[0];
+  saveChats(chs);
+  if(localStorage.getItem(KEY_ACTIVE_CHAT)===id){
+    if(!chs.length) createNewActiveChat(); else localStorage.setItem(KEY_ACTIVE_CHAT, chs[0].id);
+    renderActiveChat();
+  }
+  showSnack(`شما گفتگوی «${title}» را حذف نمودید |`, ()=>{ const chs2=loadChats(); chs2.unshift(removed); saveChats(chs2); });
 }
 
-// تعیین Provider بر اساس مدل (فقط همین اضافه شد)
-function providerFromModel(model){
-  return model.startsWith("gemini-") ? "gemini" : "github";
-}
-
-// تست کلیدها فقط یک بار
+// probe
 (async function probeKeys(){
-  const okGithub = await check("github", "gpt-4.1-mini");
-  const okGemini = await check("gemini", "gemini-1.5-flash-latest");
-  probe.textContent = `GitHub ${okGithub?"✅":"⚠️"}  |  Gemini ${okGemini?"✅":"⚠️"}`;
+  const okGithub = await check("github","gpt-4.1-mini");
+  const okGemini = await check("gemini","gemini-1.5-flash-latest");
+  if (probe) probe.textContent=`GitHub ${okGithub?"✅":"⚠️"} | Gemini ${okGemini?"✅":"⚠️"}`;
 })();
 async function check(provider, model){
   try{
-    const r = await fetch(API, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ provider, model, messages:[{role:"user", content:"پینگ"}] })
-    });
-    const j = await r.json();
-    return !!j?.content;
-  }catch{ return false; }
+    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:[{role:"user",content:"پینگ"}]})});
+    const j=await r.json(); return !!j?.content;
+  }catch{return false;}
 }
 
-async function send(){
-  const text = inp.value.trim();
-  if(!text || busy) return;
-  addUser(text);
-  inp.value = ""; inp.focus();
+// render helpers
+function makeRow(){ const r=document.createElement("div"); r.className="msg-row"; return r; }
+function actionsCol(){ const c=document.createElement("div"); c.className="msg-actions"; return c; }
+const SVGs={
+  copy:`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>`,
+  check:`<svg viewBox="0 0 24 24"><path d="M9 16.17l-3.5-3.5L4 14.17l5 5 12-12-1.41-1.41z"/></svg>`,
+  retry:`<svg viewBox="0 0 24 24"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 11-5-5z"/></svg>`,
+  info:`<svg viewBox="0 0 24 24"><path d="M11 9h2V7h-2v2zm0 8h2v-6h-2v6zm1-16C6.48 1 2 5.48 2 11s4.48 10 10 10 10-4.48 10-10S17.52 1 12 1z"/></svg>`,
+  left:`<svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`,
+  right:`<svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0L15.13 5.1l3.75 3.75 1.83-1.81z"/></svg>`,
+  thumb:`<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h4v11zm12-9a3 3 0 0 0-3-3h-4.31l.95-4.57.03-.32a1 1 0 0 0-.29-.7L13 2 7.59 7.41A2 2 0 0 0 7 8.83V20a2 2 0 0 0 2 2h7a3 3 0 0 0 3-3v-7z"/></svg>`
+};
+function normalizeLinks(root){ root.querySelectorAll("a[href]").forEach(a=>{ a.target="_blank"; a.rel="noopener noreferrer"; }); }
+function providerFromModel(m){ return m.startsWith("gemini-") ? "gemini" : "github"; }
 
-  setBusy(true);
-  controller = new AbortController();
-  try{
-    const model = modelSel.value;
-    const provider = providerFromModel(model);
-    const r = await fetch(API, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        provider,
-        model,
-        // پیام‌های system به‌ترتیب: 1) قوانین کلی (اولویت بالاتر)  2) قوانین اختصاصی کاربر
-        messages: [
-          { role:"system", content: GLOBAL_RULES.trim() },
-          ...(rulesTA.value ? [{ role:"system", content: rulesTA.value.trim() }] : []),
-          { role:"user", content:text }
-        ]
-      })
-    });
-    const t = await r.text();
-    let j = null;
-    try { j = JSON.parse(t) } catch {
-      addBot(`Raw: ${t}`, true); setBusy(false); return;
+function pushMsg(role, content, meta={}){ const id=mid(); updateCurrentChat(c=>{ c.messages.push({id, role, versions:[{content, meta, ts:Date.now()}], active:0}); }); return id; }
+function appendVersion(id, content, meta={}){ updateCurrentChat(c=>{ const m=c.messages.find(x=>x.id===id); if(!m) return; m.versions.push({content,meta,ts:Date.now()}); m.active=m.versions.length-1; }); }
+function contextLast(n=16){ const ch=currentChat(); if(!ch) return []; return ch.messages.slice(-n).map(m=>({role:m.role, content:m.versions[m.active].content})); }
+
+// ساخت/وصل اکشن‌ها (کپی، مجدد/ویرایش، فلش نسخه‌ها، 👍، اطلاعات)
+function attachActions(row, bubbleEl, msgObj){
+  const col=actionsCol();
+  const copyBtn = document.createElement("button"); copyBtn.className="tool-btn"; copyBtn.title="کپی"; copyBtn.innerHTML=SVGs.copy;
+  copyBtn.onclick=async()=>{ const t=msgObj.role==="assistant" ? (bubbleEl.querySelector(".rendered")?.innerText||"") : bubbleEl.innerText; await navigator.clipboard.writeText(t); copyBtn.innerHTML=SVGs.check; setTimeout(()=>copyBtn.innerHTML=SVGs.copy,1200); };
+  col.appendChild(copyBtn);
+
+  if (msgObj.role==="assistant"){
+    const retry=document.createElement("button"); retry.className="tool-btn"; retry.title="مجدد"; retry.innerHTML=SVGs.retry;
+    retry.onclick=()=> retryAssistant(msgObj, row, bubbleEl);
+    col.appendChild(retry);
+  } else {
+    // ویرایش پیام کاربر
+    const edit=document.createElement("button"); edit.className="tool-btn"; edit.title="ویرایش"; edit.innerHTML=SVGs.edit;
+    edit.onclick=()=> editUserMessage(msgObj, row, bubbleEl);
+    col.appendChild(edit);
+  }
+
+  // فلش نسخه‌ها اگر تعداد > 1
+  const ensureArrows=()=>{
+    if (msgObj.versions.length>1 && !col.querySelector(".ver-prev")){
+      const prev=document.createElement("button"); prev.className="tool-btn ver-prev"; prev.title="نسخه قبلی"; prev.innerHTML=SVGs.left;
+      const next=document.createElement("button"); next.className="tool-btn ver-next"; next.title="نسخه بعدی"; next.innerHTML=SVGs.right;
+      prev.onclick=()=> switchVersion(msgObj, -1, bubbleEl);
+      next.onclick=()=> switchVersion(msgObj, +1, bubbleEl);
+      col.appendChild(prev); col.appendChild(next);
     }
-    if (j?.content){
-      addBot(j.content);
-    }else{
-      addBot(`خطا: ${j?.error || "unknown"}\n\nRaw: ${JSON.stringify(j?.detail ?? j)}`, true);
-    }
-  }catch(e){
-    addBot("خطای شبکه/مرورگر: " + (e?.message || e), true);
-  }finally{
-    setBusy(false); controller = null;
+  };
+  ensureArrows();
+  row.ensureArrows = ensureArrows;
+
+  // دکمه پسند «پاسخ خوب»
+  bubbleEl.ondblclick=()=> row.classList.toggle("liked");
+  const like=document.createElement("button"); like.className="tool-btn thumb"; like.title="پاسخ خوب"; like.innerHTML=SVGs.thumb;
+  like.onclick=()=> row.classList.toggle("liked");
+  col.appendChild(like);
+
+  // اطلاعات پیام
+  const info=document.createElement("button"); info.className="tool-btn"; info.title="اطلاعات"; info.innerHTML=SVGs.info;
+  info.onclick=()=>{
+    const v=msgObj.versions[msgObj.active]; const fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{dateStyle:"medium",timeStyle:"short"}); const model=v.meta?.model||"-";
+    msgInfoBody.innerHTML=`<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div><div>مدل: <b>${model}</b></div>`;
+    msgInfo.classList.add("show"); msgInfo.setAttribute("aria-hidden","false");
+  };
+  col.appendChild(info);
+
+  row.prepend(col);
+}
+closeMsgInfo.onclick=()=>{ msgInfo.classList.remove("show"); msgInfo.setAttribute("aria-hidden","true"); };
+
+function switchVersion(msgObj, dir, bubbleEl){
+  const total=msgObj.versions.length; msgObj.active=((msgObj.active+dir)%total+total)%total;
+  if (msgObj.role==="assistant"){
+    const r=bubbleEl.querySelector(".rendered");
+    r.innerHTML=marked.parse(msgObj.versions[msgObj.active].content);
+    normalizeLinks(r);
+    try{hljs.highlightAll();}catch{}
+  } else {
+    bubbleEl.textContent=msgObj.versions[msgObj.active].content;
+  }
+  // دیگر پیام‌های بعدی حذف نمی‌شوند
+}
+
+// افزودن پیام‌ها
+function addUser(text){
+  const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=text; row.appendChild(b); msgsEl.appendChild(row); msgsEl.scrollTop=msgsEl.scrollHeight;
+  const id=pushMsg("user", text); row.dataset.id=id; const msg=currentChat().messages.find(m=>m.id===id); attachActions(row,b,msg); return id;
+}
+function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=null){
+  const row= existingRow || makeRow(); const b=document.createElement("div");
+  b.className="bubble bot"+(asError?" err":"");
+  const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(markdown||""); b.appendChild(r);
+  normalizeLinks(r);
+  r.querySelectorAll("pre").forEach(pre=>{
+    const btn=document.createElement("button"); btn.className="code-copy"; btn.innerHTML=`${SVGs.copy}<span style="font-family:IRANYekanX">کپی کد</span>`;
+    btn.onclick=async()=>{ const code=pre.querySelector("code")?.innerText||""; await navigator.clipboard.writeText(code); btn.innerHTML=`${SVGs.check}<span style="font-family:IRANYekanX">کپی شد</span>`; setTimeout(()=>btn.innerHTML=`${SVGs.copy}<span style="font-family:IRANYekanX">کپی کد</span>`,1200); };
+    pre.appendChild(btn);
+  });
+  if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
+  const msg=currentChat().messages.find(m=>m.id===id);
+  attachActions(row,b,msg);
+  try{ hljs.highlightAll(); }catch{}
+  return {row,id,bubble:b};
+}
+
+// متوقف‌شدن
+function showStopped(){ addBot("متوقف شد"); }
+function setBusy(b){
+  busy=b;
+  btn.disabled=false;
+  sendIcon.style.display = b ? "none" : "inline";
+  stopIcon.style.display = b ? "inline" : "none";
+  statusEl.textContent=b?"درحال پاسخ…":"آماده";
+}
+btn.onclick=()=> { if(busy){ stop(); } else send(); };
+inp.addEventListener("keydown",(e)=>{
+  const mode=localStorage.getItem(KEY_SHORTCUT)||"enter";
+  const isEnter=e.key==="Enter"&&!e.shiftKey, isCtrl=e.key==="Enter"&&(e.ctrlKey||e.metaKey);
+  if( (mode==="enter"&&isEnter) || (mode==="ctrlenter"&&isCtrl) ){ e.preventDefault(); busy?stop():send(); }
+});
+function stop(){ shouldStopStreaming=true; if(controller) controller.abort("user_stop"); stoppedByUser=true; setBusy(false); }
+
+// تایپر
+async function typewriter(container, text){
+  const twOn = (localStorage.getItem(KEY_TW)!=="0");
+  if(!twOn){
+    container.innerHTML=marked.parse(text); normalizeLinks(container); try{hljs.highlightAll();}catch{}; return;
+  }
+  container.innerHTML=""; let acc="";
+  for(let i=0;i<text.length;i++){
+    if(shouldStopStreaming) break;
+    acc+=text[i];
+    container.innerHTML=marked.parse(acc); normalizeLinks(container);
+    try{hljs.highlightAll();}catch{};
+    await new Promise(r=>setTimeout(r,8));
   }
 }
 
-/* ====== تنظیمات ====== */
-openSettingsBtn.addEventListener("click", ()=>{
-  rulesSettings.value = rulesTA.value;
-  const fz = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--fz'),10) || 16;
-  fzRange.value = fz; fzVal.textContent = fz;
-  settingsModal.classList.add("show");
-  settingsModal.setAttribute("aria-hidden","false");
-});
-closeSettings.addEventListener("click", closeModal);
-function closeModal(){
-  settingsModal.classList.remove("show");
-  settingsModal.setAttribute("aria-hidden","true");
+// تولید عنوان از مدل (بعد از 2 پیام کاربر)
+async function maybeSetTitle(){
+  const ch=currentChat(); if(!ch) return;
+  const uCount=ch.messages.filter(m=>m.role==="user").length;
+  if (ch.title==="گفت‌وگوی جدید" && uCount>=2){
+    try{
+      const provider = providerFromModel(modelSel.value);
+      const r = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model:modelSel.value,messages:[
+        {role:"system",content:"یک عنوان بسیار کوتاه، فارسی و تیتر‌وار برای این موضوع تولید کن. فقط خود عنوان را برگردان."},
+        {role:"user",content: ch.messages.find(m=>m.role==="user")?.versions[0]?.content || ""}
+      ]})});
+      const j=await r.json(); const title=(j?.content||"گفت‌وگو").slice(0,80);
+      const id=localStorage.getItem(KEY_ACTIVE_CHAT);
+      const chs=loadChats(); const i=chs.findIndex(x=>x.id===id); if(i>=0){ chs[i].title=title; saveChats(chs); }
+    }catch{}
+  }
 }
-saveSettings.addEventListener("click", ()=>{
-  // قوانین اختصاصی
-  rulesTA.value = rulesSettings.value;
-  localStorage.setItem(KEY_RULES, rulesTA.value);
-  // سایز فونت
-  const v = parseInt(fzRange.value,10);
-  document.documentElement.style.setProperty('--fz', v + "px");
-  localStorage.setItem(KEY_FZ, String(v));
-  closeModal();
-});
-fzRange.addEventListener("input", ()=> fzVal.textContent = fzRange.value);
 
-// بستن با کلیک بیرون کارت
-settingsModal.addEventListener("click", (e)=>{
-  if (e.target === settingsModal) closeModal();
-});
+// ارسال
+async function send(){
+  const text=inp.value.trim(); if(!text||busy) return;
+
+  addUser(text); inp.value=""; inp.focus();
+  maybeSetTitle();
+
+  setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
+
+  try{
+    const model=modelSel.value, provider=providerFromModel(model);
+    const payload=[
+      {role:"system", content:GLOBAL_RULES.trim()},
+      ...( (localStorage.getItem(KEY_RULES)||"").trim() ? [{role:"system", content:(localStorage.getItem(KEY_RULES)||"").trim()}] : []),
+      ...contextLast(16),
+      {role:"user", content:text}
+    ];
+    const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:payload})});
+    const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
+    if(j?.content){
+      const meta={model}; const res=addBot("",false,meta);
+      await typewriter(res.bubble.querySelector(".rendered"), j.content);
+      appendVersion(res.id, j.content, meta);
+      res.row.ensureArrows && res.row.ensureArrows();
+    }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
+  }catch(e){
+    if(stoppedByUser) showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e), true);
+  }finally{ setBusy(false); controller=null; }
+}
+
+// مجدد
+async function retryAssistant(msgObj, row, bubbleEl){
+  setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
+  try{
+    const model=modelSel.value, provider=providerFromModel(model);
+    const ctx=contextLast(16);
+    const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:ctx})});
+    const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
+    if(j?.content){
+      const rendered=bubbleEl.querySelector(".rendered");
+      await typewriter(rendered, j.content);
+      appendVersion(msgObj.id, j.content, {model});
+      row.ensureArrows && row.ensureArrows(); // فلش‌ها را اضافه کن اگر نبود
+    }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
+  }catch(e){ if(e?.name==="AbortError") showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e),true); }
+  finally{ setBusy(false); controller=null; }
+}
+
+// ویرایش پیام کاربر با پنل سفارشی + پاسخ جدید
+function editUserMessage(msgObj, row, bubbleEl){
+  const backdrop=document.createElement("div");
+  Object.assign(backdrop.style,{position:"fixed",inset:"0",background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"80"});
+  const card=document.createElement("div");
+  Object.assign(card.style,{background:"var(--card)",color:"var(--ink)",borderRadius:"14px",padding:"12px",width:"min(520px,90vw)",boxShadow:"0 10px 40px rgba(0,0,0,.2)"});
+  card.innerHTML=`<h3 style="margin:0 0 8px 0;font-size:16px">ویرایش پیام:</h3>
+    <textarea rows="4" style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;font-family:IRANYekanX">${msgObj.versions[msgObj.active].content}</textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="link ghost" id="editCancel">انصراف</button>
+      <button class="link" id="editOk">ثبت و دریافت پاسخ</button>
+    </div>`;
+  backdrop.appendChild(card); document.body.appendChild(backdrop);
+
+  const ta=card.querySelector("textarea");
+  card.querySelector("#editCancel").onclick=()=> document.body.removeChild(backdrop);
+  card.querySelector("#editOk").onclick=async()=>{
+    const next = (ta.value||"").trim();
+    if(!next || next===msgObj.versions[msgObj.active].content.trim()){ document.body.removeChild(backdrop); return; }
+
+    appendVersion(msgObj.id, next, {edited:true});
+    bubbleEl.textContent = next;
+    row.ensureArrows && row.ensureArrows();
+
+    // پاسخ جدید بر اساس نسخهٔ ویرایش‌شده، با کانتکست تا همان پیام
+    const ch=currentChat();
+    const idx = ch.messages.findIndex(m=>m.id===msgObj.id);
+    const ctx = ch.messages.slice(0, idx+1).map(m=>({role:m.role, content:m.versions[m.active].content}));
+
+    setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
+    try{
+      const model=modelSel.value, provider=providerFromModel(model);
+      const payload=[{role:"system",content:GLOBAL_RULES.trim()}, ...((localStorage.getItem(KEY_RULES)||"").trim()?[{role:"system",content:(localStorage.getItem(KEY_RULES)||"").trim()}]:[]), ...ctx];
+      const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:payload})});
+      const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
+      if(j?.content){
+        const meta={model}; const res=addBot("",false,meta);
+        await typewriter(res.bubble.querySelector(".rendered"), j.content);
+        appendVersion(res.id, j.content, meta);
+        res.row.ensureArrows && res.row.ensureArrows();
+      }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
+    }catch(e){ if(e?.name==="AbortError") showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e),true); }
+    finally{ setBusy(false); controller=null; }
+
+    document.body.removeChild(backdrop);
+  };
+}
+
+// آغاز + پیام خوش‌آمد
+addBot("سلام! برای شروع تایپ کن…");
+renderActiveChat();
+
+// های‌لایت اولیه
+try{ hljs.highlightAll(); }catch{}
+
+// لینک‌ها در تب جدید تضمین شد در normalizeLinks()
 </script>
 </body>
 </html>
