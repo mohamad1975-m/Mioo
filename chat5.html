@@ -5,16 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>چت‌بات</title>
   <style>
-    :root { --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; }
+    @font-face{
+      font-family: "IRANYekanX";
+      src: url("./IRANYekanX-Light.woff2") format("woff2");
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root { --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz:16px; }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:Tahoma, Arial, sans-serif;color:var(--ink)}
+    body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
     .wrap{max-width:1000px;margin:24px auto;padding:0 14px}
     .head{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     select, textarea{border:1px solid #e5e7eb;border-radius:10px;padding:8px}
     .card{background:var(--card);border-radius:var(--radius);box-shadow:0 10px 30px rgba(0,0,0,.06);padding:0}
     .msgs{height:60vh;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-    .bubble{max-width:80%;padding:12px 14px;border-radius:14px;line-height:1.9}
+    .bubble{max-width:80%;padding:12px 14px;border-radius:14px;line-height:1.9;position:relative}
     .user{align-self:flex-end;background:#111;color:#fff;border-bottom-right-radius:8px}
     .bot{align-self:flex-start;background:#fff;border:1px solid #eef2f7;border-bottom-left-radius:8px}
     .foot{display:flex;gap:10px;padding:10px;border-top:1px solid #eef2f7}
@@ -31,6 +39,22 @@
     .rendered ul{padding-inline-start:22px}
     .rendered code{background:#f1f5f9;padding:1px 4px;border-radius:6px}
     .rendered pre{background:#0f172a;color:#e2e8f0;padding:10px;border-radius:10px;overflow:auto}
+
+    /* ابزار پیام (کپی) */
+    .msg-tools{display:flex;gap:8px;margin-top:6px;opacity:.8}
+    .copy-btn{background:transparent;border:0;cursor:pointer;font-size:12px;color:#475569;padding:0}
+    .copy-btn:hover{color:#111}
+
+    /* پنل تنظیمات */
+    .gear{cursor:pointer;font-size:18px;user-select:none}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+    .modal.show{display:flex}
+    .modal-card{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+    .modal-card h3{margin:0 0 10px 0;font-size:18px}
+    .modal-row{display:grid;gap:8px;margin:12px 0}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end}
+    .link{background:#0f172a;color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+    .ghost{background:#eef2f7;color:#111}
   </style>
   <!-- Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -44,16 +68,15 @@
         <option value="gpt-4o-mini">gpt-4o-mini</option>
         <option value="phi-3.5-mini-instruct">phi-3.5-mini-instruct</option>
         <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-        <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
+
+    
       </select>
-      <select id="provider">
-        <option value="github">GitHub Models</option>
-        <option value="gemini">Gemini</option>
-      </select>
+      <!-- انتخاب Provider حذف شد؛ تعیین Provider خودکار بر اساس مدل انجام می‌شود -->
       <span id="status" class="pill">آماده</span>
     </div>
     <div class="row">
       <small class="mono" id="probe"></small>
+      <span id="openSettings" class="gear" title="تنظیمات">⚙️</span>
     </div>
   </div>
 
@@ -72,12 +95,31 @@
   </div>
 </div>
 
+<!-- پنل تنظیمات -->
+<div id="settings" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>تنظیمات</h3>
+    <div class="modal-row">
+      <label>قوانین اختصاصی (همان فیلد روی صفحه، اینجا هم همگام است):</label>
+      <textarea id="rulesSettings" rows="4" style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px"></textarea>
+    </div>
+    <div class="modal-row">
+      <label>اندازه نوشته‌ها: <span id="fzVal">16</span>px</label>
+      <input id="fzRange" type="range" min="12" max="22" value="16">
+    </div>
+    <div class="actions">
+      <button id="closeSettings" class="link ghost">بستن</button>
+      <button id="saveSettings" class="link">ذخیره</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
 const el = (id)=>document.getElementById(id);
 const msgsEl = el("msgs");
 const modelSel = el("model");
-const providerSel = el("provider");
+// const providerSel = el("provider");  // حذف شد
 const inp = el("inp");
 const btn = el("sendBtn");
 const sendIcon = el("sendIcon");
@@ -86,26 +128,57 @@ const rulesTA = el("rules");
 const statusEl = el("status");
 const probe = el("probe");
 
+// Settings elements
+const openSettingsBtn = el("openSettings");
+const settingsModal = el("settings");
+const rulesSettings = el("rulesSettings");
+const saveSettings = el("saveSettings");
+const closeSettings = el("closeSettings");
+const fzRange = el("fzRange");
+const fzVal = el("fzVal");
+
 let busy = false;
 let controller = null;
 const KEY_RULES = "custom_rules_v1";
+const KEY_FZ = "ui_font_size_v1";
+
+/* =========================
+   قوانین کلی (سراسری/اولویت بالا)
+   👉 قوانین کلی خودتان را بین backtickها پیست کنید:
+========================= */
+const GLOBAL_RULES = `
+# قوانین کلی (سراسری)
+- پاسخ‌ها همیشه فارسی و با Markdown تمیز باشند.
+- تیترهای فهرست بولد شوند و زیر هر تیتر، توضیح کوتاه، موجز و کاربردی بیاید.
+- از فهرست‌های مرتب و نامرتب برای خوانایی بهتر استفاده شود.
+- اگر کاربر صراحتاً قالب دیگری نخواست، همین استاندارد حفظ شود.
+`;
+// (می‌توانید این بلوک را با قوانین خود جایگزین کنید)
+
 
 // بارگذاری قوانین اختصاصی کاربر از localStorage
 rulesTA.value = localStorage.getItem(KEY_RULES) || "";
 rulesTA.addEventListener("change", ()=> localStorage.setItem(KEY_RULES, rulesTA.value));
 
+// بارگذاری و اعمال سایز فونت از localStorage
+const storedFz = parseInt(localStorage.getItem(KEY_FZ) || "16", 10);
+document.documentElement.style.setProperty('--fz', storedFz + "px");
+fzRange.value = storedFz;
+fzVal.textContent = storedFz;
+
 // پیام خوش‌آمد
 addBot(`سلام! 👋
 - پاسخ‌ها **همیشه فارسی** و به **Markdown تمیز** هستند.
 - برای دسته‌بندی‌ها، تیترها **بولد** می‌شوند و زیر هر تیتر توضیح کوتاه می‌آید.
-- می‌توانید قوانین اختصاصی خودتان را در بخش بالا ذخیره کنید.
+- می‌توانید قوانین اختصاصی خودتان را در بخش بالا یا از طریق ⚙️ «تنظیمات» ذخیره کنید.
 `);
 
-// رندر حباب کاربر/بات
+// رندر حباب کاربر/بات + ابزار کپی
 function addUser(text){
   const d=document.createElement("div");
   d.className="bubble user";
   d.textContent=text;
+  attachTools(d, ()=>text);
   msgsEl.appendChild(d);
   msgsEl.scrollTop=msgsEl.scrollHeight;
 }
@@ -117,10 +190,33 @@ function addBot(markdown, asError=false){
   if (asError) rendered.innerText = markdown;
   else rendered.innerHTML = marked.parse(markdown || "");
   d.appendChild(rendered);
+
+  attachTools(d, ()=> rendered.innerText);
+
   msgsEl.appendChild(d);
   msgsEl.scrollTop=msgsEl.scrollHeight;
   return d;
 }
+
+// دکمه کپی زیر پیام
+function attachTools(bubble, getText){
+  const tools = document.createElement("div");
+  tools.className = "msg-tools";
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "📋 کپی";
+  copyBtn.addEventListener("click", async ()=>{
+    try{
+      await navigator.clipboard.writeText(getText());
+      const old = copyBtn.textContent;
+      copyBtn.textContent = "✅ کپی شد";
+      setTimeout(()=> copyBtn.textContent = old, 3000);
+    }catch{}
+  });
+  tools.appendChild(copyBtn);
+  bubble.appendChild(tools);
+}
+
 function setBusy(b){
   busy = b;
   btn.disabled = false; // فقط آیکون را عوض می‌کنیم
@@ -136,6 +232,11 @@ inp.addEventListener("keydown", (e)=>{
 function stop(){
   if (controller) controller.abort();
   setBusy(false);
+}
+
+// تعیین Provider بر اساس مدل (فقط همین اضافه شد)
+function providerFromModel(model){
+  return model.startsWith("gemini-") ? "gemini" : "github";
 }
 
 // تست کلیدها فقط یک بار
@@ -165,16 +266,19 @@ async function send(){
   setBusy(true);
   controller = new AbortController();
   try{
+    const model = modelSel.value;
+    const provider = providerFromModel(model);
     const r = await fetch(API, {
       method: "POST",
       signal: controller.signal,
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
-        provider: providerSel.value,
-        model: modelSel.value,
-        // همیشه یک پیام system کلی هم در Worker تزریق می‌شود
-        user_rules: rulesTA.value || "",
+        provider,
+        model,
+        // پیام‌های system به‌ترتیب: 1) قوانین کلی (اولویت بالاتر)  2) قوانین اختصاصی کاربر
         messages: [
+          { role:"system", content: GLOBAL_RULES.trim() },
+          ...(rulesTA.value ? [{ role:"system", content: rulesTA.value.trim() }] : []),
           { role:"user", content:text }
         ]
       })
@@ -195,7 +299,36 @@ async function send(){
     setBusy(false); controller = null;
   }
 }
+
+/* ====== تنظیمات ====== */
+openSettingsBtn.addEventListener("click", ()=>{
+  rulesSettings.value = rulesTA.value;
+  const fz = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--fz'),10) || 16;
+  fzRange.value = fz; fzVal.textContent = fz;
+  settingsModal.classList.add("show");
+  settingsModal.setAttribute("aria-hidden","false");
+});
+closeSettings.addEventListener("click", closeModal);
+function closeModal(){
+  settingsModal.classList.remove("show");
+  settingsModal.setAttribute("aria-hidden","true");
+}
+saveSettings.addEventListener("click", ()=>{
+  // قوانین اختصاصی
+  rulesTA.value = rulesSettings.value;
+  localStorage.setItem(KEY_RULES, rulesTA.value);
+  // سایز فونت
+  const v = parseInt(fzRange.value,10);
+  document.documentElement.style.setProperty('--fz', v + "px");
+  localStorage.setItem(KEY_FZ, String(v));
+  closeModal();
+});
+fzRange.addEventListener("input", ()=> fzVal.textContent = fzRange.value);
+
+// بستن با کلیک بیرون کارت
+settingsModal.addEventListener("click", (e)=>{
+  if (e.target === settingsModal) closeModal();
+});
 </script>
 </body>
 </html>
-
