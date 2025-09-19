@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>صفحه مدیریت پیام‌ها</title>
+  <style>
+    @font-face {
+      font-family: 'IRANYekanX';
+      src: url('./IRANYekanX-Light.woff2') format('woff2');
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+    :root{--bg:#f7f7fb;--card:#fff;--ink:#111;--muted:#6b7280;--radius:16px}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:'IRANYekanX', Tahoma, Arial, sans-serif;color:var(--ink)}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
+    .head h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.08);padding:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:right;vertical-align:top}
+    th{font-weight:700}
+    .muted{color:var(--muted);font-size:12px}
+    button{padding:8px 12px;border:0;border-radius:10px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <h1>مدیریت پیام‌ها</h1>
+      <div class="filters">
+        <button id="load">دریافت پیام‌ها</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="info" class="muted">برای مشاهده پیام‌ها روی «دریافت پیام‌ها» کلیک کنید.</div>
+      <div style="overflow:auto">
+        <table id="t" style="display:none">
+          <thead>
+            <tr>
+              <th>زمان</th>
+              <th>پیام</th>
+              <th>آی‌پی</th>
+              <th>دستگاه</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<script>
+  const btn = document.getElementById('load');
+  const info = document.getElementById('info');
+  const table = document.getElementById('t');
+  const tbody = document.getElementById('tbody');
+
+  function fmtTime(ts){ try{ const d=new Date(ts); return d.toLocaleString('fa-IR'); }catch{ return ts } }
+  function deviceFromUA(ua){ if(!ua) return '-'; const m = ua.match(/\(([^)]+)\)/); const inside = m? m[1] : ua; return inside.split(';').slice(0,3).map(s=>s.trim()).join(' · '); }
+
+  btn.addEventListener('click', async ()=>{
+    table.style.display='none'; info.textContent='در حال دریافت...';
+    tbody.innerHTML='';
+    try{
+      const r = await fetch('/api/list');
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data = await r.json();
+      if(!Array.isArray(data) || !data.length){ info.textContent='هنوز پیامی ثبت نشده است.'; return; }
+      for(const item of data){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmtTime(item.timestamp)}</td>
+          <td>${(item.message||'').replace(/</g,'&lt;')}</td>
+          <td>${item.ip||'-'}</td>
+          <td class="muted">${deviceFromUA(item.userAgent)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      table.style.display='table'; info.textContent='';
+    }catch(err){ info.textContent='خطا در دریافت داده‌ها.'; }
+  });
+</script>
+</body>
+</html>
