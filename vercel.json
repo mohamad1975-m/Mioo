@@ -1,7 +1,10 @@
 {
+  "version": 2,
   "functions": {
-    "api/*.js": {
-      "runtime": "edge"
-    }
-  }
+    "api/**/*.js": { "runtime": "edge" }
+  },
+  "routes": [
+    { "src": "/nazar", "dest": "/nazar.html" },
+    { "src": "/admin", "dest": "/admin.html" }
+  ]
 }
