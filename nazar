@@ -1,0 +1,225 @@
+<!-- ======================== nazar.html (Feedback form) ======================== -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>فرم ثبت نظر</title>
+  <style>
+    @font-face {
+      font-family: 'IRANYekanX';
+      src: url('IRANYekanX-Light.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    :root{--bg:#f7f7fb;--card:#fff;--ink:#111;--muted:#6b7280;--radius:16px}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:'IRANYekanX', Tahoma, Arial, sans-serif;color:var(--ink)}
+    .wrap{max-width:760px;margin:40px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.08);padding:20px}
+    h1{margin:0 0 12px;font-size:22px}
+    p{margin:0 0 16px;color:var(--muted)}
+    textarea{width:100%;min-height:140px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;font:inherit;resize:vertical}
+    button{margin-top:12px;padding:12px 16px;border:0;border-radius:12px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    .state{margin-top:12px;font-size:14px}
+    .ok{color:#059669}.err{color:#dc2626}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>ارسال نظر</h1>
+      <p>لطفاً نظر یا پیام خود را وارد کنید و ارسال بزنید.</p>
+      <form id="f">
+        <textarea id="msg" placeholder="متن پیام..."></textarea>
+        <button type="submit">ارسال</button>
+        <div id="state" class="state"></div>
+      </form>
+    </div>
+  </div>
+  <script>
+    const form = document.getElementById('f');
+    const msgEl = document.getElementById('msg');
+    const state = document.getElementById('state');
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      state.textContent = 'در حال ارسال...'; state.className='state';
+      const message = (msgEl.value||'').trim();
+      if(!message){ state.textContent='لطفاً متن پیام را وارد کنید.'; state.classList.add('err'); return; }
+      try{
+        const r = await fetch('/api/submit', {
+          method:'POST', headers:{'content-type':'application/json'},
+          body: JSON.stringify({ message })
+        });
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        msgEl.value='';
+        state.textContent='پیام شما با موفقیت ثبت شد!'; state.classList.add('ok');
+      }catch(err){
+        state.textContent='خطا در ارسال. لطفاً دوباره تلاش کنید.'; state.classList.add('err');
+      }
+    });
+  </script>
+</body>
+</html>
+
+<!-- ======================== admin.html (Admin page) ======================== -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>صفحه مدیریت پیام‌ها</title>
+  <style>
+    @font-face {
+      font-family: 'IRANYekanX';
+      src: url('IRANYekanX-Light.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
+    :root{--bg:#f7f7fb;--card:#fff;--ink:#111;--muted:#6b7280;--radius:16px}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:'IRANYekanX', Tahoma, Arial, sans-serif;color:var(--ink)}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
+    .head h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.08);padding:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:right;vertical-align:top}
+    th{font-weight:700}
+    .muted{color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <h1>مدیریت پیام‌ها</h1>
+      <button id="load">دریافت پیام‌ها</button>
+    </div>
+    <div class="card">
+      <div id="info" class="muted">برای مشاهده پیام‌ها، روی «دریافت پیام‌ها» کلیک کنید.</div>
+      <div style="overflow:auto">
+        <table id="t" style="display:none">
+          <thead>
+            <tr>
+              <th>زمان</th>
+              <th>پیام</th>
+              <th>آی‌پی</th>
+              <th>دستگاه</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<script>
+  const btn = document.getElementById('load');
+  const info = document.getElementById('info');
+  const table = document.getElementById('t');
+  const tbody = document.getElementById('tbody');
+
+  function fmtTime(ts){
+    try{ const d=new Date(ts); return d.toLocaleString('fa-IR'); }catch{ return ts }
+  }
+  function deviceFromUA(ua){
+    if(!ua) return '-';
+    const m = ua.match(/\(([^)]+)\)/);
+    const inside = m? m[1] : ua;
+    return inside.split(';').slice(0,3).map(s=>s.trim()).join(' · ');
+  }
+
+  btn.addEventListener('click', async ()=>{
+    table.style.display='none'; info.textContent='در حال دریافت...';
+    tbody.innerHTML='';
+    try{
+      const r = await fetch('/api/list');
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data = await r.json();
+      if(!Array.isArray(data) || !data.length){ info.textContent='هنوز پیامی ثبت نشده است.'; return; }
+      for(const item of data){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmtTime(item.timestamp)}</td>
+          <td>${(item.message||'').replace(/</g,'&lt;')}</td>
+          <td>${item.ip||'-'}</td>
+          <td class="muted">${deviceFromUA(item.userAgent)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      table.style.display='table'; info.textContent='';
+    }catch(err){
+      info.textContent='خطا در دریافت داده‌ها.';
+    }
+  });
+</script>
+</body>
+</html>
+
+<!-- ======================== /api/submit.js (Serverless function) ======================== -->
+<script type="text/plain" data-filename="api/submit.js">
+import { put } from '@vercel/blob';
+
+export const config = { runtime: 'edge' };
+
+export default async function handler(req) {
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+  const { message } = await req.json().catch(()=>({}));
+  if (!message || String(message).trim().length === 0) {
+    return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400, headers: { 'content-type': 'application/json' } });
+  }
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const userAgent = req.headers.get('user-agent') || '';
+  const timestamp = Date.now();
+
+  const record = { message: String(message).slice(0, 5000), ip, userAgent, timestamp };
+
+  const key = `messages/${timestamp}-${Math.random().toString(36).slice(2)}.json`;
+  await put(key, JSON.stringify(record), { access: 'private' });
+
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+}
+</script>
+
+<!-- ======================== /api/list.js (Serverless function) ======================== -->
+<script type="text/plain" data-filename="api/list.js">
+import { list, get } from '@vercel/blob';
+
+export const config = { runtime: 'edge' };
+
+export default async function handler(req) {
+  const files = await list({ prefix: 'messages/' });
+  const items = files.blobs
+    .sort((a,b)=> b.uploadedAt - a.uploadedAt)
+    .slice(0, 200);
+
+  const out = [];
+  for (const f of items) {
+    const { blob } = await get(f.url);
+    const text = await blob.text();
+    try { out.push(JSON.parse(text)); } catch {}
+  }
+  out.sort((a,b)=> b.timestamp - a.timestamp);
+  return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } });
+}
+</script>
+
+<!-- ======================== package.json ======================== -->
+<script type="application/json" data-filename="package.json">{
+  "name": "feedback-demo",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^0.24.1"
+  }
+}
+</script>
+
+<!-- ======================== vercel.json ======================== -->
+<script type="application/json" data-filename="vercel.json">{
+  "functions": {
+    "api/*.js": { "runtime": "edge" }
+  }
+}</script>
