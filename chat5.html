@@ -12,15 +12,19 @@
     }
 
     :root{
-      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz: clamp(13px, 1.8vw + 9px, 16px); 
+      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz: clamp(15px, 1.1vw + 10px, 16px);
+
+      
 
       --bubble-user:#8b5cf6; --bubble-user-ink:#fff; --bubble-bot:#fff; --bubble-bot-bd:#eef2f7;
       --shadow:0 10px 30px rgba(0,0,0,.06);
       --tool:.86rem; --snack-bg:#111; --snack-ink:#fff;
       --green:#22c55e; --green-ink:#fff; --chip:#0f172a; --chip-ink:#fff;
     }
-    @media (max-width: 360px){
-  :root{ --fz: 14px; }
+
+/* گوشی‌ها = لمسی یا عرض کوچک → 14px قطعی */
+@media (max-width: 600px), (hover:none) and (pointer:coarse){
+  :root{ --fz: 14px !important; }
 }
 
     .dark{
@@ -85,15 +89,7 @@ body{
 }
 .rendered { direction: rtl; unicode-bidi: plaintext; }
 .rendered pre, .rendered code { direction: ltr; unicode-bidi: embed; } /* کد همیشه چپ‌به‌راست */
-:root{
-  /* ... سایر متغیرها ... */
-  --fz: clamp(14px, 1.1vw + 10px, 16px);
-}
 
-@media (max-width: 480px){
-  :root{ --fz: 15px; }
-  .bubble{ max-width: 82%; }
-}
 
 
     *{box-sizing:border-box}
@@ -210,7 +206,7 @@ body{
 
     /* مودال تعیین مدل (اسکرین‌شات 2) */
     .model-card{background:var(--card); color:var(--ink); border-radius:16px; width:min(860px,96vw); box-shadow:var(--shadow); padding:16px}
-    .model-grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px}
+    .model-grid{display:grid; grid-template-columns: 1fr; gap:16px}
     .model-left{
       border:1px solid #e5e7eb; border-radius:12px; overflow:hidden
     }
@@ -232,6 +228,17 @@ body{
   fill: #fff;     /* رنگ سفید برای SVG */
   color: #fff;    /* برای آیکن‌هایی که با color کار می‌کنن */
 }
+.hidden{ display:none; }
+.model-help{
+  border:1px dashed #cbd5e1;
+  border-radius:12px;
+  padding:12px;
+  font-size:14px;
+  color:var(--muted);
+  max-height:60vh;
+  overflow:auto;
+}
+.dark .model-help{ border-color:#1f2937; }
 
   </style>
 
@@ -353,13 +360,73 @@ body{
 <div id="modelModal" class="modal" aria-hidden="true">
   <div class="model-card">
     <h3 style="margin-top:0">تعیین مدل هوش مصنوعی</h3>
-    <div class="mode-toggle">
-      <span class="mode-pill" id="autoModePill">تعیین خودکار</span>
-      <span class="mode-pill" id="manualModePill">تعیین دستی</span>
+
+
+
+    <!-- نمای اصلی انتخاب -->
+    <div id="modelMain">
+      <div class="mode-toggle">
+        <span class="mode-pill" id="autoModePill">تعیین خودکار</span>
+        <span class="mode-pill" id="manualModePill">تعیین دستی</span>
+        <button id="openModelHelp" class="link ghost">راهنما</button>
+      </div>
+
+      <div class="model-grid">
+        <div class="model-left" id="modelTable">
+          <!-- جدول دو ستونه مدل‌ها -->
+          <div class="model-row">
+            <div class="model-cell" data-model="gpt-5">gpt ۵</div>
+            <div class="model-cell" data-model="gpt-4.1-mini">gpt ۴.۱ mini</div>
+          </div>
+          <div class="model-row">
+            <div class="model-cell" data-model="gpt-5-chat">gpt ۵-chat</div>
+            <div class="model-cell" data-model="gpt-4o-mini">gpt ۴o mini</div>
+          </div>
+          <div class="model-row">
+            <div class="model-cell" data-model="gpt-5-mini">gpt ۵-mini</div>
+            <div class="model-cell" data-model="gemini-1.5-flash-latest">gemini-1.5-flash</div>
+          </div>
+          <div class="model-row" style="border-bottom:0">
+            <div class="model-cell" data-model="gpt-5-nano">gpt ۵-nano</div>
+            <div class="model-cell" data-model="xai/grok-3-mini">Grok 3 Mini</div>
+          </div>
+        </div>
+
+        <div class="model-right">
+
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px dashed #cbd5e1; margin:12px 0">
+      <div>
+        <b>وضعیت کلیدها</b>
+        <div id="probeInModal" class="mono" style="margin-top:6px">درحال بررسی…</div>
+      </div>
+
+      <div class="actions" style="margin-top:12px">
+        <button id="closeModel" class="link ghost">لغو</button>
+        <button id="saveModel" class="link">ذخیره</button>
+      </div>
     </div>
 
-    <div class="model-grid">
-      <div class="model-left" id="modelTable">
+    <!-- نمای راهنما -->
+    <div id="modelHelp" class="model-help hidden">
+      <h4 style="margin:0 0 8px 0">راهنمای انتخاب مدل</h4>
+      <p>در حالت «تعیین خودکار»، همیشه بهترین مدلِ در دسترس انتخاب می‌شود و در صورت خطای موقتی/سهمیه، بدون توقف به مدل‌های بعدی سوئیچ می‌کند.</p>
+      <p>در حالت «تعیین دستی»، فقط همان مدلی که انتخاب کرده‌اید استفاده می‌شود و در صورت محدودیت، خطا نشان داده می‌شود.</p>
+      <ul>
+        <li>اگر پایداری و کمترین خطا را می‌خواهید → <b>خودکار</b>.</li>
+        <li>اگر دقیقاً باید روی مدل خاصی بمانید → <b>دستی</b>.</li>
+      </ul>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button id="closeModelHelp" class="link">بستن راهنما</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
         <!-- دو ستونِ نام‌ها مثل تصویر -->
         <div class="model-row">
           <div class="model-cell" data-model="gpt-5">gpt ۵</div>
@@ -379,12 +446,7 @@ body{
         </div>
       </div>
 
-      <div class="model-right">
-        <b>تعیین خودکار</b><br/>
-        چت‌بات همیشه قوی‌ترین مدل موجود را انتخاب می‌کند و اگر به محدودیت نزدیک شد یا خطای موقتی دید، به‌صورت خودکار روی بهترین مدلِ بعدی سوییچ می‌کند تا شما محدودیت را حس نکنید.
-        <br/><br/>
-        <small>در حالت دستی، مدل انتخابی فقط توسط خود شما تغییر می‌کند و در صورت محدودیت، خطا نمایش داده می‌شود.</small>
-      </div>
+
     </div>
     <hr style="border:none;border-top:1px dashed #cbd5e1; margin:12px 0">
     <div>
@@ -398,6 +460,19 @@ body{
     </div>
   </div>
 </div>
+<div id="modelHelp" class="model-help hidden">
+  <h4 style="margin:0 0 8px 0">راهنمای انتخاب مدل</h4>
+  <p>در حالت «تعیین خودکار»، همیشه بهترین مدلِ در دسترس انتخاب می‌شود و در صورت خطای موقتی/سهمیه، بدون توقف به مدل‌های بعدی سوئیچ می‌کند.</p>
+  <p>در حالت «تعیین دستی»، فقط همان مدلی که انتخاب کرده‌اید استفاده می‌شود و در صورت محدودیت، خطا نشان داده می‌شود.</p>
+  <ul>
+    <li>اگر پایداری و کمترین خطا را می‌خواهید → <b>خودکار</b>.</li>
+    <li>اگر دقیقاً باید روی مدل خاصی بمانید → <b>دستی</b>.</li>
+  </ul>
+  <div style="display:flex;justify-content:flex-end;margin-top:12px">
+    <button id="closeModelHelp" class="link">بستن راهنما</button>
+  </div>
+</div>
+
 
 <!-- مودال «جزئیات پیام» -->
 <div id="msgInfo" class="modal" aria-hidden="true">
@@ -663,6 +738,11 @@ async function check(provider, model){
     const j=await r.json(); return !!j?.content;
   }catch{return false;}
 }
+const openModelHelp = $("openModelHelp");
+const modelMain = $("modelMain");
+const modelHelp = $("modelHelp");
+const closeModelHelp = $("closeModelHelp");
+
 
 // ====== انتخاب مدل: وضعیت و UI ======
 const PREFERRED_AUTO = ["gpt-5","gpt-5-chat","gpt-5-mini","gpt-5-nano","gpt-4.1-mini","gpt-4o-mini","xai/grok-3-mini"];
@@ -693,6 +773,16 @@ function openModelChooser(){
   });
   modelModal.classList.add("show"); modelModal.setAttribute("aria-hidden","false");
 }
+openModelHelp.onclick = () => {
+  modelMain.classList.add("hidden");
+  modelHelp.classList.remove("hidden");
+};
+
+closeModelHelp.onclick = () => {
+  modelHelp.classList.add("hidden");
+  modelMain.classList.remove("hidden");
+};
+
 closeModel.onclick=()=>{ closeModelModal(); };
 modelModal.addEventListener("click",(e)=>{ if(e.target===modelModal) closeModelModal(); });
 function closeModelModal(){ modelModal.classList.remove("show"); modelModal.setAttribute("aria-hidden","true"); }
