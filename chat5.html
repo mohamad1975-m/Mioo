@@ -1061,7 +1061,7 @@ else statusEl.textContent = "درحال پاسخ…";
     provider, model,
     messages: payload,
     auto: (getMode()==="auto"),
-    web: WEB_ON   // ← این خط اضافه شد
+    web: WEB_ON,   // ← این خط اضافه شد
     chat_id: (currentChat()?.id || null)   // ← NEW
   })
 });
@@ -1214,7 +1214,9 @@ try{ hljs.highlightAll(); }catch{}
 const webToggle = $("webToggle");
 const KEY_WEB_ON = "web_search_on_v1";
 
-let WEB_ON = (localStorage.getItem(KEY_WEB_ON) === "1");
+// همیشه با خاموش شروع کن
+let WEB_ON = false;
+localStorage.setItem(KEY_WEB_ON, "0"); // وضعیت ذخیره‌شده را هم به صفر ریست کن
 updateWebToggleUI();
 
 webToggle.onclick = () => {
@@ -1222,6 +1224,7 @@ webToggle.onclick = () => {
   localStorage.setItem(KEY_WEB_ON, WEB_ON ? "1" : "0");
   updateWebToggleUI();
 };
+
 
 function updateWebToggleUI(){
   webToggle.classList.toggle("on", WEB_ON);
