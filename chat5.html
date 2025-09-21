@@ -427,51 +427,9 @@ body{
 
 
 
-        <!-- دو ستونِ نام‌ها مثل تصویر -->
-        <div class="model-row">
-          <div class="model-cell" data-model="gpt-5">gpt ۵</div>
-          <div class="model-cell" data-model="gpt-4.1-mini">gpt ۴.۱ mini</div>
-        </div>
-        <div class="model-row">
-          <div class="model-cell" data-model="gpt-5-chat">gpt ۵-chat</div>
-          <div class="model-cell" data-model="gpt-4o-mini">gpt ۴o mini</div>
-        </div>
-        <div class="model-row">
-          <div class="model-cell" data-model="gpt-5-mini">gpt ۵-mini</div>
-          <div class="model-cell" data-model="gemini-1.5-flash-latest">gemini-1.5-flash</div>
-        </div>
-        <div class="model-row" style="border-bottom:0">
-          <div class="model-cell" data-model="gpt-5-nano">gpt ۵-nano</div>
-          <div class="model-cell" data-model="xai/grok-3-mini">Grok 3 Mini</div>
-        </div>
-      </div>
-
-
-    </div>
-    <hr style="border:none;border-top:1px dashed #cbd5e1; margin:12px 0">
-    <div>
-      <b>وضعیت کلیدها</b>
-      <div id="probeInModal" class="mono" style="margin-top:6px">درحال بررسی…</div>
-    </div>
+        
     
-    <div class="actions" style="margin-top:12px">
-      <button id="closeModel" class="link ghost">لغو</button>
-      <button id="saveModel" class="link">ذخیره</button>
-    </div>
-  </div>
-</div>
-<div id="modelHelp" class="model-help hidden">
-  <h4 style="margin:0 0 8px 0">راهنمای انتخاب مدل</h4>
-  <p>در حالت «تعیین خودکار»، همیشه بهترین مدلِ در دسترس انتخاب می‌شود و در صورت خطای موقتی/سهمیه، بدون توقف به مدل‌های بعدی سوئیچ می‌کند.</p>
-  <p>در حالت «تعیین دستی»، فقط همان مدلی که انتخاب کرده‌اید استفاده می‌شود و در صورت محدودیت، خطا نشان داده می‌شود.</p>
-  <ul>
-    <li>اگر پایداری و کمترین خطا را می‌خواهید → <b>خودکار</b>.</li>
-    <li>اگر دقیقاً باید روی مدل خاصی بمانید → <b>دستی</b>.</li>
-  </ul>
-  <div style="display:flex;justify-content:flex-end;margin-top:12px">
-    <button id="closeModelHelp" class="link">بستن راهنما</button>
-  </div>
-</div>
+
 
 
 <!-- مودال «جزئیات پیام» -->
@@ -613,7 +571,7 @@ if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
 animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
 fzRange.oninput=()=>{ const v=parseInt(fzRange.value,10)||16; fzVal.textContent=String(v);
-  document.documentElement.style.setProperty('--fz', v+"px");
+  document.documentElement.style.setProperty('--fz', v+"px", 'important');
   document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
 };
 
@@ -623,7 +581,7 @@ closeSettings.onclick = closeModal;
 function closeModal(){ settingsModal.classList.remove("show"); settingsModal.setAttribute("aria-hidden","true"); }
 saveSettings.onclick=()=>{ localStorage.setItem(KEY_RULES, rulesSettings.value||"");
   const v=parseInt(fzRange.value,10);
-  document.documentElement.style.setProperty('--fz', v+"px");
+  document.documentElement.style.setProperty('--fz', v+"px", 'important');
   document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
   localStorage.setItem(KEY_FZ, String(v));
   localStorage.setItem(KEY_TW, typewriterToggle.checked ? "1":"0");
