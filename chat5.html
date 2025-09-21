@@ -632,6 +632,7 @@ function renderActiveChat(){
       const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=m.versions[m.active].content; row.appendChild(b); msgsEl.appendChild(row); row.dataset.id=m.id; attachActions(row,b,m);
     } else {
       const row=makeRow(); const b=document.createElement("div"); b.className="bubble bot"; const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(m.versions[m.active].content); b.appendChild(r); msgsEl.appendChild(row); row.appendChild(b); row.dataset.id=m.id; attachActions(row,b,m); normalizeLinks(r);
+      
       r.querySelectorAll("pre").forEach(pre=>{
         const btn=document.createElement("button"); btn.className="code-copy";
         btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span style="font-family:IRANYekanX">copy code</span>`;
@@ -798,6 +799,23 @@ function refreshModelChip(){
 
 // helpers (لینک‌ها در تب جدید)
 function normalizeLinks(root){ root.querySelectorAll("a[href]").forEach(a=>{ a.target="_blank"; a.rel="noopener noreferrer"; }); }
+function normalizeLinks(root){ 
+  root.querySelectorAll("a[href]").forEach(a=>{
+    a.target="_blank"; 
+    a.rel="noopener noreferrer"; 
+  });
+}
+
+/* دامین‌ها و URL های برهنه را به لینک Markdown تبدیل می‌کند */
+function autolinkMarkdown(s=""){
+  // 1) URL های کامل با http/https
+  s = s.replace(/((https?:\/\/)[^\s)]+)\b/gi, (m, url)=>`[${url}](${url})`);
+  // 2) دامین‌های ساده مثل y2mate.com یا example.org/path
+  s = s.replace(/(^|\s)(?:https?:\/\/)?((?:[a-z0-9-]+\.)+[a-z]{2,})(\/\S*)?/gi,
+    (m, pre, host, path)=> `${pre}[${host}${path||""}](https://${host}${path||""})`);
+  return s;
+}
+
 function providerFromModel(m){ return m.startsWith("gemini-") ? "gemini" : "github"; }
 function scrollChatToBottom() {
   const el = document.getElementById("msgs");
