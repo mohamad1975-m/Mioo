@@ -13,7 +13,7 @@
 
     :root{
       --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz:16px;
-      --bubble-user:#111; --bubble-user-ink:#fff; --bubble-bot:#fff; --bubble-bot-bd:#eef2f7;
+      --bubble-user:#8b5cf6; --bubble-user-ink:#fff; --bubble-bot:#fff; --bubble-bot-bd:#eef2f7;
       --shadow:0 10px 30px rgba(0,0,0,.06);
       --tool:.86rem; --snack-bg:#111; --snack-ink:#fff;
       --green:#22c55e; --green-ink:#fff; --chip:#0f172a; --chip-ink:#fff;
@@ -157,6 +157,13 @@
     .mode-pill{padding:4px 10px; border-radius:999px; border:1px solid #e5e7eb; cursor:pointer}
     .dark .mode-pill{border-color:#1f2937}
     .mode-pill.active{background:var(--green); color:var(--green-ink); border-color:transparent}
+    /* آیکون‌ها در حالت شب */
+.dark .tool-btn svg,
+.dark .inline-tools .tool-btn svg {
+  fill: #fff;     /* رنگ سفید برای SVG */
+  color: #fff;    /* برای آیکن‌هایی که با color کار می‌کنن */
+}
+
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -197,7 +204,7 @@
   <div class="card" style="position:relative">
     <div id="msgs" class="msgs"></div>
     <div class="foot">
-      <input id="inp" placeholder="بنویس… (Enter = ارسال)" />
+      <input id="inp" placeholder="اینجا تایپ کنید" />
       <button class="btn" id="sendBtn" title="ارسال">
         <span id="sendIcon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
@@ -501,6 +508,8 @@ function renderActiveChat(){
     }
   });
   msgsEl.scrollTop=msgsEl.scrollHeight;
+  scrollChatToBottom();
+
   try{ hljs.highlightAll(); }catch{}
 }
 
@@ -640,6 +649,14 @@ function refreshModelChip(){
 // helpers (لینک‌ها در تب جدید)
 function normalizeLinks(root){ root.querySelectorAll("a[href]").forEach(a=>{ a.target="_blank"; a.rel="noopener noreferrer"; }); }
 function providerFromModel(m){ return m.startsWith("gemini-") ? "gemini" : "github"; }
+function scrollChatToBottom() {
+  const el = document.getElementById("msgs");
+  if (!el) return;
+  // چند بار پشت‌سرهم برای مطمئن‌شدن پس از رندر
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  setTimeout(() => { el.scrollTop = el.scrollHeight; }, 50);
+  setTimeout(() => { el.scrollTop = el.scrollHeight; }, 150);
+}
 
 // پیام/کانتکست
 function pushMsg(role, content, meta={}){ const id=mid(); updateCurrentChat(c=>{ c.messages.push({id, role, versions:[{content, meta, ts:Date.now()}], active:0}); }); return id; }
@@ -650,7 +667,7 @@ function contextLast(n=16){ const ch=currentChat(); if(!ch) return []; return ch
 const SVGs={
   copy:`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>`,
   check:`<svg viewBox="0 0 24 24"><path d="M9 16.17l-3.5-3.5L4 14.17l5 5 12-12-1.41-1.41z"/></svg>`,
-  retry:`<svg viewBox="0 0 24 24"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 11-5-5z"/></svg>`,
+  retry:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a8 8 0 1 0 7.446 5.032 1 1 0 1 0-1.888.662A6 6 0 1 1 12 6v2a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1h-4a1 1 0 1 0 0 2h2Z"/></svg>`,
   info:`<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`, /* آیکون جزئیات جدید */
   left:`<svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`,
   right:`<svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>`,
@@ -847,7 +864,13 @@ async function send(){
       ...contextLast(16),
       {role:"user", content:text}
     ];
-    const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:payload})});
+    const r=await fetch(API,{
+  method:"POST",
+  signal:controller.signal,
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({provider,model,messages:payload, auto:(getMode()==="auto")})
+});
+
     const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
     if(j?.content){
       const usedModel = j.model || model;
@@ -869,7 +892,13 @@ async function retryAssistant(msgObj, row, bubbleEl){
   try{
     const {provider, model} = getProviderAndModel();
     const ctx=contextLast(16);
-    const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:ctx})});
+    const r=await fetch(API,{
+  method:"POST",
+  signal:controller.signal,
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({provider,model,messages:ctx, auto:(getMode()==="auto")})
+});
+
     const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
     if(j?.content){
       const usedModel = j.model || model;
@@ -900,7 +929,13 @@ function editUserMessage(msgObj, row, bubbleEl){
     try{
       const {provider, model} = getProviderAndModel();
       const payload=[{role:"system",content:GLOBAL_RULES.trim()}, ...((localStorage.getItem(KEY_RULES)||"").trim()?[{role:"system",content:(localStorage.getItem(KEY_RULES)||"").trim()}]:[]), ...ctx];
-      const r=await fetch(API,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:payload})});
+      const r=await fetch(API,{
+  method:"POST",
+  signal:controller.signal,
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({provider,model,messages:payload, auto:(getMode()==="auto")})
+});
+
       const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
       if(j?.content){
         const usedModel = j.model || model;
@@ -920,6 +955,8 @@ function editUserMessage(msgObj, row, bubbleEl){
 // افزودن پیام‌ها
 function addUser(text){
   const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=text; row.appendChild(b); msgsEl.appendChild(row); msgsEl.scrollTop=msgsEl.scrollHeight;
+  scrollChatToBottom();
+
   const id=pushMsg("user", text); row.dataset.id=id; const msg=currentChat().messages.find(m=>m.id===id); attachActions(row,b,msg); return id;
 }
 function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=null){
@@ -934,6 +971,8 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   });
   if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
   msgsEl.scrollTop=msgsEl.scrollHeight;
+  scrollChatToBottom();
+
   let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
   const msg=currentChat().messages.find(m=>m.id===id);
   attachActions(row,b,msg);
@@ -942,7 +981,7 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
 }
 
 // آغاز
-addBot("سلام! برای شروع تایپ کن…");
+addBot("😺سلام! چه کمکی میتونم بهت بکنم؟");
 renderActiveChat();
 refreshModelChip();
 
