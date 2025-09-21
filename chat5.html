@@ -26,6 +26,70 @@
       --snack-bg:#0b1220; --snack-ink:#e5e7eb;
       --chip:#334155; --chip-ink:#e5e7eb;
     }
+    html, body { height: 100%; }
+body{
+  margin:0;
+  min-height: 100dvh;            /* احترام به نوارهای موبایل */
+  background:var(--bg);
+  font-family:IRANYekanX, Tahoma, Arial, sans-serif;
+  color:var(--ink);
+  font-size:var(--fz);
+}
+.wrap{
+  max-width:1000px;
+  margin:24px auto;
+  padding:0 14px;
+}
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:0;
+  display:flex;                  /* کارت = ستونِ کشسان */
+  flex-direction:column;
+  min-height: calc(100dvh - 120px); /* تقریباً تمام صفحه، بسته به هدر */
+}
+.msgs{
+  flex: 1 1 auto;         /* ارتفاع کشسان */
+  min-height: 0;          /* برای اسکرول درست در فلکس */
+  overflow:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom,0));
+}
+.foot{
+  display:flex;
+  gap:10px;
+  padding:10px calc(10px + env(safe-area-inset-right,0)) calc(10px + env(safe-area-inset-bottom,0)) calc(10px + env(safe-area-inset-left,0));
+  border-top:1px solid #eef2f7;
+  background: var(--card);
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+}
+.bubble{
+  max-width:68%;
+  padding:12px 14px;
+  border-radius:14px;
+  line-height:1.9;
+  position:relative;
+  direction: rtl;                /* متن فارسی پیش‌فرض */
+  unicode-bidi: plaintext;       /* حل پرش ایموجی و علائم خنثی */
+  text-align: start;
+}
+.rendered { direction: rtl; unicode-bidi: plaintext; }
+.rendered pre, .rendered code { direction: ltr; unicode-bidi: embed; } /* کد همیشه چپ‌به‌راست */
+:root{
+  /* ... سایر متغیرها ... */
+  --fz: clamp(14px, 1.1vw + 10px, 16px);
+}
+
+@media (max-width: 480px){
+  :root{ --fz: 15px; }
+  .bubble{ max-width: 82%; }
+}
+
 
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
@@ -307,7 +371,7 @@
         </div>
         <div class="model-row" style="border-bottom:0">
           <div class="model-cell" data-model="gpt-5-nano">gpt ۵-nano</div>
-          <div class="model-cell disabled" style="opacity:.35;cursor:not-allowed">—</div>
+          <div class="model-cell" data-model="xai/grok-3-mini">Grok 3 Mini</div>
         </div>
       </div>
 
@@ -579,7 +643,7 @@ async function check(provider, model){
 }
 
 // ====== انتخاب مدل: وضعیت و UI ======
-const PREFERRED_AUTO = ["gpt-5","gpt-5-chat","gpt-5-mini","gpt-5-nano","gpt-4.1-mini","gpt-4o-mini"];
+const PREFERRED_AUTO = ["gpt-5","gpt-5-chat","gpt-5-mini","gpt-5-nano","gpt-4.1-mini","gpt-4o-mini","xai/grok-3-mini"];
 function getMode(){ return localStorage.getItem(KEY_MODEL_MODE) || "auto"; }
 function setMode(m){ localStorage.setItem(KEY_MODEL_MODE, m); }
 function getManualModel(){ return localStorage.getItem(KEY_MODEL_MANUAL) || "gpt-4.1-mini"; }
@@ -980,6 +1044,7 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   return {row,id,bubble:b};
 }
 
+
 // آغاز
 addBot("😺سلام! چه کمکی میتونم بهت بکنم؟");
 renderActiveChat();
@@ -987,6 +1052,9 @@ refreshModelChip();
 
 // های‌لایت اولیه
 try{ hljs.highlightAll(); }catch{}
+
+
 </script>
+
 </body>
 </html>
