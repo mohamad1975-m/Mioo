@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>چت‌بات</title>
   <style>
     @font-face{
@@ -12,12 +12,17 @@
     }
 
     :root{
-      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz:16px;
+      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz: clamp(13px, 1.8vw + 9px, 16px); 
+
       --bubble-user:#8b5cf6; --bubble-user-ink:#fff; --bubble-bot:#fff; --bubble-bot-bd:#eef2f7;
       --shadow:0 10px 30px rgba(0,0,0,.06);
       --tool:.86rem; --snack-bg:#111; --snack-ink:#fff;
       --green:#22c55e; --green-ink:#fff; --chip:#0f172a; --chip-ink:#fff;
     }
+    @media (max-width: 360px){
+  :root{ --fz: 14px; }
+}
+
     .dark{
       --bg:#0b1220; --card:#0f172a; --ink:#e5e7eb; --muted:#9aa4b2;
       --bubble-user:#1f2937; --bubble-user-ink:#e5e7eb;
@@ -513,10 +518,21 @@ forceDark.onclick =()=>{ localStorage.setItem(KEY_THEME_FORCE,"dark");  localSto
 
 // init settings
 rulesSettings.value = localStorage.getItem(KEY_RULES) || "";
-const storedFz = parseInt(localStorage.getItem(KEY_FZ)||"16",10);
-document.documentElement.style.setProperty('--fz', storedFz+"px");
-document.documentElement.style.setProperty('--tool', (Math.max(12, storedFz-4))+"px");
-fzRange.value=storedFz; fzVal.textContent=storedFz;
+const savedFz = localStorage.getItem(KEY_FZ);
+if (savedFz) {
+  const px = parseInt(savedFz, 10);
+  document.documentElement.style.setProperty('--fz', px + "px");
+  document.documentElement.style.setProperty('--tool', (Math.max(12, px - 4)) + "px");
+  fzRange.value = px;
+  fzVal.textContent = px;
+} else {
+  // چیزی ذخیره نشده: بذار clamp کار خودش رو بکنه
+  const computed = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fz')) || 16;
+  document.documentElement.style.setProperty('--tool', (Math.max(12, computed - 4)) + "px");
+  fzRange.value = Math.round(computed);
+  fzVal.textContent = Math.round(computed);
+}
+
 const storedTW = localStorage.getItem(KEY_TW);
 if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
@@ -665,8 +681,7 @@ function setAutoLastModel(m){ localStorage.setItem("auto_last_model", m); }
 // باز/بسته کردن مودال انتخاب مدل
 modelChip.onclick=()=>{ openModelChooser(); };
 function openModelChooser(){
-  probeKeys();  // هر بار بازشدن مودال، وضعیت را تازه کن
-
+  
   const mode=getMode();
   updateModePills(mode);
   // هایلایت انتخاب دستی
