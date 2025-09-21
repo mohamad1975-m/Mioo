@@ -2,85 +2,267 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>صفحه مدیریت پیام‌ها</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ادمین چت‌بات</title>
   <style>
-    @font-face {
-      font-family: 'IRANYekanX';
-      src: url('./IRANYekanX-Light.woff2') format('woff2');
-      font-weight: 300;
-      font-style: normal;
-      font-display: swap;
+    @font-face{
+      font-family: "IRANYekanX";
+      src: url("./IRANYekanX-Light.woff2") format("woff2");
+      font-weight: 300; font-style: normal; font-display: swap;
     }
-    :root{--bg:#f7f7fb;--card:#fff;--ink:#111;--muted:#6b7280;--radius:16px}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:'IRANYekanX', Tahoma, Arial, sans-serif;color:var(--ink)}
-    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-    .head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
-    .head h1{font-size:20px;margin:0}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.08);padding:16px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #eee;text-align:right;vertical-align:top}
-    th{font-weight:700}
-    .muted{color:var(--muted);font-size:12px}
-    button{padding:8px 12px;border:0;border-radius:10px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    :root{
+      --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.06);
+      --accent:#0f172a; --accent-ink:#fff; --bd:#e5e7eb; --chip:#0f172a; --chip-ink:#fff;
+    }
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink)}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 14px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .tabs{display:flex;gap:8px;align-items:center}
+    .tab{border:1px solid var(--bd);padding:10px 14px;border-radius:12px;cursor:pointer;background:#fff}
+    .tab.active{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+    .grid{display:grid;gap:14px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{padding:4px 10px;border-radius:999px;background:#eef2ff}
+    .muted{color:var(--muted)}
+    input,select,button,textarea{border:1px solid var(--bd);border-radius:10px;padding:8px;font-family:IRANYekanX}
+    .btn{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 14px;cursor:pointer}
+    .ghost{background:#eef2f7;color:#111}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{text-align:right;padding:10px;background:#fff;border:1px solid var(--bd)}
+    th{background:#f1f5f9}
+    tr td:first-child, tr th:first-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    tr td:last-child, tr th:last-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+    .section-title{margin:0 0 8px 0}
+    .mono{font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px}
+    .hr{height:1px;background:#e5e7eb;margin:12px 0}
+    .flex{display:flex;gap:8px;align-items:center}
+    .right{justify-content:flex-end}
+    .tag{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chip-ink);padding:4px 10px;border-radius:999px;font-size:12px}
+    .good{background:#dcfce7;border:1px solid #86efac}
+    .bad{background:#fee2e2;border:1px solid #fecaca}
+    .code{white-space:pre-wrap; background:#0f172a;color:#e5e7eb;border-radius:10px;padding:10px}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="head">
-      <h1>مدیریت پیام‌ها</h1>
-      <div class="filters">
-        <button id="load">دریافت پیام‌ها</button>
-      </div>
-    </div>
-    <div class="card">
-      <div id="info" class="muted">برای مشاهده پیام‌ها روی «دریافت پیام‌ها» کلیک کنید.</div>
-      <div style="overflow:auto">
-        <table id="t" style="display:none">
-          <thead>
-            <tr>
-              <th>زمان</th>
-              <th>پیام</th>
-              <th>آی‌پی</th>
-              <th>دستگاه</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+<div class="wrap">
+  <div class="head">
+    <h2 style="margin:0">داشبورد مدیریت</h2>
+    <div class="tabs">
+      <button class="tab active" id="tabChats">گفتگوها</button>
+      <button class="tab" id="tabAnalytics">آنالیز</button>
     </div>
   </div>
+
+  <div class="card" id="viewChats">
+    <div class="row">
+      <select id="userList"></select>
+      <button class="btn" id="refreshUsers">به‌روزرسانی</button>
+      <span class="pill" id="userInfo">-</span>
+    </div>
+    <div class="hr"></div>
+
+    <h3 class="section-title">لیست گفتگوها</h3>
+    <div class="row">
+      <input id="searchChat" placeholder="جست‌وجو در عنوان/پیام اول…" style="min-width:280px">
+      <button class="btn ghost" id="refreshChats">نوسازی لیست</button>
+      <button class="btn" id="exportUser">اکسپورت گفتگوهای این کاربر</button>
+    </div>
+    <div id="chatsTableWrap" style="margin-top:10px;overflow:auto"></div>
+
+    <div class="hr"></div>
+    <h3 class="section-title">جزئیات گفتگو</h3>
+    <div id="chatDetail"></div>
+  </div>
+
+  <div class="card" id="viewAnalytics" style="display:none">
+    <h3 class="section-title">آمار کلی</h3>
+    <div class="row">
+      <div class="tag">گفتگوهای ایجادشده: <b id="statChats" style="margin-inline-start:6px">-</b></div>
+      <div class="tag">پیام‌ها: <b id="statMsgs" style="margin-inline-start:6px">-</b></div>
+      <div class="tag">کلیک لینک‌ها: <b id="statClicks" style="margin-inline-start:6px">-</b></div>
+      <div class="tag">کاربران یکتا (بر اساس IP): <b id="statUsers" style="margin-inline-start:6px">-</b></div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="row right">
+      <button class="btn ghost" id="refreshStats">به‌روزرسانی</button>
+      <button class="btn" id="resetAll">ریست کامل آمار و داده‌ها</button>
+      <button class="btn" id="exportAll">اکسپورت همه‌چیز (JSON)</button>
+    </div>
+
+    <h3 class="section-title" style="margin-top:16px">خروجی</h3>
+    <div id="exportBox" class="code mono"></div>
+  </div>
+</div>
+
 <script>
-  const btn = document.getElementById('load');
-  const info = document.getElementById('info');
-  const table = document.getElementById('t');
-  const tbody = document.getElementById('tbody');
+const API = location.origin + "/api";
+const $  = (id)=>document.getElementById(id);
 
-  function fmtTime(ts){ try{ const d=new Date(ts); return d.toLocaleString('fa-IR'); }catch{ return ts } }
-  function deviceFromUA(ua){ if(!ua) return '-'; const m = ua.match(/\(([^)]+)\)/); const inside = m? m[1] : ua; return inside.split(';').slice(0,3).map(s=>s.trim()).join(' · '); }
+// Tabs
+const tabChats = $("tabChats");
+const tabAnalytics = $("tabAnalytics");
+const viewChats = $("viewChats");
+const viewAnalytics = $("viewAnalytics");
+tabChats.onclick = ()=>{ tabChats.classList.add("active"); tabAnalytics.classList.remove("active"); viewChats.style.display="block"; viewAnalytics.style.display="none"; };
+tabAnalytics.onclick = ()=>{ tabAnalytics.classList.add("active"); tabChats.classList.remove("active"); viewChats.style.display="none"; viewAnalytics.style.display="block"; };
 
-  btn.addEventListener('click', async ()=>{
-    table.style.display='none'; info.textContent='در حال دریافت...';
-    tbody.innerHTML='';
-    try{
-      const r = await fetch('/api/list');
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const data = await r.json();
-      if(!Array.isArray(data) || !data.length){ info.textContent='هنوز پیامی ثبت نشده است.'; return; }
-      for(const item of data){
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${fmtTime(item.timestamp)}</td>
-          <td>${(item.message||'').replace(/</g,'&lt;')}</td>
-          <td>${item.ip||'-'}</td>
-          <td class="muted">${deviceFromUA(item.userAgent)}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-      table.style.display='table'; info.textContent='';
-    }catch(err){ info.textContent='خطا در دریافت داده‌ها.'; }
+// UI nodes
+const userList = $("userList");
+const refreshUsers = $("refreshUsers");
+const userInfo = $("userInfo");
+const searchChat = $("searchChat");
+const refreshChats = $("refreshChats");
+const exportUser = $("exportUser");
+const chatsTableWrap = $("chatsTableWrap");
+const chatDetail = $("chatDetail");
+
+// Analytics nodes
+const statChats = $("statChats");
+const statMsgs = $("statMsgs");
+const statClicks = $("statClicks");
+const statUsers = $("statUsers");
+const refreshStats = $("refreshStats");
+const resetAll = $("resetAll");
+const exportAll = $("exportAll");
+const exportBox = $("exportBox");
+
+// Helpers
+async function jget(path){ const r=await fetch(API+path); return r.json(); }
+async function jpost(path, data){ const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data||{})}); return r.json(); }
+function fmt(ts){ try{ return new Date(ts).toLocaleString("fa-IR") }catch{return "-"} }
+function escapeHtml(s=""){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+// Load users
+async function loadUsers(){
+  const data = await jget("/admin/users");
+  userList.innerHTML = "";
+  (data.users||[]).forEach(u=>{
+    const opt=document.createElement("option");
+    opt.value=u.uid;
+    opt.textContent=`${u.uid} — ${u.chats} چت — آخرین‌بار: ${fmt(u.lastSeen)}`;
+    userList.appendChild(opt);
   });
+  userInfo.textContent = (data.users?.length||0)+" کاربر";
+  if (data.users?.length) loadChatsFor(userList.value);
+}
+refreshUsers.onclick = loadUsers;
+userList.onchange = ()=> loadChatsFor(userList.value);
+
+// Chats table
+let currentChats = [];
+async function loadChatsFor(uid){
+  const data = await jget("/admin/chats?uid="+encodeURIComponent(uid));
+  currentChats = data.chats||[];
+  renderChatsTable(currentChats);
+}
+function renderChatsTable(list){
+  const q=(searchChat.value||"").trim().toLowerCase();
+  const filtered = list.filter(c=>{
+    const hay = (c.title+" "+(c.preview||"")).toLowerCase();
+    return !q || hay.includes(q);
+  });
+  const rows = filtered.map(c=>`
+    <tr>
+      <td class="mono">${escapeHtml(c.chatId)}</td>
+      <td>${escapeHtml(c.title||"-")}</td>
+      <td class="muted">${escapeHtml(c.preview||"")}</td>
+      <td class="mono">${fmt(c.updatedAt||c.createdAt)}</td>
+      <td>
+        <button class="btn ghost" data-view="${c.chatId}">نمایش</button>
+        <button class="btn" data-del="${c.chatId}">حذف</button>
+      </td>
+    </tr>
+  `).join("");
+  chatsTableWrap.innerHTML = `
+    <table>
+      <thead><tr><th>شناسه</th><th>عنوان</th><th>اولین پیام</th><th>آخرین‌به‌روزرسانی</th><th>اکشن</th></tr></thead>
+      <tbody>${rows || ""}</tbody>
+    </table>`;
+  chatsTableWrap.querySelectorAll("[data-view]").forEach(b=> b.onclick=()=> showChat(b.dataset.view));
+  chatsTableWrap.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=> delChat(b.dataset.del));
+}
+searchChat.oninput = ()=> renderChatsTable(currentChats);
+
+async function showChat(chatId){
+  const data = await jget("/admin/chat?chatId="+encodeURIComponent(chatId));
+  const chat = data.chat || {};
+  const ratings = data.ratings || {};
+  const msgs = (chat.messages||[]).map(m=>{
+    const tag = m.role==="assistant" ? "bot" : "user";
+    const rt = ratings[m.id]=== "up" ? '<span class="tag good">👍</span>' :
+             ratings[m.id]=== "down" ? '<span class="tag bad">👎</span>' : '';
+    return `
+      <div class="row" style="align-items:flex-start">
+        <div class="tag">${tag}</div>
+        ${rt}
+        <div class="muted mono">${fmt(m.ts)}</div>
+      </div>
+      <div style="margin:6px 0 12px 0; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px">
+        <div style="white-space:pre-wrap">${escapeHtml(m.content||"")}</div>
+        ${m.model?`<div class="muted mono" style="margin-top:6px">model: ${escapeHtml(m.model||"")}</div>`:""}
+        ${m.web?`<div class="muted mono">web: on</div>`:""}
+      </div>
+    `;
+  }).join("");
+  chatDetail.innerHTML = `
+    <div class="row">
+      <div class="tag">کاربر: <b class="mono" style="margin-inline-start:6px">${escapeHtml(chat.uid||"-")}</b></div>
+      <div class="tag">ایجاد: <b class="mono" style="margin-inline-start:6px">${fmt(chat.createdAt)}</b></div>
+      <div class="tag">آخرین: <b class="mono" style="margin-inline-start:6px">${fmt(chat.updatedAt)}</b></div>
+      <button class="btn" id="delThis">حذف این گفتگو</button>
+    </div>
+    <div class="hr"></div>
+    ${msgs || "<div class='muted'>— پیامی وجود ندارد —</div>"}
+  `;
+  $("delThis").onclick = ()=> delChat(chatId,true);
+}
+async function delChat(chatId, refreshDetail=false){
+  if (!confirm("حذف این گفت‌وگو؟")) return;
+  await jpost("/admin/deleteChat",{ chatId });
+  await loadChatsFor(userList.value);
+  if (refreshDetail) chatDetail.innerHTML="";
+}
+
+// Export per user
+exportUser.onclick = async()=>{
+  const uid=userList.value;
+  const data = await jget("/admin/export?uid="+encodeURIComponent(uid));
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`export_${uid}.json`; a.click();
+  URL.revokeObjectURL(url);
+};
+
+// Analytics
+async function loadStats(){
+  const s = await jget("/admin/summary");
+  statChats.textContent = s.chats||0;
+  statMsgs.textContent = s.messages||0;
+  statClicks.textContent = s.clicks||0;
+  statUsers.textContent = s.users||0;
+}
+refreshStats.onclick = loadStats;
+
+resetAll.onclick = async()=>{
+  if (!confirm("همه‌چیز ریست شود؟ (غیرقابل بازگشت)")) return;
+  const r = await jpost("/admin/reset",{ confirm:true });
+  alert(r?.ok?"ریست شد":"خطا");
+  await loadUsers(); await loadStats();
+  chatsTableWrap.innerHTML=""; chatDetail.innerHTML="";
+};
+
+exportAll.onclick = async()=>{
+  const data = await jget("/admin/export");
+  exportBox.textContent = JSON.stringify(data,null,2);
+};
+
+// Boot
+loadUsers();
+loadStats();
 </script>
 </body>
 </html>
