@@ -798,13 +798,25 @@ function refreshModelChip(){
 }
 
 // helpers (لینک‌ها در تب جدید)
-function normalizeLinks(root){ root.querySelectorAll("a[href]").forEach(a=>{ a.target="_blank"; a.rel="noopener noreferrer"; }); }
-function normalizeLinks(root){ 
+function normalizeLinks(root){
   root.querySelectorAll("a[href]").forEach(a=>{
-    a.target="_blank"; 
-    a.rel="noopener noreferrer"; 
+    a.target="_blank"; a.rel="noopener noreferrer";
+    a.addEventListener("click", async (ev)=>{
+      try{
+        const url = a.href;
+        const chatId = (currentChat()?.id || null);
+        if (chatId) {
+          await fetch(API.replace("/api/chat","/api/track/link"), {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ chat_id: chatId, url })
+          });
+        }
+      }catch{}
+    }, { passive:true });
   });
 }
+
 
 /* دامین‌ها و URL های برهنه را به لینک Markdown تبدیل می‌کند */
 function autolinkMarkdown(s=""){
@@ -1050,6 +1062,7 @@ else statusEl.textContent = "درحال پاسخ…";
     messages: payload,
     auto: (getMode()==="auto"),
     web: WEB_ON   // ← این خط اضافه شد
+    chat_id: (currentChat()?.id || null)   // ← NEW
   })
 });
 if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
@@ -1175,6 +1188,20 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   return {row,id,bubble:b};
 }
 
+
+async function rateMessage(msgId, delta){
+  try{
+    const chatId = (currentChat()?.id || null);
+    if (!chatId) return;
+    const rating = delta>0 ? "up" : "down";
+    await fetch(API.replace("/api/chat","/api/track/rate"), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating })
+    });
+    // (اختیاری) می‌تونی توی UI هم یک بازخورد نشون بدی
+  }catch{}
+}
 
 // آغاز
 addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
