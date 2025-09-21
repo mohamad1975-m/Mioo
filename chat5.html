@@ -258,7 +258,6 @@ body{
       <span id="status" class="pill">آماده</span>
     </div>
     <div class="row">
-      <small class="mono" id="probe"></small>
       <button id="openSettings" class="gear" title="تنظیمات" aria-label="Settings">
         <svg viewBox="0 0 24 24"><path d="M19.14,12.94a7.73,7.73,0,0,0,.05-.94,7.73,7.73,0,0,0-.05-.94l2.11-1.65a.5.5,0,0,0,.12-.64l-2-3.46a.5.5,0,0,0-.6-.22l-2.49,1a7.28,7.28,0,0,0-1.63-.94l-.38-2.65A.5.5,0,0,0,13.8,1H10.2a.5.5,0,0,0-.5.42L9.32,4.07a7.28,7.28,0,0,0-1.63.94l-2.49-1a.5.5,0,0,0-.6.22l-2,3.46a.5.5,0,0,0,.12.64L4.86,11.06a7.73,7.73,0,0,0-.05.94,7.73,7.73,0,0,0,.05.94L2.75,14.59a.5.5,0,0,0-.12.64l2,3.46a.5.5,0,0,0,.6.22l2.49-1a7.28,7.28,0,0,0,1.63.94l.38,2.65a.5.5,0,0,0,.5.42h3.6a.5.5,0,0,0,.5-.42l.38-2.65a7.28,7.28,0,0,0,1.63-.94l2.49,1a.5.5,0,0,0,.6-.22l2-3.46a.5.5,0,0,0-.12-.64Zm-7.14,2.56A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>
       </button>
@@ -382,7 +381,12 @@ body{
         <small>در حالت دستی، مدل انتخابی فقط توسط خود شما تغییر می‌کند و در صورت محدودیت، خطا نمایش داده می‌شود.</small>
       </div>
     </div>
-
+    <hr style="border:none;border-top:1px dashed #cbd5e1; margin:12px 0">
+    <div>
+      <b>وضعیت کلیدها</b>
+      <div id="probeInModal" class="mono" style="margin-top:6px">درحال بررسی…</div>
+    </div>
+    
     <div class="actions" style="margin-top:12px">
       <button id="closeModel" class="link ghost">لغو</button>
       <button id="saveModel" class="link">ذخیره</button>
@@ -418,7 +422,8 @@ const btn = $("sendBtn");
 const sendIcon = $("sendIcon");
 const stopIcon = $("stopIcon");
 const statusEl = $("status");
-const probe = $("probe");
+const probeInModal = $("probeInModal");
+
 
 // settings
 const openSettingsBtn = $("openSettings");
@@ -633,7 +638,8 @@ function deleteChatWithUndo(id, title){
 (async function probeKeys(){
   const okGithub = await check("github","gpt-5-mini"); // یکی از مدل‌های جدید
   const okGemini = await check("gemini","gemini-1.5-flash-latest");
-  if (probe) probe.textContent=`GitHub ${okGithub?"✅":"⚠️"} | Gemini ${okGemini?"✅":"⚠️"}`;
+  if (probeInModal) probeInModal.textContent = `GitHub ${okGithub?"✅":"⚠️"} | Gemini ${okGemini?"✅":"⚠️"}`;
+
 })();
 async function check(provider, model){
   try{
@@ -659,6 +665,8 @@ function setAutoLastModel(m){ localStorage.setItem("auto_last_model", m); }
 // باز/بسته کردن مودال انتخاب مدل
 modelChip.onclick=()=>{ openModelChooser(); };
 function openModelChooser(){
+  probeKeys();  // هر بار بازشدن مودال، وضعیت را تازه کن
+
   const mode=getMode();
   updateModePills(mode);
   // هایلایت انتخاب دستی
@@ -1046,7 +1054,7 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
 
 
 // آغاز
-addBot("😺سلام! چه کمکی میتونم بهت بکنم؟");
+addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
 renderActiveChat();
 refreshModelChip();
 
