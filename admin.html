@@ -43,6 +43,17 @@
     .good{background:#dcfce7;border:1px solid #86efac}
     .bad{background:#fee2e2;border:1px solid #fecaca}
     .code{white-space:pre-wrap; background:#0f172a;color:#e5e7eb;border-radius:10px;padding:10px}
+    /* === Chat Modal === */
+.modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:9999; padding:16px}
+.modal.show{display:flex}
+.modal-card{background:#fff; border-radius:16px; width:min(900px,96vw); max-height:86vh; overflow:auto; box-shadow:0 10px 40px rgba(0,0,0,.2); padding:16px}
+.modal-head{display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:8px}
+.close-x{background:#eef2f7; border:1px solid #e5e7eb; border-radius:10px; padding:8px 12px; cursor:pointer}
+@media (prefers-color-scheme: dark){
+  .modal-card{background:#0f172a; color:#e5e7eb}
+  .close-x{background:#1f2937; color:#e5e7eb; border-color:#1f2937}
+}
+
   </style>
 </head>
 <body>
@@ -190,52 +201,7 @@ async function showChat(chatId){
   const data = await jget("/admin/chat?chatId="+encodeURIComponent(chatId));
   const chat = data.chat || {};
   const ratings = data.ratings || {};
-  const msgs = (chat.messages||[]).map(m=>{
-    const tag = m.role==="assistant" ? "bot" : "user";
-    const rt = ratings[m.id]=== "up" ? '<span class="tag good">👍</span>' :
-             ratings[m.id]=== "down" ? '<span class="tag bad">👎</span>' : '';
-    return `
-      <div class="row" style="align-items:flex-start">
-        <div class="tag">${tag}</div>
-        ${rt}
-        <div class="muted mono">${fmt(m.ts)}</div>
-      </div>
-      <div style="margin:6px 0 12px 0; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px">
-        <div style="white-space:pre-wrap">${escapeHtml(m.content||"")}</div>
-        ${m.model?`<div class="muted mono" style="margin-top:6px">model: ${escapeHtml(m.model||"")}</div>`:""}
-        ${m.web?`<div class="muted mono">web: on</div>`:""}
-      </div>
-    `;
-  }).join("");
-  chatDetail.innerHTML = `
-    <div class="row">
-      <div class="tag">کاربر: <b class="mono" style="margin-inline-start:6px">${escapeHtml(chat.uid||"-")}</b></div>
-      <div class="tag">ایجاد: <b class="mono" style="margin-inline-start:6px">${fmt(chat.createdAt)}</b></div>
-      <div class="tag">آخرین: <b class="mono" style="margin-inline-start:6px">${fmt(chat.updatedAt)}</b></div>
-      <button class="btn" id="delThis">حذف این گفتگو</button>
-    </div>
-    <div class="hr"></div>
-    ${msgs || "<div class='muted'>— پیامی وجود ندارد —</div>"}
-  `;
-  $("delThis").onclick = ()=> delChat(chatId,true);
-}
-async function delChat(chatId, refreshDetail=false){
-  if (!confirm("حذف این گفت‌وگو؟")) return;
-  await jpost("/admin/deleteChat",{ chatId });
-  await loadChatsFor(userList.value);
-  if (refreshDetail) chatDetail.innerHTML="";
-}
 
-// ---- modal helpers:
-const chatModal = document.getElementById("chatModal");
-const chatModalBody = document.getElementById("chatModalBody");
-document.getElementById("closeChatModal").onclick = () => { chatModal.style.display = "none"; };
-
-// ---- override showChat to open modal instead of inline:
-async function showChat(chatId){
-  const data = await jget("/admin/chat?chatId="+encodeURIComponent(chatId));
-  const chat = data.chat || {};
-  const ratings = data.ratings || {};
   const msgs = (chat.messages||[]).map(m=>{
     const tag = m.role==="assistant" ? "bot" : "user";
     const rt = ratings[m.id]==="up" ? '<span class="tag good">👍</span>' :
@@ -254,8 +220,8 @@ async function showChat(chatId){
     `;
   }).join("");
 
-  chatModalBody.innerHTML = `
-    <div class="row">
+  const bodyHtml = `
+    <div class="row" style="flex-wrap:wrap; gap:8px">
       <div class="tag">کاربر: <b class="mono" style="margin-inline-start:6px">${escapeHtml(chat.uid||"-")}</b></div>
       <div class="tag">ایجاد: <b class="mono" style="margin-inline-start:6px">${fmt(chat.createdAt)}</b></div>
       <div class="tag">آخرین: <b class="mono" style="margin-inline-start:6px">${fmt(chat.updatedAt)}</b></div>
@@ -264,10 +230,33 @@ async function showChat(chatId){
     <div class="hr"></div>
     ${msgs || "<div class='muted'>— پیامی وجود ندارد —</div>"}
   `;
-  document.getElementById("delThis").onclick = ()=> delChat(chatId,true);
 
-  chatModal.style.display = "flex"; // ← بازش کن
+  // تزریق در مودال و نمایش
+  const chatModal = document.getElementById("chatModal");
+  const chatModalBody = document.getElementById("chatModalBody");
+  const closeChatModal = document.getElementById("closeChatModal");
+
+  chatModalBody.innerHTML = bodyHtml;
+  chatModal.classList.add("show");
+  chatModal.setAttribute("aria-hidden","false");
+
+  // بستن مودال
+  const closeFn = ()=>{ chatModal.classList.remove("show"); chatModal.setAttribute("aria-hidden","true"); };
+  closeChatModal.onclick = closeFn;
+  chatModal.onclick = (e)=>{ if(e.target===chatModal) closeFn(); };
+  document.addEventListener("keydown", function escHandler(ev){
+    if(ev.key==="Escape"){ closeFn(); document.removeEventListener("keydown", escHandler); }
+  });
+
+  // حذف گفتگو از داخل مودال
+  document.getElementById("delThis").onclick = async()=>{
+    if (!confirm("حذف این گفت‌وگو؟")) return;
+    await jpost("/admin/deleteChat",{ chatId });
+    await loadChatsFor(userList.value);
+    closeFn();
+  };
 }
+
 
 // Export per user
 exportUser.onclick = async()=>{
@@ -304,19 +293,28 @@ exportAll.onclick = async()=>{
 };
 
 // Boot
-loadUsers();
-loadStats();
-</script>
-<!-- Modal for chat view -->
-<div id="chatModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:999; align-items:center; justify-content:center; padding:16px">
-  <div style="background:#fff; max-width:900px; width:100%; max-height:80vh; overflow:auto; border-radius:16px; padding:16px">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px">
+<!-- Modal: نمایش جزئیات گفتگو -->
+<div id="chatModal" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
       <h3 style="margin:0">جزئیات گفتگو</h3>
-      <button id="closeChatModal" class="btn ghost">بستن</button>
+      <button id="closeChatModal" class="close-x">بستن</button>
     </div>
     <div id="chatModalBody"></div>
   </div>
 </div>
 
+loadUsers();
+loadStats();
+<script>
+  (function(){
+    let password = prompt("لطفا رمز عبور را وارد کن:");
+    if(password !== "1234"){
+      alert("رمز اشتباه است. دسترسی مسدود شد.");
+      document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px'>رمز اشتباه است. دسترسی مسدود شد.</h2>";
+    }
+  })();
+</script>
+</script>
 </body>
 </html>
