@@ -908,8 +908,11 @@ function attachActions(row, bubbleEl, msgObj){
     // 1) بیرون حباب: 👍 / 👎 عمودی
     const upBtn = btn("پاسخ خوب", SVGs.thumbUp, ()=> rateMessage(msgObj.id, +1));
     const downBtn = btn("پاسخ بد", SVGs.thumbDown, ()=> rateMessage(msgObj.id, -1));
+    upBtn.classList.add("thumb-up");
+downBtn.classList.add("thumb-down");
     col.appendChild(upBtn);
     col.appendChild(downBtn);
+
 
     // 2) داخل حباب پایین: 📋 / ℹ️ / ↻
     const copyBtn = btn("کپی متن پاسخ", SVGs.copy, async()=>{
@@ -942,6 +945,16 @@ function attachActions(row, bubbleEl, msgObj){
     inline.appendChild(infoBtn);
     bubbleEl.appendChild(inline);
   }
+  // بعد از ساخت دکمه‌ها و قبل از خروج از attachActions:
+const saved = loadRatings()[msgObj.id];
+if (saved === "up"){
+  row.classList.add("liked");
+  row.classList.remove("disliked");
+} else if (saved === "down"){
+  row.classList.add("disliked");
+  row.classList.remove("liked");
+}
+
 }
 
 // جزییات پیام
@@ -1257,21 +1270,36 @@ try{
 }
 
 
-async function rateMessage(msgId, delta){
+async function rateMessage(msgId, delta, row){
   try{
     const chatId = (currentChat()?.id || null);
     if (!chatId) return;
+
     const rating = delta>0 ? "up" : "down";
-    const serverMsgId = (currentChat()?.messages.find(m=>m.id===msgId)?.versions?.[0]?.meta?.server_id) || msgId;
+    const res = await fetch(API.replace("/api/chat","/api/track/rate"), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating })
+    });
 
-await fetch(API.replace("/api/chat","/api/track/rate"), {
-  method:"POST", headers:{ "Content-Type":"application/json" },
-  body: JSON.stringify({ chat_id: chatId, msg_id: serverMsgId, rating })
-});
+    // UI state + حافظه‌ی محلی
+    const map = loadRatings();         // ← از قبل تو کدت هست
+    map[msgId] = rating;
+    saveRatings(map);
 
-    // (اختیاری) می‌تونی توی UI هم یک بازخورد نشون بدی
+    // رنگ‌دهی دکمه‌ها با کلاس روی ردیف
+    if (row){
+      if (rating === "up"){
+        row.classList.add("liked");
+        row.classList.remove("disliked");
+      } else {
+        row.classList.add("disliked");
+        row.classList.remove("liked");
+      }
+    }
   }catch{}
 }
+
 
 // آغاز
 addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
