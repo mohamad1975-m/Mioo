@@ -1108,7 +1108,13 @@ async function retryAssistant(msgObj, row, bubbleEl){
   method:"POST",
   signal:controller.signal,
   headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({provider,model,messages:ctx, auto:(getMode()==="auto")})
+   body: JSON.stringify({
+   provider, model,
+   messages: payload,
+   auto: (getMode()==="auto"),
+   web: WEB_ON,                               // برای علامت‌گذاری جستجو در وب
+   chat_id: (currentChat()?.id || null)       // شناسه‌ی چت سمت کلاینت
+ })
 });
 
     const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
