@@ -1181,35 +1181,43 @@ function editUserMessage(msgObj, row, bubbleEl){
 }
 
 // افزودن پیام‌ها
-function addUser(text){
-  const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=text; row.appendChild(b); msgsEl.appendChild(row); msgsEl.scrollTop=msgsEl.scrollHeight;
+
+// ... بالای همین اسکریپت هستی ...
+
+async function addUser(text){
+  const row = makeRow();
+  const b = document.createElement("div");
+  b.className = "bubble user";
+  b.textContent = text;
+  row.appendChild(b);
+  msgsEl.appendChild(row);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
   scrollChatToBottom();
 
   const id = pushMsg("user", text);
-row.dataset.id = id;
-const msg = currentChat().messages.find(m=>m.id===id);
-attachActions(row,b,msg);
+  row.dataset.id = id;
+  const msg = currentChat().messages.find(m => m.id === id);
+  attachActions(row, b, msg);
 
-// ← ثبت پیام کاربر
-// ← ثبت پیام کاربر (بدون await تا اسکریپت نایسته)
-try{
-  const chatId = currentChat()?.id;
-  fetch(API.replace("/api/chat","/api/track/msg"), {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      msg_id: id,
-      role: "user",
-      length: (text||"").length
-    })
-  }).catch(()=>{});
-}catch{}
+  // ← ثبت پیام کاربر (اختیاری/آنالیتیکس)
+  try{
+    const chatId = currentChat()?.id;
+    await fetch(API.replace("/api/chat","/api/track/msg"), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        msg_id: id,
+        role: "user",
+        length: (text||"").length
+      })
+    });
+  }catch{}
 
-
-return id;
-
+  return id;
 }
+
+
 function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=null){
   const row= existingRow || makeRow(); const b=document.createElement("div");
   b.className="bubble bot"+(asError?" err":"");
