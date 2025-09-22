@@ -223,11 +223,31 @@ body{
     .dark .mode-pill{border-color:#1f2937}
     .mode-pill.active{background:var(--green); color:var(--green-ink); border-color:transparent}
     /* آیکون‌ها در حالت شب */
+/* در حالت تیره هم fill نریز؛ فقط stroke سفید باشه */
 .dark .tool-btn svg,
 .dark .inline-tools .tool-btn svg {
-  fill: #fff;     /* رنگ سفید برای SVG */
-  color: #fff;    /* برای آیکن‌هایی که با color کار می‌کنن */
+  stroke:#fff;
+  fill: none;
+  color:#fff; /* برای مواردی که از color استفاده میشه */
 }
+
+/* پیش‌فرض: آوت‌لاین خاکستری کم‌رنگ */
+.tool-btn { color:#94a3b8 }
+.tool-btn svg{
+  width:var(--tool);
+  height:var(--tool);
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;            /* خیلی مهم: توخالی */
+}
+
+/* وقتی فعال (رای داده شده) می‌شه، رنگ بگیر و پر شو */
+.tool-btn.active svg{ fill: currentColor; }
+
+.tool-btn.active.up   { color:#16a34a; } /* شست بالا */
+.tool-btn.active.down { color:#dc2626; } /* شست پایین */
+.tool-btn.active.info { color:#0ea5e9; } /* دکمه اطلاعات اختیاری */
+
 .hidden{ display:none; }
 .model-help{
   border:1px dashed #cbd5e1;
@@ -243,6 +263,9 @@ body{
 #webToggle { border-radius: 12px; }
 #webToggle.on { background:#10b981; border-color:#10b981; }
 #webToggle.on svg { fill:#fff; }
+
+.tool-btn.active { opacity: 1; }
+.tool-btn:not(.active) { opacity: .85; }
 
   </style>
 
@@ -537,6 +560,28 @@ const KEY_THEME_FORCE="ui_theme_force_v1";
 const KEY_MODEL_MODE="model_mode_v1";      // 'auto' | 'manual'
 const KEY_MODEL_MANUAL="model_manual_v1";  // string model id
 const KEY_RATINGS="message_ratings_v1";    // { [msgId]: 'up' | 'down' }
+const KEY_LOCAL_RATINGS = "local_ratings_v1"; // { [msgId]: "up" | "down" }
+function loadLocalRatings(){ try{return JSON.parse(localStorage.getItem(KEY_LOCAL_RATINGS)||"{}")}catch{return{}} }
+function saveLocalRatings(x){ localStorage.setItem(KEY_LOCAL_RATINGS, JSON.stringify(x||{})); }
+
+function setThumbUI(upBtn, downBtn, state){ 
+  // state: "up" | "down" | null
+  if (upBtn){
+    upBtn.classList.toggle("active", state==="up");
+    upBtn.innerHTML = state==="up" ? SVGsFilled.thumbUp : SVGsOutline.thumbUp;
+  }
+  if (downBtn){
+    downBtn.classList.toggle("active", state==="down");
+    downBtn.innerHTML = state==="down" ? SVGsFilled.thumbDown : SVGsOutline.thumbDown;
+  }
+}
+
+function toggleInfoUI(infoBtn, on){
+  if(!infoBtn) return;
+  infoBtn.classList.toggle("active", !!on);
+  infoBtn.innerHTML = on ? SVGsFilled.info : SVGsOutline.info;
+}
+
 
 // قوانین کلی
 const GLOBAL_RULES = `
@@ -720,12 +765,22 @@ function deleteChatWithUndo(id, title){
   if (probeInModal) probeInModal.textContent = `GitHub ${okGithub?"✅":"⚠️"} | Gemini ${okGemini?"✅":"⚠️"}`;
 
 })();
+
 async function check(provider, model){
   try{
-    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:[{role:"user",content:"پینگ"}]})});
-    const j=await r.json(); return !!j?.content;
-  }catch{return false;}
+    const r = await fetch(API.replace("/api/chat","/api/ping"), {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ provider, model })
+    });
+    const j = await r.json();
+    return !!j?.ok;
+  }catch{
+    return false;
+  }
 }
+
+
 const openModelHelp = $("openModelHelp");
 const modelMain = $("modelMain");
 const modelHelp = $("modelHelp");
@@ -858,17 +913,32 @@ function appendVersion(id, content, meta={}){ updateCurrentChat(c=>{ const m=c.m
 function contextLast(n=16){ const ch=currentChat(); if(!ch) return []; return ch.messages.slice(-n).map(m=>({role:m.role, content:m.versions[m.active].content})); }
 
 // آیکون‌ها
-const SVGs={
-  copy:`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>`,
-  check:`<svg viewBox="0 0 24 24"><path d="M9 16.17l-3.5-3.5L4 14.17l5 5 12-12-1.41-1.41z"/></svg>`,
-  retry:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a8 8 0 1 0 7.446 5.032 1 1 0 1 0-1.888.662A6 6 0 1 1 12 6v2a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1h-4a1 1 0 1 0 0 2h2Z"/></svg>`,
-  info:`<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`, /* آیکون جزئیات جدید */
-  left:`<svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`,
-  right:`<svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>`,
-  edit:`<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0L15.13 5.1l3.75 3.75 1.83-1.81z"/></svg>`,
+const SVGs = {
+  copy:`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  check:`<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  retry:`<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.708" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 3v6h6" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  info:`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v.01M12 12v4" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  left:`<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  right:`<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24"><path d="M4 21h4l11-11-4-4L4 17v4z" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+  // آیکن‌های شست بصورت Outline:
   thumbUp:`<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h4v11zm12-9a3 3 0 0 0-3-3h-4.31l.95-4.57.03-.32a1 1 0 0 0-.29-.7L13 2 7.59 7.41A2 2 0 0 0 7 8.83V20a2 2 0 0 0 2 2h7a3 3 0 0 0 3-3v-7z"/></svg>`,
   thumbDown:`<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4V3zM3 12a3 3 0 0 0 3 3h4.31l-.95 4.57-.03.32c0 .26.1.51.29.7L11 22l5.41-5.41A2 2 0 0 0 17 15.17V4a2 2 0 0 0-2-2H8a3 3 0 0 0-3 3v7z"/></svg>`
 };
+
+
+// --- SVGهای حالت پر/خالی برای رأی و جزئیات ---
+const SVGsFilled = {
+  thumbUp: `<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h4v11zm12-9a3 3 0 0 0-3-3h-4.31l.95-4.57.03-.32c0-.27-.1-.52-.29-.71L13 2 7.59 7.41A2 2 0 0 0 7 8.83V20a2 2 0 0 0 2 2h7a3 3 0 0 0 3-3v-7z" fill="currentColor"/></svg>`,
+  thumbDown: `<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4V3zM3 12a3 3 0 0 0 3 3h4.31l-.95 4.57-.03.32c0 .27.1.52.29.71L11 22l5.41-5.41A2 2 0 0 0 17 15.17V4a2 2 0 0 0-2-2H8a3 3 0 0 0-3 3v7z" fill="currentColor"/></svg>`,
+  info: `<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/></svg>`
+};
+const SVGsOutline = {
+  thumbUp: SVGs.thumbUp,
+  thumbDown: SVGs.thumbDown,
+  info: SVGs.info
+};
+
 
 // رأی‌ها
 function loadRatings(){ try{return JSON.parse(localStorage.getItem(KEY_RATINGS)||"{}")}catch{return{}} }
@@ -903,48 +973,51 @@ function attachActions(row, bubbleEl, msgObj){
   // --- مشترک‌ها
   const openInfo = () => openMsgInfo ? openMsgInfo(msgObj, bubbleEl) : null;
 
+  const localMap = loadLocalRatings(); // وضعیت ذخیره‌شدهٔ محلی
+
   // --- پیام‌های دستیار
   if (msgObj.role === "assistant"){
-    // 1) بیرون حباب: 👍 / 👎 عمودی
-    const upBtn = btn("پاسخ خوب", SVGs.thumbUp, ()=> rateMessage(msgObj.id, +1));
-    const downBtn = btn("پاسخ بد", SVGs.thumbDown, ()=> rateMessage(msgObj.id, -1));
-    upBtn.classList.add("thumb-up");
-downBtn.classList.add("thumb-down");
-    col.appendChild(upBtn);
-    col.appendChild(downBtn);
+  const upBtn = btn("پاسخ خوب", SVGsOutline.thumbUp, ()=> rateMessage(msgObj.id, +1, upBtn, downBtn));
+  const downBtn = btn("پاسخ بد", SVGsOutline.thumbDown, ()=> rateMessage(msgObj.id, -1, upBtn, downBtn));
+  col.appendChild(upBtn);
+  col.appendChild(downBtn);
 
+  const copyBtn = btn("کپی متن پاسخ", SVGs.copy, async()=>{
+    const t = bubbleEl.querySelector(".rendered")?.innerText || "";
+    await navigator.clipboard.writeText(t);
+    copyBtn.innerHTML = SVGs.check;
+    setTimeout(()=>copyBtn.innerHTML = SVGs.copy, 1200);
+  });
 
-    // 2) داخل حباب پایین: 📋 / ℹ️ / ↻
-    const copyBtn = btn("کپی متن پاسخ", SVGs.copy, async()=>{
-      const t = bubbleEl.querySelector(".rendered")?.innerText || "";
-      await navigator.clipboard.writeText(t);
-      copyBtn.innerHTML = SVGs.check;
-      setTimeout(()=>copyBtn.innerHTML = SVGs.copy, 1200);
-    });
+  const infoBtn = btn("جزئیات پیام", SVGsOutline.info, ()=>{
+    toggleInfoUI(infoBtn, true);
+    openInfo();
+  });
 
-    const infoBtn = btn("جزئیات پیام", SVGs.info, openInfo);
+  const retryBtn = btn("دریافت مجدد", SVGs.retry, ()=>{
+    retryAssistant(msgObj, row, bubbleEl);
+  });
 
-    const retryBtn = btn("دریافت مجدد", SVGs.retry, ()=>{
-      retryAssistant(msgObj, row, bubbleEl);
-    });
+  inline.appendChild(copyBtn);
+  inline.appendChild(infoBtn);
+  inline.appendChild(retryBtn);
+  bubbleEl.appendChild(inline);
 
-    inline.appendChild(copyBtn);
-    inline.appendChild(infoBtn);
-    inline.appendChild(retryBtn);
-    bubbleEl.appendChild(inline); // ردیف ابزار وارد حباب شود
-  }
+  // وضعیت اولیه‌ی رأی از localStorage
+  setThumbUI(upBtn, downBtn, localMap[msgObj.id] || null);
+}
+
 
   // --- پیام‌های کاربر
   else {
-    // طبق خواسته‌ت: نه «پاسخ خوب/بد»، نه «کپی» بیرونی
-    // فقط «جزئیات» از طریق پنجره‌ی اطلاعات پیام
-    const infoBtn = btn("جزئیات پیام", SVGs.info, openInfo);
+  const infoBtn = btn("جزئیات پیام", SVGsOutline.info, ()=>{
+    toggleInfoUI(infoBtn, true);
+    openInfo();
+  });
+  inline.appendChild(infoBtn);
+  bubbleEl.appendChild(inline);
+}
 
-    // اگر می‌خواهی مثل عکس «ℹ️» نزدیک بالای حباب دیده شود:
-    // یک ردیف کوچک داخل حباب اضافه می‌کنیم (فقط آیکن اطلاعات)
-    inline.appendChild(infoBtn);
-    bubbleEl.appendChild(inline);
-  }
   // بعد از ساخت دکمه‌ها و قبل از خروج از attachActions:
 const saved = loadRatings()[msgObj.id];
 if (saved === "up"){
@@ -989,6 +1062,9 @@ function openMsgInfo(msgObj, bubbleEl){
   ok.className="link"; ok.textContent="بستن";
   ok.onclick=()=>{ msgInfo.classList.remove("show"); msgInfo.setAttribute("aria-hidden","true"); };
   msgInfoActions.appendChild(ok);
+  
+
+  
 
   msgInfo.classList.add("show"); msgInfo.setAttribute("aria-hidden","false");
 }
@@ -1270,35 +1346,33 @@ try{
 }
 
 
-async function rateMessage(msgId, delta, row){
+async function rateMessage(msgId, delta, upBtn, downBtn){
   try{
     const chatId = (currentChat()?.id || null);
     if (!chatId) return;
-
     const rating = delta>0 ? "up" : "down";
-    const res = await fetch(API.replace("/api/chat","/api/track/rate"), {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating })
-    });
 
-    // UI state + حافظه‌ی محلی
-    const map = loadRatings();         // ← از قبل تو کدت هست
-    map[msgId] = rating;
-    saveRatings(map);
+    // 1) ذخیرهٔ محلی برای UI فوری
+    const map = loadLocalRatings();
+    // اگر دوباره روی همان رأی کلیک شد → حذف
+    const newState = (map[msgId] === rating) ? null : rating;
+    if (newState) map[msgId] = newState; else delete map[msgId];
+    saveLocalRatings(map);
 
-    // رنگ‌دهی دکمه‌ها با کلاس روی ردیف
-    if (row){
-      if (rating === "up"){
-        row.classList.add("liked");
-        row.classList.remove("disliked");
-      } else {
-        row.classList.add("disliked");
-        row.classList.remove("liked");
-      }
+    // 2) آپدیت UI فوری
+    setThumbUI(upBtn, downBtn, newState);
+
+    // 3) ارسال به سرور (فقط وقتی حالت null نیست؛ می‌تونی دلخواه null هم بفرستی و سمت ورکر هندل کنی)
+    if (newState){
+      await fetch(API.replace("/api/chat","/api/track/rate"), {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating: newState })
+      });
     }
   }catch{}
 }
+
 
 
 // آغاز
