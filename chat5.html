@@ -1087,7 +1087,7 @@ else statusEl.textContent = "درحال پاسخ…";
     if(j?.content){
       const usedModel = j.model || model;
       if(getMode()==="auto"){ setAutoLastModel(usedModel); refreshModelChip(); } // نمایش مدل واقعی
-      const meta={model: usedModel};
+      const meta={ model: usedModel, server_id: (j.assistant_msg_id || null) };
       const res=addBot("",false,meta);
       await typewriter(res.bubble.querySelector(".rendered"), j.content);
       appendVersion(res.id, j.content, meta);
@@ -1262,11 +1262,13 @@ async function rateMessage(msgId, delta){
     const chatId = (currentChat()?.id || null);
     if (!chatId) return;
     const rating = delta>0 ? "up" : "down";
-    await fetch(API.replace("/api/chat","/api/track/rate"), {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating })
-    });
+    const serverMsgId = (currentChat()?.messages.find(m=>m.id===msgId)?.versions?.[0]?.meta?.server_id) || msgId;
+
+await fetch(API.replace("/api/chat","/api/track/rate"), {
+  method:"POST", headers:{ "Content-Type":"application/json" },
+  body: JSON.stringify({ chat_id: chatId, msg_id: serverMsgId, rating })
+});
+
     // (اختیاری) می‌تونی توی UI هم یک بازخورد نشون بدی
   }catch{}
 }
