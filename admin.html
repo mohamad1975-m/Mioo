@@ -226,49 +226,6 @@ async function delChat(chatId, refreshDetail=false){
   if (refreshDetail) chatDetail.innerHTML="";
 }
 
-// ---- modal helpers:
-const chatModal = document.getElementById("chatModal");
-const chatModalBody = document.getElementById("chatModalBody");
-document.getElementById("closeChatModal").onclick = () => { chatModal.style.display = "none"; };
-
-// ---- override showChat to open modal instead of inline:
-async function showChat(chatId){
-  const data = await jget("/admin/chat?chatId="+encodeURIComponent(chatId));
-  const chat = data.chat || {};
-  const ratings = data.ratings || {};
-  const msgs = (chat.messages||[]).map(m=>{
-    const tag = m.role==="assistant" ? "bot" : "user";
-    const rt = ratings[m.id]==="up" ? '<span class="tag good">👍</span>' :
-               ratings[m.id]==="down" ? '<span class="tag bad">👎</span>' : '';
-    return `
-      <div class="row" style="align-items:flex-start">
-        <div class="tag">${tag}</div>
-        ${rt}
-        <div class="muted mono">${fmt(m.ts)}</div>
-      </div>
-      <div style="margin:6px 0 12px 0; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px">
-        <div style="white-space:pre-wrap">${escapeHtml(m.content||"")}</div>
-        ${m.model?`<div class="muted mono" style="margin-top:6px">model: ${escapeHtml(m.model||"")}</div>`:""}
-        ${m.web?`<div class="muted mono">web: on</div>`:""}
-      </div>
-    `;
-  }).join("");
-
-  chatModalBody.innerHTML = `
-    <div class="row">
-      <div class="tag">کاربر: <b class="mono" style="margin-inline-start:6px">${escapeHtml(chat.uid||"-")}</b></div>
-      <div class="tag">ایجاد: <b class="mono" style="margin-inline-start:6px">${fmt(chat.createdAt)}</b></div>
-      <div class="tag">آخرین: <b class="mono" style="margin-inline-start:6px">${fmt(chat.updatedAt)}</b></div>
-      <button class="btn" id="delThis">حذف این گفتگو</button>
-    </div>
-    <div class="hr"></div>
-    ${msgs || "<div class='muted'>— پیامی وجود ندارد —</div>"}
-  `;
-  document.getElementById("delThis").onclick = ()=> delChat(chatId,true);
-
-  chatModal.style.display = "flex"; // ← بازش کن
-}
-
 // Export per user
 exportUser.onclick = async()=>{
   const uid=userList.value;
@@ -307,16 +264,5 @@ exportAll.onclick = async()=>{
 loadUsers();
 loadStats();
 </script>
-<!-- Modal for chat view -->
-<div id="chatModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:999; align-items:center; justify-content:center; padding:16px">
-  <div style="background:#fff; max-width:900px; width:100%; max-height:80vh; overflow:auto; border-radius:16px; padding:16px">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px">
-      <h3 style="margin:0">جزئیات گفتگو</h3>
-      <button id="closeChatModal" class="btn ghost">بستن</button>
-    </div>
-    <div id="chatModalBody"></div>
-  </div>
-</div>
-
 </body>
 </html>
