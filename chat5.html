@@ -613,14 +613,26 @@ const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
 const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
 const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
 const saveChats=(chs)=> localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
-function createNewActiveChat(){
-  const id=uid(); const chs=loadChats();
-  chs.unshift({id, title:"گفت‌وگوی جدید", messages:[], updatedAt:Date.now()});
-  saveChats(chs); localStorage.setItem(KEY_ACTIVE_CHAT, id);
-  msgsEl.innerHTML="";
-  const id=pushMsg("user", text); row.dataset.id=id; const msg=currentChat().messages.find(m=>m.id===id); attachActions(row,b,msg); return id;
+async function createNewActiveChat(){
+  const id = uid();
+  const chs = loadChats();
+  chs.unshift({ id, title: "گفت‌وگوی جدید", messages: [], updatedAt: Date.now() });
+  saveChats(chs);
+  localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  msgsEl.innerHTML = "";
 
+  // ثبت آغاز گفتگو در سرور
+  try {
+    await fetch(API.replace("/api/chat","/api/track/chat_open"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: id, title: "گفت‌وگوی جدید" })
+    });
+  } catch {}
+
+  renderActiveChat();
 }
+
 function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return loadChats().find(c=>c.id===id); }
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
 function setActiveChat(id){ localStorage.setItem(KEY_ACTIVE_CHAT, id); renderActiveChat(); }
@@ -1173,9 +1185,10 @@ const msg = currentChat().messages.find(m=>m.id===id);
 attachActions(row,b,msg);
 
 // ← ثبت پیام کاربر
+// ← ثبت پیام کاربر (بدون await تا اسکریپت نایسته)
 try{
   const chatId = currentChat()?.id;
-  await fetch(API.replace("/api/chat","/api/track/msg"), {
+  fetch(API.replace("/api/chat","/api/track/msg"), {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
@@ -1184,8 +1197,9 @@ try{
       role: "user",
       length: (text||"").length
     })
-  });
+  }).catch(()=>{});
 }catch{}
+
 
 return id;
 
@@ -1209,9 +1223,10 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   attachActions(row,b,msg);
   try{ hljs.highlightAll(); }catch{}
   // ← ثبت پیام دستیار
+// ← ثبت پیام دستیار (بدون await)
 try{
   const chatId = currentChat()?.id;
-  await fetch(API.replace("/api/chat","/api/track/msg"), {
+  fetch(API.replace("/api/chat","/api/track/msg"), {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
@@ -1220,8 +1235,9 @@ try{
       role: "assistant",
       length: (markdown||"").length
     })
-  });
+  }).catch(()=>{});
 }catch{}
+
 
   return {row,id,bubble:b};
 }
