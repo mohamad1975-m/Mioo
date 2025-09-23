@@ -186,7 +186,7 @@ async function loadChatsFor(uid){
 function renderChatsTable(list){
   const q=(searchChat.value||"").trim().toLowerCase();
   const filtered = list.filter(c=>{
-    const hay = (c.title+" "+(c.preview||"")).toLowerCase();
+    const hay = (c.title+" "+(c.preview||"")+" "+(c.chatId||"")).toLowerCase();
     return !q || hay.includes(q);
   });
   const rows = filtered.map(c=>`
