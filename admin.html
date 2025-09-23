@@ -74,11 +74,13 @@
   <div class="head">
     <h2 style="margin:0">داشبورد مدیریت</h2>
     <div class="tabs">
+      
       <button class="tab active" id="tabChats">گفتگوها</button>
       <button class="tab" id="tabAnalytics">آنالیز</button>
-      <button id="viewAll" class="btn ghost">مشاهدهٔ همهٔ گفتگوها</button>
+      <button class="btn ghost" id="btnAll">مشاهدهٔ همهٔ گفتگوها</button>
     </div>
   </div>
+  
 
   <div class="card" id="viewChats">
     <div class="row">
@@ -127,12 +129,36 @@ const API = "https://mioo-chat.mohamadgpt19.workers.dev/api";
 const $  = (id)=>document.getElementById(id);
 
 // Tabs
+
 const tabChats = $("tabChats");
 const tabAnalytics = $("tabAnalytics");
 const viewChats = $("viewChats");
 const viewAnalytics = $("viewAnalytics");
 tabChats.onclick = ()=>{ tabChats.classList.add("active"); tabAnalytics.classList.remove("active"); viewChats.style.display="block"; viewAnalytics.style.display="none"; };
 tabAnalytics.onclick = ()=>{ tabAnalytics.classList.add("active"); tabChats.classList.remove("active"); viewChats.style.display="none"; viewAnalytics.style.display="block"; };
+// اضافه: یک هِلپر برای بستن پنل همه‌ی گفتگوها
+function hideAllPanel(){
+  const p = document.getElementById("allPanel");
+  if (!p) return;
+  p.style.display = "none";
+  p.innerHTML = "";
+}
+
+// قبلی‌ها را به این شکل به‌روزرسانی کنید:
+tabChats.onclick = ()=>{
+  tabChats.classList.add("active");
+  tabAnalytics.classList.remove("active");
+  viewChats.style.display="block";
+  viewAnalytics.style.display="none";
+  hideAllPanel();         // ← مهم
+};
+tabAnalytics.onclick = ()=>{
+  tabAnalytics.classList.add("active");
+  tabChats.classList.remove("active");
+  viewAnalytics.style.display="block";
+  viewChats.style.display="none";
+  hideAllPanel();         // ← مهم
+};
 
 // UI nodes
 const userList = $("userList");
@@ -317,7 +343,6 @@ loadStats();
 </div>
 
 <script>
-  const API = "https://mioo-chat.mohamadgpt19.workers.dev";
   const allPanel = document.getElementById("allPanel");
   const btnAll   = document.getElementById("btnAll");
   const delModal = document.getElementById("delModal");
@@ -428,8 +453,9 @@ loadStats();
   async function loadAll(){
     // از /api/admin/export می‌گیریم و فلت می‌کنیم (همه‌ی کاربران + چت‌ها)  ← وورکر این را فراهم کرده است
     // (users[], stats، و برای هر کاربر: chats[{chat, ratings}])  :contentReference[oaicite:2]{index=2}
-    const r = await fetch(API + "/api/admin/export");
-    const j = await r.json();
+    const r = await fetch(API + "/admin/export");
+const j = await r.json();
+
     const rows = [];
     for (const u of (j.users||[])){
       for (const pack of (u.chats||[])){
@@ -451,14 +477,21 @@ loadStats();
     // مرتب‌سازی از جدید به قدیم
     rows.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
     ALL = rows;
+    // پنل‌های دیگر را ببند
+document.getElementById("viewChats").style.display = "none";
+document.getElementById("viewAnalytics").style.display = "none";
+document.getElementById("tabChats").classList.remove("active");
+document.getElementById("tabAnalytics").classList.remove("active");
+
     allPanel.style.display = "block";
     renderAll(rows);
   }
   
   // نمایش جزئیات یک گفت‌وگو (در همان پنل، ساده)
   async function openChat(row){
-    const r = await fetch(API + "/api/admin/chat?chatId=" + encodeURIComponent(row.chatId));
-    const j = await r.json();
+    const r = await fetch(API + "/admin/chat?chatId=" + encodeURIComponent(row.chatId));
+const j = await r.json();
+
     const c = j.chat || {};
     const ratings = j.ratings || {};
     // کد کاربر (نمایشی): index+1 بر اساس ترتیب ALL (برای واقعی‌اش باید سرور message-id را تغییر دهد)
@@ -534,7 +567,7 @@ loadStats();
   delEverywhere.onclick = async ()=>{
     if (!SELECTED) return;
     try{
-      const r = await fetch(API + "/api/admin/deleteChat", {
+      const r = await fetch(API + "/admin/deleteChat", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ chatId: SELECTED.chatId })
