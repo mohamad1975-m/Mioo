@@ -1143,6 +1143,13 @@ async function send(){
     addBot("🔎 در حال جستجو در وب…");
   }
 
+  const payload = [
+  { role:"system", content: GLOBAL_RULES.trim() },
+  ...((localStorage.getItem(KEY_RULES)||"").trim() ? [{ role:"system", content:(localStorage.getItem(KEY_RULES)||"").trim() }] : []),
+  ...ctx
+];
+
+
   setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
 
   if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
