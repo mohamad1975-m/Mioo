@@ -1379,6 +1379,18 @@ async function rateMessage(msgId, delta, upBtn, downBtn){
 addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
 renderActiveChat();
 refreshModelChip();
+// ثبت ورود کاربر + دستگاه
+(async ()=>{
+  try{
+    const device = navigator.userAgent || "";
+    await fetch(API.replace("/api/chat","/api/track/visit"), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ device })
+    });
+  }catch{}
+})();
+
 
 // های‌لایت اولیه
 try{ hljs.highlightAll(); }catch{}
