@@ -44,6 +44,30 @@
     .bad{background:#fee2e2;border:1px solid #fecaca}
     .code{white-space:pre-wrap; background:#0f172a;color:#e5e7eb;border-radius:10px;padding:10px}
   </style>
+  <style>
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .link { background:#0f172a; color:#fff; border:0; border-radius:10px; padding:8px 12px; cursor:pointer; font-family:IRANYekanX }
+    .ghost{ background:#eef2f7; color:#111 }
+    .panel { margin-top:14px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px }
+    .list { max-height:70vh; overflow:auto; display:flex; flex-direction:column; gap:8px }
+    .item { border:1px solid #e5e7eb; border-radius:12px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:10px }
+    .meta { color:#64748b; font-size:12px }
+    .star { color:#f59e0b; margin-inline-start:6px }
+    .badge{ font-size:12px; background:#eef2ff; border-radius:999px; padding:2px 8px; color:#475569 }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .hidden{ display:none }
+    .snack{ position:fixed; inset-inline:0; bottom:12px; display:none; justify-content:center; z-index:1000 }
+    .snack-inner{ background:#111; color:#fff; padding:10px 14px; border-radius:12px; display:flex; gap:12px; align-items:center }
+    .snack button{ background:#fff; color:#111; border:0; border-radius:8px; padding:6px 10px; cursor:pointer; font-family:IRANYekanX }
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1200 }
+    .modal.show{ display:flex }
+    .modal-card{ background:#fff; border-radius:16px; width:min(600px,96vw); padding:16px }
+    .modal-card h3{ margin:0 0 10px 0; font-size:18px }
+    .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
+    .search { display:flex; gap:8px; align-items:center; margin:10px 0 }
+    .search input { flex:1; border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; }
+  </style>
+  
 </head>
 <body>
 <div class="wrap">
@@ -52,6 +76,7 @@
     <div class="tabs">
       <button class="tab active" id="tabChats">گفتگوها</button>
       <button class="tab" id="tabAnalytics">آنالیز</button>
+      <button id="viewAll" class="btn ghost">مشاهدهٔ همهٔ گفتگوها</button>
     </div>
   </div>
 
@@ -237,6 +262,7 @@ exportUser.onclick = async()=>{
   URL.revokeObjectURL(url);
 };
 
+
 // Analytics
 async function loadStats(){
   const s = await jget("/admin/summary");
@@ -263,6 +289,272 @@ exportAll.onclick = async()=>{
 // Boot
 loadUsers();
 loadStats();
+
 </script>
+
+<!-- دکمه و پانل «مشاهده‌ی همه‌ی گفتگوها» -->
+<div class="panel" id="allPanel" style="display:none"></div>
+
+<!-- مودال حذف گفتگو -->
+<div class="modal" id="delModal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>حذف گفتگو</h3>
+    <p>آیا می‌خواهید این گفتگو را حذف کنید؟</p>
+    <div class="actions">
+      <button class="link ghost" id="delCancel">لغو</button>
+      <button class="link ghost" id="delAdminOnly">حذف فقط در صفحه‌ی مدیریت</button>
+      <button class="link" id="delEverywhere">حذف هم در مدیریت و هم نزد کاربر</button>
+    </div>
+  </div>
+</div>
+
+<!-- اسنک‌بار واگرد -->
+<div class="snack" id="snack">
+  <div class="snack-inner">
+    <span id="snackText"></span>
+    <button id="snackUndo">واگرد</button>
+  </div>
+</div>
+
+<script>
+  const API = "https://mioo-chat.mohamadgpt19.workers.dev";
+  const allPanel = document.getElementById("allPanel");
+  const btnAll   = document.getElementById("btnAll");
+  const delModal = document.getElementById("delModal");
+  const delCancel = document.getElementById("delCancel");
+  const delAdminOnly = document.getElementById("delAdminOnly");
+  const delEverywhere = document.getElementById("delEverywhere");
+  const snack = document.getElementById("snack");
+  const snackText = document.getElementById("snackText");
+  const snackUndo = document.getElementById("snackUndo");
+  
+  // مخفی‌سازی فقط در ادمین (لوکال)
+  const KEY_HIDDEN = "admin_hidden_chats_v1";
+  function loadHidden(){ try{return JSON.parse(localStorage.getItem(KEY_HIDDEN)||"[]")}catch{return[]} }
+  function saveHidden(x){ localStorage.setItem(KEY_HIDDEN, JSON.stringify(x||[])); }
+  
+  let ALL = [];         // همه‌ی چت‌ها (با uid)
+  let SELECTED = null;  // چت انتخاب‌شده برای حذف
+  let UNDO = null;      // فقط برای حالت «حذف در مدیریت» قابل واگرد است
+  
+  function fmt(ts){
+    if(!ts) return "-";
+    try{
+      return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {dateStyle:"medium", timeStyle:"short"}).format(new Date(ts));
+    }catch{ return new Date(ts).toLocaleString('fa-IR'); }
+  }
+  
+  // ستاره‌دار شدن چت‌هایی که ری‌اکت/رأی دارند
+  function hasRatings(ratingsMap){ return ratingsMap && Object.keys(ratingsMap).length > 0; }
+  
+  // رندر
+  function renderAll(list){
+    const hidden = new Set(loadHidden());
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div class="row">
+        <h3 style="margin:0">همه‌ی گفتگوها</h3>
+        <span class="badge" id="allCount"></span>
+      </div>
+      <div class="search">
+        <input id="allQuery" placeholder="جست‌وجو در عنوان، پیام‌ها و حتی شناسه‌ها…">
+        <button class="link ghost" id="allRefresh">نوسازی</button>
+      </div>
+      <div class="list" id="allList"></div>
+    `;
+    allPanel.innerHTML = "";
+    allPanel.appendChild(wrap);
+  
+    const listEl = document.getElementById("allList");
+    const countEl = document.getElementById("allCount");
+    const qEl = document.getElementById("allQuery");
+    const refreshBtn = document.getElementById("allRefresh");
+  
+    function draw(rows){
+      listEl.innerHTML = "";
+      countEl.textContent = `${rows.length} گفتگو`;
+      rows.forEach(r=>{
+        if (hidden.has(r.chatId)) return;
+        const item = document.createElement("div");
+        item.className = "item";
+        const left = document.createElement("div");
+        const star = r._hasRatings ? `<span class="star">★</span>` : "";
+        left.innerHTML = `
+          <div>
+            <b>${star}${r.title || "بدون عنوان"}</b>
+            <div class="meta">کاربر: ${r.uid} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
+          </div>
+        `;
+        const right = document.createElement("div");
+        right.className = "row";
+        const openBtn = document.createElement("button");
+        openBtn.className = "link ghost";
+        openBtn.textContent = "نمایش";
+        openBtn.onclick = ()=> openChat(r);
+        const delBtn = document.createElement("button");
+        delBtn.className = "link";
+        delBtn.textContent = "حذف";
+        delBtn.onclick = ()=> openDel(r);
+        right.appendChild(openBtn);
+        right.appendChild(delBtn);
+        item.appendChild(left);
+        item.appendChild(right);
+        listEl.appendChild(item);
+      });
+    }
+  
+    function filter(){
+      const q = (qEl.value||"").trim().toLowerCase();
+      if(!q) return draw(list);
+      const hits = list.filter(r=>{
+        // جست‌وجوی گسترده: عنوان، پیش‌نمایش، همه‌ی پیام‌ها و شناسه‌ها
+        const hay = (
+          (r.title||"") + " " +
+          (r.preview||"") + " " +
+          (r._allText || "") + " " +
+          (r.chatId||"") + " " +
+          (r.uid||"")
+        ).toLowerCase();
+        return hay.includes(q);
+      });
+      draw(hits);
+    }
+  
+    qEl.oninput = filter;
+    refreshBtn.onclick = loadAll;
+    draw(list);
+  }
+  
+  async function loadAll(){
+    // از /api/admin/export می‌گیریم و فلت می‌کنیم (همه‌ی کاربران + چت‌ها)  ← وورکر این را فراهم کرده است
+    // (users[], stats، و برای هر کاربر: chats[{chat, ratings}])  :contentReference[oaicite:2]{index=2}
+    const r = await fetch(API + "/api/admin/export");
+    const j = await r.json();
+    const rows = [];
+    for (const u of (j.users||[])){
+      for (const pack of (u.chats||[])){
+        const c = pack.chat || {};
+        const ratings = pack.ratings || {};
+        rows.push({
+          uid: u.uid,
+          chatId: c.chatId,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+          title: c.title,
+          preview: (c.messages?.[0]?.content || "").slice(0, 120),
+          _hasRatings: hasRatings(ratings),
+          // برای جست‌وجوی عمیق: متن همه پیام‌ها + شناسه‌های پیام
+          _allText: (c.messages||[]).map(m=>`${m.id} ${m.role} ${m.content||""}`).join(" ")
+        });
+      }
+    }
+    // مرتب‌سازی از جدید به قدیم
+    rows.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+    ALL = rows;
+    allPanel.style.display = "block";
+    renderAll(rows);
+  }
+  
+  // نمایش جزئیات یک گفت‌وگو (در همان پنل، ساده)
+  async function openChat(row){
+    const r = await fetch(API + "/api/admin/chat?chatId=" + encodeURIComponent(row.chatId));
+    const j = await r.json();
+    const c = j.chat || {};
+    const ratings = j.ratings || {};
+    // کد کاربر (نمایشی): index+1 بر اساس ترتیب ALL (برای واقعی‌اش باید سرور message-id را تغییر دهد)
+    const userCode = 1 + [...new Set(ALL.map(x=>x.uid))].indexOf(row.uid);
+  
+    const box = document.createElement("div");
+    box.className = "panel";
+    const msgs = (c.messages||[]).map((m,i)=>{
+      const codeId = `${userCode}-${i+1}`; // فقط برای نمایش
+      return `
+        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:8px; margin-bottom:8px">
+          <div class="meta">${m.role === "assistant" ? "دستیار" : "کاربر"} | شناسه: ${codeId} <span style="opacity:.6">(${m.id})</span> | ${fmt(m.ts)} ${m.model?(" | مدل: "+m.model):""} ${m.web? " | وب": ""}</div>
+          <div>${(m.content||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+        </div>
+      `;
+    }).join("");
+  
+    box.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>${row.title || "بدون عنوان"}</b>
+          <div class="meta">کاربر: ${row.uid} (کد: ${userCode}) | ساخته‌شده: ${fmt(c.createdAt)} | آخرین فعالیت: ${fmt(c.updatedAt)}</div>
+        </div>
+        <div class="row">
+          <button class="link ghost" onclick="document.getElementById('allPanel').innerHTML=''; document.getElementById('allPanel').style.display='none'">بستن</button>
+          <button class="link" onclick='(${openDel.toString()})(${JSON.stringify(row)})'>حذف</button>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px dashed #e5e7eb; margin:10px 0">
+      ${msgs || "<div class='meta'>پیامی ثبت نشده.</div>"}
+    `;
+    allPanel.innerHTML = "";
+    allPanel.appendChild(box);
+    allPanel.style.display = "block";
+  }
+  
+  // پنجره حذف
+  function openDel(row){
+    SELECTED = row;
+    delModal.classList.add("show");
+    delModal.setAttribute("aria-hidden","false");
+  }
+  function closeDel(){
+    delModal.classList.remove("show");
+    delModal.setAttribute("aria-hidden","true");
+  }
+  delCancel.onclick = closeDel;
+  
+  function showSnack(text, onUndo){
+    snackText.textContent = text;
+    snack.style.display = "flex";
+    snackUndo.onclick = ()=>{
+      snack.style.display = "none";
+      onUndo && onUndo();
+    };
+    setTimeout(()=> snack.style.display="none", 4000);
+  }
+  
+  // حذف فقط در مدیریت (لوکال)
+  delAdminOnly.onclick = ()=>{
+    const h = loadHidden();
+    if (SELECTED){
+      h.push(SELECTED.chatId);
+      saveHidden(h);
+      UNDO = ()=>{ saveHidden(loadHidden().filter(x=>x !== SELECTED.chatId)); loadAll(); };
+      showSnack("شما این گفتگو را حذف کردید | واگرد", UNDO);
+      loadAll();
+    }
+    closeDel();
+  };
+  
+  // حذف کامل (سرور + کاربر) — توجه: این مورد «واگرد ندارد» چون وورکر الان API بازگردانی ندارد
+  delEverywhere.onclick = async ()=>{
+    if (!SELECTED) return;
+    try{
+      const r = await fetch(API + "/api/admin/deleteChat", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ chatId: SELECTED.chatId })
+      });
+      const j = await r.json();
+      if (j?.ok){
+        showSnack("گفتگو حذف شد (غیرقابل واگرد)", null);
+        loadAll();
+      } else {
+        alert("خطا در حذف روی سرور: " + (j?.error||""));
+      }
+    }catch(e){
+      alert("خطای شبکه");
+    }
+    closeDel();
+  };
+  
+  // کلیک روی دکمه «مشاهده‌ی همه‌ی گفتگوها»
+  btnAll && (btnAll.onclick = loadAll);
+  </script>
+  
 </body>
 </html>
