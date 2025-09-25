@@ -715,11 +715,39 @@ function renderActiveChat(){
     const j = await r.json(); banned = !!j?.banned; banMsg = j?.message||"اکانت شما بن شده است.";
   }catch{}
 
-  // 2) ثبت لاگین + مدل دستگاه
-  try{
-    const ua = navigator.userAgent || "";
+    // 2) ثبت لاگین + مدل دستگاه (با UA-CH و فallback)
+    async function getDeviceLabel(){
+    try{
+      if (navigator.userAgentData?.getHighEntropyValues){
+        const hi = await navigator.userAgentData.getHighEntropyValues(
+          ['model','platform','platformVersion','fullVersionList']
+        );
+        const brand = (navigator.userAgentData.brands?.[0]?.brand)||"";
+        const model = hi?.model || "";
+        const plat  = hi?.platform || "";
+        const pv    = hi?.platformVersion || "";
+        const full  = (hi?.fullVersionList||[]).map(x=>`${x.brand}/${x.version}`).join(", ");
+        if (model) return `${brand} ${model} | ${plat} ${pv} | ${full}`;
+      }
+    }catch{}
+    // فallback: استخراج مدل‌های رایج از UA
+    const ua = navigator.userAgent||"";
+    // سامسونگ: SM-A526B مثل
+    const m1 = ua.match(/SM-[-A-Z0-9]+/i);
+    if (m1) return m1[0];
+    // شیائومی/ردمی
+    const m2 = ua.match(/Redmi\s?[A-Z0-9-]+|Mi\s?[A-Z0-9-]+/i);
+    if (m2) return m2[0];
+    // سامسونگ Galaxy ...
+    const m3 = ua.match(/SamsungBrowser\/[\d.]+.*?\((.*?)\)/i);
+    if (m3) return m3[1];
+    // آخرین چاره: برند + UA
     const brand = (navigator.userAgentData && navigator.userAgentData.brands?.[0]?.brand) || "";
-    const device = (brand? (brand+" | "):"") + ua;
+    return (brand? (brand+" | "):"") + ua;
+  }
+
+  try{
+    const device = await getDeviceLabel();
     await fetch(API.replace("/api/chat","/api/track/login"), {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ device })
@@ -1244,10 +1272,14 @@ else statusEl.textContent = "درحال پاسخ…";
 // مجدد
 async function retryAssistant(msgObj, row, bubbleEl){
   setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
+  
   try{
     const {provider, model} = getProviderAndModel();
-    const ctx=contextLast(16);
+    const ctx = contextLast(16);
+const payload = [{role:"system",content:GLOBAL_RULES.trim()}, ...((localStorage.getItem(KEY_RULES)||"").trim()?[{role:"system",content:(localStorage.getItem(KEY_RULES)||"").trim()}]:[]), ...ctx];
+
     const r=await fetch(API,{
+      
   method:"POST",
   signal:controller.signal,
   headers:{"Content-Type":"application/json"},
@@ -1342,21 +1374,6 @@ async function addUser(text){
   const msg = currentChat().messages.find(m => m.id === id);
   attachActions(row, b, msg);
 
-  // ← ثبت پیام کاربر (اختیاری/آنالیتیکس)
-  try{
-    const chatId = currentChat()?.id;
-    await fetch(API.replace("/api/chat","/api/track/msg"), {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        msg_id: id,
-        role: "user",
-        length: (text||"").length
-      })
-    });
-  }catch{}
-
   return id;
 }
 
@@ -1380,21 +1397,6 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   attachActions(row,b,msg);
   try{ hljs.highlightAll(); }catch{}
   // ← ثبت پیام دستیار
-// ← ثبت پیام دستیار (بدون await)
-try{
-  const chatId = currentChat()?.id;
-  fetch(API.replace("/api/chat","/api/track/msg"), {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      msg_id: id,
-      role: "assistant",
-      length: (markdown||"").length
-    })
-  }).catch(()=>{});
-}catch{}
-
 
   return {row,id,bubble:b};
 }
