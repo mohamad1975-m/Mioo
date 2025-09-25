@@ -706,8 +706,47 @@ function renderActiveChat(){
   try{ hljs.highlightAll(); }catch{}
 }
 
-// first start
-createNewActiveChat();
+// first start (ban check + login track)
+(async function initStart(){
+  // 1) وضعیت بن
+  let banned=false, banMsg="";
+  try{
+    const r = await fetch(API.replace("/api/chat","/api/banStatus"));
+    const j = await r.json(); banned = !!j?.banned; banMsg = j?.message||"اکانت شما بن شده است.";
+  }catch{}
+
+  // 2) ثبت لاگین + مدل دستگاه
+  try{
+    const ua = navigator.userAgent || "";
+    const brand = (navigator.userAgentData && navigator.userAgentData.brands?.[0]?.brand) || "";
+    const device = (brand? (brand+" | "):"") + ua;
+    await fetch(API.replace("/api/chat","/api/track/login"), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ device })
+    });
+  }catch{}
+
+  // 3) شروع چت
+  await createNewActiveChat();
+
+  // 4) اگر بن بود، ورودی را قفل کن و کلیک را هندل کن
+  if (banned){
+    inp.setAttribute("disabled","disabled");
+    inp.placeholder = banMsg;
+    const banner = document.createElement("div");
+    banner.className = "bubble bot err";
+    banner.style.margin="8px";
+    banner.innerHTML = banMsg;
+    msgsEl.prepend(banner);
+    inp.addEventListener("click", ()=>{
+      alert(banMsg);
+    });
+    // همچنین دکمه ارسال را هم قفل کن
+    btn.setAttribute("disabled","disabled");
+    statusEl.textContent = "حساب شما بن است";
+  }
+})();
+
 
 // chat list modal
 openChatList.onclick=()=>{ renderChatList(); chatList.classList.add("show"); chatList.setAttribute("aria-hidden","false"); };
@@ -779,6 +818,21 @@ async function check(provider, model){
     return false;
   }
 }
+
+// اگر سرور آی‌دی پیام کاربر را هم برگرداند، به آخرین پیام کاربر بچسبان
+try{
+  if (j?.user_msg_id) {
+    const ch = currentChat();
+    for (let i = ch.messages.length - 1; i >= 0; i--) {
+      if (ch.messages[i].role === "user") {
+        const v = ch.messages[i].versions[ch.messages[i].active];
+        v.meta = v.meta || {};
+        v.meta.server_id = j.user_msg_id;
+        break;
+      }
+    }
+  }
+}catch{}
 
 
 const openModelHelp = $("openModelHelp");
@@ -1037,12 +1091,12 @@ function openMsgInfo(msgObj, bubbleEl){
   const model=v.meta?.model||"-";
   const text = (msgObj.role==="assistant" ? bubbleEl.querySelector(".rendered")?.innerText||v.content : v.content)||"";
   const tokenEst = estimateTokens(text);
-
-  msgInfoBody.innerHTML =
-    `<div>شناسه پیام: <b>${msgObj.id}</b></div>`+
-    `<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div>`+
-    (msgObj.role==="assistant" ? `<div>مدل: <b>${model}</b></div>` : ``)+
-    `<div>تخمین توکن: <b>${tokenEst}</b></div>`;
+  const sid = (v.meta && v.meta.server_id) ? v.meta.server_id : msgObj.id;
+msgInfoBody.innerHTML =
+  `<div>شناسه پیام: <b>${sid}</b></div>`+
+  `<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div>`+
+  (msgObj.role==="assistant" ? `<div>مدل: <b>${model}</b></div>` : ``)+
+  `<div>تخمین توکن: <b>${tokenEst}</b></div>`;
 
   // اکشن‌های مخصوص
   msgInfoActions.innerHTML="";
@@ -1362,12 +1416,16 @@ async function rateMessage(msgId, delta, upBtn, downBtn){
     // 2) آپدیت UI فوری
     setThumbUI(upBtn, downBtn, newState);
 
+    const ch = currentChat();
+const msg = ch?.messages?.find(m => m.id === msgId);
+const sid = msg?.versions?.[msg.active||0]?.meta?.server_id || msgId;
+
     // 3) ارسال به سرور (فقط وقتی حالت null نیست؛ می‌تونی دلخواه null هم بفرستی و سمت ورکر هندل کنی)
     if (newState){
       await fetch(API.replace("/api/chat","/api/track/rate"), {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ chat_id: chatId, msg_id: msgId, rating: newState })
+        body: JSON.stringify({ chat_id: chatId, msg_id: sid, rating: newState })
       });
     }
   }catch{}
