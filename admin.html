@@ -78,6 +78,8 @@
       <button class="tab active" id="tabChats">گفتگوها</button>
       <button class="tab" id="tabAnalytics">آنالیز</button>
       <button class="btn ghost" id="btnAll">مشاهدهٔ همهٔ گفتگوها</button>
+      <button class="btn ghost" id="btnLive">صفحهٔ زنده</button>
+
     </div>
   </div>
   
@@ -89,6 +91,20 @@
       <span class="pill" id="userInfo">-</span>
     </div>
     <div class="hr"></div>
+<!-- پروفایل کاربر -->
+<div id="profileBox" class="panel" style="margin-top:8px; display:none">
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <div><b>پروفایل کاربر</b></div>
+      <div class="muted" id="profMeta">—</div>
+    </div>
+    <div class="row">
+      <button class="link ghost" id="btnLogins">تاریخچه ورود</button>
+      <button class="link ghost" id="btnNotes" title="نوت خصوصی (آیکون نوت پد)">🗒️ نوت</button>
+      <button class="link" id="btnBan">بن کردن</button>
+    </div>
+  </div>
+</div>
 
     <h3 class="section-title">لیست گفتگوها</h3>
     <div class="row">
@@ -110,6 +126,21 @@
       <div class="tag">پیام‌ها: <b id="statMsgs" style="margin-inline-start:6px">-</b></div>
       <div class="tag">کلیک لینک‌ها: <b id="statClicks" style="margin-inline-start:6px">-</b></div>
       <div class="tag">کاربران یکتا (بر اساس IP): <b id="statUsers" style="margin-inline-start:6px">-</b></div>
+      <div class="hr"></div>
+<div class="row">
+  <div class="tag">۳۰‌روز اخیر - گفتگو: <b id="last30Chats">-</b></div>
+  <div class="tag">۳۰‌روز اخیر - پیام: <b id="last30Msgs">-</b></div>
+  <div class="tag">امروز - گفتگو: <b id="todayChats">-</b></div>
+  <div class="tag">امروز - پیام: <b id="todayMsgs">-</b></div>
+  <div class="tag">امروز - کاربران فعال: <b id="todayUsers">-</b></div>
+</div>
+
+<h3 class="section-title" style="margin-top:12px">توزیع هفتگی گفتگوها (شنبه→جمعه)</h3>
+<canvas id="weekChart" width="900" height="240" style="max-width:100%"></canvas>
+
+<h3 class="section-title" style="margin-top:12px">استفادهٔ مدل‌ها</h3>
+<div id="modelsBox" class="mono" style="white-space:pre-wrap"></div>
+
     </div>
 
     <div class="hr"></div>
@@ -170,6 +201,20 @@ const exportUser = $("exportUser");
 const chatsTableWrap = $("chatsTableWrap");
 const chatDetail = $("chatDetail");
 
+// --- پروفایل کاربر
+const profileBox = document.getElementById("profileBox");
+const profMeta   = document.getElementById("profMeta");
+const btnLogins  = document.getElementById("btnLogins");
+const btnNotes   = document.getElementById("btnNotes");
+const btnBan     = document.getElementById("btnBan");
+const loginsModal= document.getElementById("loginsModal");
+const loginsBody = document.getElementById("loginsBody");
+const loginsClose= document.getElementById("loginsClose");
+const notesModal = document.getElementById("notesModal");
+const notesText  = document.getElementById("notesText");
+const notesCancel= document.getElementById("notesCancel");
+const notesSave  = document.getElementById("notesSave");
+
 // Analytics nodes
 const statChats = $("statChats");
 const statMsgs = $("statMsgs");
@@ -198,9 +243,63 @@ async function loadUsers(){
   });
   userInfo.textContent = (data.users?.length||0)+" کاربر";
   if (data.users?.length) loadChatsFor(userList.value);
+  if (data.users?.length) loadUserProfile(userList.value);
+
 }
+
+async function loadUserProfile(uid){
+  profileBox.style.display = "none";
+  try{
+    const r = await fetch(API + "/admin/userProfile?uid=" + encodeURIComponent(uid));
+    const j = await r.json();
+    const fmtDT = (ts)=> ts? new Date(ts).toLocaleString("fa-IR"): "-";
+    profMeta.textContent =
+      `دستگاه: ${j.device||"-"} | اولین گفتگو: ${fmtDT(j.firstChat)} | آخرین ورود: ${fmtDT(j.lastLogin)} | وضعیت: ${j.banned?"بن‌شده":"عادی"}`;
+    profileBox.style.display = "block";
+
+    // دکمه لاگین‌ها
+    btnLogins.onclick = ()=>{
+      loginsBody.innerHTML = (j.logins||[]).map(ts=>`- ${fmtDT(ts)}`).join("<br>") || "— لاگی ثبت نشده —";
+      loginsModal.classList.add("show"); loginsModal.setAttribute("aria-hidden","false");
+    };
+    loginsClose.onclick = ()=>{ loginsModal.classList.remove("show"); loginsModal.setAttribute("aria-hidden","true"); };
+
+    // نوت
+    btnNotes.onclick = ()=>{
+      notesText.value = j.notes||"";
+      notesModal.classList.add("show"); notesModal.setAttribute("aria-hidden","false");
+    };
+    notesCancel.onclick = ()=>{ notesModal.classList.remove("show"); notesModal.setAttribute("aria-hidden","true"); };
+    notesSave.onclick = async ()=>{
+      await fetch(API + "/admin/notes", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ uid, notes: notesText.value||"" })
+      });
+      notesModal.classList.remove("show"); notesModal.setAttribute("aria-hidden","true");
+      alert("نوت ذخیره شد");
+    };
+
+    // بن/آنبن
+    btnBan.textContent = j.banned ? "آنبن کردن" : "بن کردن";
+    btnBan.onclick = async ()=>{
+      const on = !j.banned;
+      const rr = await fetch(API + "/admin/ban", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ uid, on })
+      });
+      const ok = (await rr.json())?.ok;
+      if (ok){ loadUserProfile(uid); } else alert("خطا در تغییر وضعیت بن");
+    };
+
+  }catch{}
+}
+
 refreshUsers.onclick = loadUsers;
-userList.onchange = ()=> loadChatsFor(userList.value);
+userList.onchange = ()=>{
+  loadChatsFor(userList.value);
+  loadUserProfile(userList.value);
+};
+
 
 // Chats table
 let currentChats = [];
@@ -316,10 +415,71 @@ exportAll.onclick = async()=>{
 loadUsers();
 loadStats();
 
+// DOM refs
+const last30Chats = document.getElementById("last30Chats");
+const last30Msgs  = document.getElementById("last30Msgs");
+const todayChats  = document.getElementById("todayChats");
+const todayMsgs   = document.getElementById("todayMsgs");
+const todayUsers  = document.getElementById("todayUsers");
+const weekChart   = document.getElementById("weekChart");
+const modelsBox   = document.getElementById("modelsBox");
+
+// بارگذاری آمار پیشرفته
+async function loadStatsPlus(){
+  try{
+    const r = await fetch(API + "/admin/analyticsPlus");
+    const j = await r.json();
+    last30Chats.textContent = j?.last30?.chats ?? 0;
+    last30Msgs.textContent  = j?.last30?.msgs ?? 0;
+    todayChats.textContent  = j?.today?.chats ?? 0;
+    todayMsgs.textContent   = j?.today?.msgs ?? 0;
+    todayUsers.textContent  = j?.today?.users ?? 0;
+
+    // مدل‌ها
+    const models = j?.models || {};
+    const lines = Object.keys(models).sort((a,b)=> (models[b]-models[a])).map(k=> `${k}: ${models[k]}`);
+    modelsBox.textContent = lines.join("\n") || "-";
+
+    // نمودار هفتگی ساده با Canvas
+    const buckets = j?.week?.buckets || [0,0,0,0,0,0,0];
+    const ctx = weekChart.getContext("2d");
+    ctx.clearRect(0,0,weekChart.width,weekChart.height);
+    const w = weekChart.width, h = weekChart.height;
+    const pad = 24;
+    const bw = (w - pad*2) / buckets.length * 0.7;
+    const space = (w - pad*2) / buckets.length;
+    const max = Math.max(1, ...buckets);
+    // محور
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
+    // میله‌ها
+    ctx.fillStyle = "#0f172a";
+    for (let i=0;i<buckets.length;i++){
+      const x = pad + i*space + (space-bw)/2;
+      const val = buckets[i];
+      const bh = Math.round((h - pad*2) * (val/max));
+      ctx.fillRect(x, h-pad-bh, bw, bh);
+      // برچسب‌ها
+      ctx.fillStyle="#64748b"; ctx.font="12px IRANYekanX, Tahoma";
+      const lbl = ["ش","ی","د","س","چ","پ","ج"][i];
+      ctx.fillText(lbl, x+bw/2-6, h-pad+16);
+      ctx.fillStyle="#0f172a";
+    }
+  }catch(e){ console.log(e); }
+}
+
+// فراخوانی در بوت و با دکمه‌ی Refresh
+loadStatsPlus();
+refreshStats.addEventListener("click", ()=>{
+  loadStats();    // قدیمی
+  loadStatsPlus();// جدید
+});
+
 </script>
 
 <!-- دکمه و پانل «مشاهده‌ی همه‌ی گفتگوها» -->
 <div class="panel" id="allPanel" style="display:none"></div>
+<div class="panel" id="livePanel" style="display:none"></div>
 
 <!-- مودال حذف گفتگو -->
 <div class="modal" id="delModal" aria-hidden="true">
@@ -403,27 +563,46 @@ loadStats();
         const item = document.createElement("div");
         item.className = "item";
         const left = document.createElement("div");
-        const star = r._hasRatings ? `<span class="star">★</span>` : "";
-        left.innerHTML = `
-          <div>
-            <b>${star}${r.title || "بدون عنوان"}</b>
-            <div class="meta">کاربر: ${r.uid} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
-          </div>
-        `;
-        const right = document.createElement("div");
-        right.className = "row";
-        const openBtn = document.createElement("button");
-        openBtn.className = "link ghost";
-        openBtn.textContent = "نمایش";
-        openBtn.onclick = ()=> openChat(r);
-        const delBtn = document.createElement("button");
-        delBtn.className = "link";
-        delBtn.textContent = "حذف";
-        delBtn.onclick = ()=> openDel(r);
-        right.appendChild(openBtn);
-        right.appendChild(delBtn);
-        item.appendChild(left);
-        item.appendChild(right);
+// ستاره را از اینجا حذف می‌کنیم تا برود کنار دکمه‌ها
+left.innerHTML = `
+  <div>
+    <b>${r.title || "بدون عنوان"}</b>
+    <div class="meta">کاربر: ${r.uid} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
+  </div>
+`;
+
+const right = document.createElement("div");
+right.className = "row";
+
+const openBtn = document.createElement("button");
+openBtn.className = "link ghost";
+openBtn.textContent = "نمایش";
+openBtn.onclick = ()=> openChat(r);
+
+const delBtn = document.createElement("button");
+delBtn.className = "link";
+delBtn.textContent = "حذف";
+delBtn.onclick = ()=> openDel(r);
+
+if (r._hasRatings) {
+  const starEl = document.createElement("span");
+  starEl.className = "star";     // همین کلاس در <style> تعریف شده
+  starEl.textContent = "★";
+  // بیار درست کنارِ «نمایش»
+  right.appendChild(starEl);
+}
+// اول دکمهٔ نمایش را می‌چینیم
+right.appendChild(openBtn);
+
+// اگر رأی دارد، ستاره را «بعد از نمایش و قبل از حذف» بگذار
+
+
+// آخر هم دکمهٔ حذف
+right.appendChild(delBtn);
+
+item.appendChild(left);
+item.appendChild(right);
+
         listEl.appendChild(item);
       });
     }
@@ -500,14 +679,17 @@ const j = await r.json();
     const box = document.createElement("div");
     box.className = "panel";
     const msgs = (c.messages||[]).map((m,i)=>{
-      const codeId = `${userCode}-${i+1}`; // فقط برای نمایش
-      return `
-        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:8px; margin-bottom:8px">
-          <div class="meta">${m.role === "assistant" ? "دستیار" : "کاربر"} | شناسه: ${codeId} <span style="opacity:.6">(${m.id})</span> | ${fmt(m.ts)} ${m.model?(" | مدل: "+m.model):""} ${m.web? " | وب": ""}</div>
-          <div>${(m.content||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
-        </div>
-      `;
-    }).join("");
+  const codeId = `${userCode}-${i+1}`;
+  const rt = ratings[m.id]==="up" ? ' <span class="tag good">👍</span>' :
+            ratings[m.id]==="down" ? ' <span class="tag bad">👎</span>' : '';
+  return `
+    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:8px; margin-bottom:8px">
+      <div class="meta">${m.role === "assistant" ? "دستیار" : "کاربر"} ${rt} | شناسه: ${codeId} <span style="opacity:.6">(${m.id})</span> | ${fmt(m.ts)} ${m.model?(" | مدل: "+m.model):""} ${m.web? " | وب": ""}</div>
+      <div>${(m.content||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+    </div>
+  `;
+}).join("");
+
   
     box.innerHTML = `
       <div class="row" style="justify-content:space-between">
@@ -516,8 +698,9 @@ const j = await r.json();
           <div class="meta">کاربر: ${row.uid} (کد: ${userCode}) | ساخته‌شده: ${fmt(c.createdAt)} | آخرین فعالیت: ${fmt(c.updatedAt)}</div>
         </div>
         <div class="row">
-          <button class="link ghost" onclick="document.getElementById('allPanel').innerHTML=''; document.getElementById('allPanel').style.display='none'">بستن</button>
+          <button class="link ghost" id="allClose">بازگشت</button>
           <button class="link" onclick='(${openDel.toString()})(${JSON.stringify(row)})'>حذف</button>
+          
         </div>
       </div>
       <hr style="border:none;border-top:1px dashed #e5e7eb; margin:10px 0">
@@ -526,6 +709,9 @@ const j = await r.json();
     allPanel.innerHTML = "";
     allPanel.appendChild(box);
     allPanel.style.display = "block";
+    const allCloseBtn = document.getElementById("allClose");
+if (allCloseBtn) allCloseBtn.onclick = ()=> renderAll(ALL);
+
   }
   
   // پنجره حذف
@@ -587,7 +773,78 @@ const j = await r.json();
   
   // کلیک روی دکمه «مشاهده‌ی همه‌ی گفتگوها»
   btnAll && (btnAll.onclick = loadAll);
+  const livePanel = document.getElementById("livePanel");
+const btnLive   = document.getElementById("btnLive");
+let LIVE_TIMER = null, LIVE_SINCE = 0;
+
+function renderLiveBox(){
+  livePanel.innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">مانیتور زنده</h3>
+      <button class="link ghost" id="liveBack">بازگشت</button>
+    </div>
+    <div id="liveBody" class="mono" style="max-height:70vh; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px"></div>
+  `;
+  const back = document.getElementById("liveBack");
+  back.onclick = ()=>{
+    clearInterval(LIVE_TIMER);
+    livePanel.style.display = "none";
+    viewChats.style.display = "block";
+    tabChats.classList.add("active");
+  };
+}
+
+async function pollLive(){
+  try{
+    const r = await fetch(API + "/admin/live?since=" + LIVE_SINCE);
+    const j = await r.json();
+    const body = document.getElementById("liveBody");
+    (j.events||[]).reverse().forEach(ev=>{
+      const line = `[${new Date(ev.ts).toLocaleTimeString("fa-IR")}] ${ev.type} ${ev.chatId||""} ${ev.role||""}`;
+      const div = document.createElement("div"); div.textContent = line;
+      body.prepend(div);
+    });
+    LIVE_SINCE = j.now || Date.now();
+  }catch{}
+}
+
+btnLive.onclick = ()=>{
+  // بستن سایر پنل‌ها
+  document.getElementById("viewChats").style.display = "none";
+  document.getElementById("viewAnalytics").style.display = "none";
+  document.getElementById("allPanel").style.display = "none";
+
+  livePanel.style.display = "block";
+  renderLiveBox();
+  clearInterval(LIVE_TIMER);
+  LIVE_SINCE = 0;
+  pollLive();
+  LIVE_TIMER = setInterval(pollLive, 2000);
+};
+
   </script>
-  
+  <!-- مودال لاگین‌ها -->
+<div class="modal" id="loginsModal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>لاگ‌های ورود کاربر</h3>
+    <div id="loginsBody" class="mono" style="max-height:50vh;overflow:auto"></div>
+    <div class="actions">
+      <button class="link" id="loginsClose">بستن</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال نوت خصوصی -->
+<div class="modal" id="notesModal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>نوت خصوصی ادمین</h3>
+    <textarea id="notesText" rows="6" style="width:100%"></textarea>
+    <div class="actions">
+      <button class="link ghost" id="notesCancel">لغو</button>
+      <button class="link" id="notesSave">ذخیره</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
