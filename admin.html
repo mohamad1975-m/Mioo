@@ -207,13 +207,7 @@ const profMeta   = document.getElementById("profMeta");
 const btnLogins  = document.getElementById("btnLogins");
 const btnNotes   = document.getElementById("btnNotes");
 const btnBan     = document.getElementById("btnBan");
-const loginsModal= document.getElementById("loginsModal");
-const loginsBody = document.getElementById("loginsBody");
-const loginsClose= document.getElementById("loginsClose");
-const notesModal = document.getElementById("notesModal");
-const notesText  = document.getElementById("notesText");
-const notesCancel= document.getElementById("notesCancel");
-const notesSave  = document.getElementById("notesSave");
+
 
 // Analytics nodes
 const statChats = $("statChats");
@@ -249,6 +243,15 @@ async function loadUsers(){
 
 async function loadUserProfile(uid){
   profileBox.style.display = "none";
+    // گرفتن مودال‌ها همین‌جا (وقتی DOM قطعاً آماده است)
+    const loginsModal = document.getElementById("loginsModal");
+  const loginsBody  = document.getElementById("loginsBody");
+  const loginsClose = document.getElementById("loginsClose");
+  const notesModal  = document.getElementById("notesModal");
+  const notesText   = document.getElementById("notesText");
+  const notesCancel = document.getElementById("notesCancel");
+  const notesSave   = document.getElementById("notesSave");
+
   try{
     const r = await fetch(API + "/admin/userProfile?uid=" + encodeURIComponent(uid));
     const j = await r.json();
@@ -342,8 +345,15 @@ async function showChat(chatId){
   const ratings = data.ratings || {};
   const msgs = (chat.messages||[]).map(m=>{
     const tag = m.role==="assistant" ? "bot" : "user";
-    const rt = ratings[m.id]=== "up" ? '<span class="tag good">👍</span>' :
-             ratings[m.id]=== "down" ? '<span class="tag bad">👎</span>' : '';
+    // فقط برای جواب‌های دستیار رأی نشان بده
+    let rateBadge = '';
+    if (m.role === "assistant"){
+      const key = m.id;
+      const val = ratings[key] || ratings[m.meta?.server_id];
+      rateBadge = val==="up" ? '<span class="tag good">👍</span>'
+               : val==="down" ? '<span class="tag bad">👎</span>' : '';
+    }
+
     return `
       <div class="row" style="align-items:flex-start">
         <div class="tag">${tag}</div>
@@ -441,7 +451,12 @@ async function loadStatsPlus(){
     modelsBox.textContent = lines.join("\n") || "-";
 
     // نمودار هفتگی ساده با Canvas
-    const buckets = j?.week?.buckets || [0,0,0,0,0,0,0];
+    let buckets = j?.week?.buckets ?? [0,0,0,0,0,0,0];
+if (!Array.isArray(buckets) && buckets && typeof buckets==='object'){
+  // ترتیب: شنبه..جمعه  => اندیس‌های 0..6
+  buckets = [0,1,2,3,4,5,6].map(i => Number(buckets[i]||0));
+}
+
     const ctx = weekChart.getContext("2d");
     ctx.clearRect(0,0,weekChart.width,weekChart.height);
     const w = weekChart.width, h = weekChart.height;
@@ -630,41 +645,44 @@ item.appendChild(right);
   }
   
   async function loadAll(){
-    // از /api/admin/export می‌گیریم و فلت می‌کنیم (همه‌ی کاربران + چت‌ها)  ← وورکر این را فراهم کرده است
-    // (users[], stats، و برای هر کاربر: chats[{chat, ratings}])  :contentReference[oaicite:2]{index=2}
-    const r = await fetch(API + "/admin/export");
-const j = await r.json();
+  // 1) اول لیست کاربران
+  const ru = await fetch(API + "/admin/users");
+  const ju = await ru.json();
 
-    const rows = [];
-    for (const u of (j.users||[])){
-      for (const pack of (u.chats||[])){
-        const c = pack.chat || {};
-        const ratings = pack.ratings || {};
+  const rows = [];
+  // 2) برای هر کاربر، لیست چت‌ها
+  for (const u of (ju.users||[])){
+    try{
+      const rc = await fetch(API + "/admin/chats?uid=" + encodeURIComponent(u.uid));
+      const jc = await rc.json();
+      for (const c of (jc.chats||[])){
+        // ستاره را بعداً با گرفتن ریتینگ هر چت موقع بازشدن نشان می‌دهیم یا ساده: false
         rows.push({
           uid: u.uid,
           chatId: c.chatId,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
           title: c.title,
-          preview: (c.messages?.[0]?.content || "").slice(0, 120),
-          _hasRatings: hasRatings(ratings),
-          // برای جست‌وجوی عمیق: متن همه پیام‌ها + شناسه‌های پیام
-          _allText: (c.messages||[]).map(m=>`${m.id} ${m.role} ${m.content||""}`).join(" ")
+          preview: (c.preview||""),
+          _hasRatings: false,
+          _allText: ""   // در صورت نیاز، موقع openChat تکمیل می‌کنیم
         });
       }
-    }
-    // مرتب‌سازی از جدید به قدیم
-    rows.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
-    ALL = rows;
-    // پنل‌های دیگر را ببند
-document.getElementById("viewChats").style.display = "none";
-document.getElementById("viewAnalytics").style.display = "none";
-document.getElementById("tabChats").classList.remove("active");
-document.getElementById("tabAnalytics").classList.remove("active");
-
-    allPanel.style.display = "block";
-    renderAll(rows);
+    }catch{}
   }
+  rows.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+  ALL = rows;
+
+  // بستن سایر پنل‌ها
+  document.getElementById("viewChats").style.display = "none";
+  document.getElementById("viewAnalytics").style.display = "none";
+  document.getElementById("tabChats").classList.remove("active");
+  document.getElementById("tabAnalytics").classList.remove("active");
+
+  allPanel.style.display = "block";
+  renderAll(rows);
+}
+
   
   // نمایش جزئیات یک گفت‌وگو (در همان پنل، ساده)
   async function openChat(row){
