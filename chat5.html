@@ -90,6 +90,17 @@ body{
 .rendered { direction: rtl; unicode-bidi: plaintext; }
 .rendered pre, .rendered code { direction: ltr; unicode-bidi: embed; } /* کد همیشه چپ‌به‌راست */
 
+/* تصاویر داخل پاسخ‌ها (حباب بات/کاربر) */
+.rendered img{
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;   /* گوشه‌های گرد */
+  margin: 6px 0;
+  /* اگر گاهی عکس خیلی بلند بود، می‌تونی این دو خط را هم روشن کنی: */
+  /* max-height: 70vh;
+     object-fit: contain; */
+}
 
 
     *{box-sizing:border-box}
@@ -104,7 +115,22 @@ body{
     .user{align-self:flex-end;background:var(--bubble-user);color:var(--bubble-user-ink);border-bottom-right-radius:8px}
     .bot{align-self:flex-start;background:var(--bubble-bot);border:1px solid var(--bubble-bot-bd);border-bottom-left-radius:8px}
     .foot{display:flex;gap:10px;padding:10px;border-top:1px solid #eef2f7}
-    .foot input{flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;outline:none;background:transparent;color:var(--ink)}
+    .foot textarea{
+  flex:1;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:12px 14px;
+  outline:none;
+  background:transparent;
+  color:var(--ink);
+  resize:none;              /* کاربر نتواند با موس بزرگ کند */
+  overflow:hidden;          /* تا وقتی به ۳ خط نرسیده اسکرول نشود */
+  line-height:1.6;
+  min-height: 2.2em;        /* خط پایه */
+  max-height: 8.2em;        /* حدوداً ۳ خط + پدینگ */
+  font-size: inherit;   /* ✅ فونتِ textarea از :root/body بگیرد */
+}
+
     .btn{border:0;background:#111;color:#fff;border-radius:12px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:6px}
     .dark .btn{background:#334155}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
@@ -230,6 +256,16 @@ body{
   fill: none;
   color:#fff; /* برای مواردی که از color استفاده میشه */
 }
+/* تصاویر داخل جزییات گفتگو/مودال/آیتم‌ها در ادمین */
+#chatModalBody img,
+.item img,
+.panel img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px; /* گوشه‌های گرد */
+  margin: 6px 0;
+}
 
 /* پیش‌فرض: آوت‌لاین خاکستری کم‌رنگ */
 .tool-btn { color:#94a3b8 }
@@ -239,6 +275,20 @@ body{
   stroke: currentColor;
   stroke-width: 2;
   fill: none;            /* خیلی مهم: توخالی */
+}
+/* ظرف دکمه‌های هر آیتم گفتگو */
+.chat-item{
+  display:flex;            /* مطمئن شو فلکس است */
+  align-items:center;
+  gap:8px;
+}
+.chat-actions{
+  display:flex;
+  gap:6px;
+  margin-inline-start:auto; /* در RTL ظرف را به لبهٔ چپ می‌برد */
+}
+.chat-actions .icon-btn{
+  padding:6px;
 }
 
 /* وقتی فعال (رای داده شده) می‌شه، رنگ بگیر و پر شو */
@@ -306,7 +356,8 @@ body{
   <div class="card" style="position:relative">
     <div id="msgs" class="msgs"></div>
     <div class="foot">
-      <input id="inp" placeholder="اینجا تایپ کنید" />
+      <textarea id="inp" rows="1" placeholder="اینجا تایپ کنید"></textarea>
+
       <button id="webToggle" class="icon-btn" title="جستجو در وب (خاموش)" aria-label="Web">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.94 9h-3.16a14.9 14.9 0 0 0-1.2-5.02A8.03 8.03 0 0 1 19.94 11zM12 4c.93 0 2.5 2.07 3.2 7H8.8C9.5 6.07 11.07 4 12 4zM6.42 6.98A14.9 14.9 0 0 0 5.22 11H2.06a8.03 8.03 0 0 1 4.36-4.02zM4.06 13h3.16c.23 1.77.69 3.48 1.2 5.02A8.03 8.03 0 0 1 4.06 13zM12 20c-.93 0-2.5-2.07-3.2-7h6.4c-.7 4.93-2.27 7-3.2 7zM17.58 17.02c.51-1.54.97-3.25 1.2-5.02h3.16a8.03 8.03 0 0 1-4.36 4.02z"/></svg>
       </button>
@@ -482,12 +533,34 @@ body{
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
+const API_BASE = API.replace(/\/chat$/,''); // می‌شود .../api
+
 // تشخیص این‌که کاربر می‌خواهد جستجو کند
 function isWebQuery(t=""){
   const text = (t||"").trim();
   const starters = ["جستجو کن", "جستجو:", "سرچ", "search", "وب:", "گوگل", "🔎"];
   return starters.some(s => text.startsWith(s)) || /جستجو کن|سرچ کن|تو گوگل/i.test(text);
 }
+function wantsImage(t=""){
+  const s = (t||"").trim();
+  // اگر کلمه‌ی «عکس/تصویر» یا آیکن‌های مرتبط داخل جمله بود
+  const markers = ["عکس", "تصویر", "photo", "image", "🖼️", "📷"];
+  if (!markers.some(k => s.toLowerCase().includes(k))) return null;
+
+  // الگوهای متداول فارسی: «عکس ... رو بفرست / بده / ارسال کن / نشون بده ...»
+  let q = s
+    // اگر ابتدای جمله «عکس/تصویر از ...» بود، همان را حذف کن
+    .replace(/^((بفرست|یه|یک)\s*)?(عکس|تصویر)\s*(از|:)?/i, "")
+    // پایان‌های دستوری رایج را حذف کن
+    .replace(/\s+(رو\s*)?(بفرست|بده|بزار|بذار|ارسال کن|نشون بده)\s*$/i, "")
+    // کلمات ربط رایج بی‌فایده را حذف کن
+    .replace(/\s+(رو|را|یه|یک)\s+/g, " ")
+    .trim();
+
+  // اگر چیزی باقی نماند، همان ورودی اصلی را برگردان تا حداقل امتحان شود
+  return q || s;
+}
+
 
 const $ = id => document.getElementById(id);
 
@@ -495,6 +568,32 @@ const $ = id => document.getElementById(id);
 const msgsEl = $("msgs");
 const inp = $("inp");
 const btn = $("sendBtn");
+// اتوگِرو برای textarea تا ۳ خط
+(function(){
+  const MAX_LINES = 3;
+  function autoGrow(){
+    // ارتفاع را ریست کن تا scrollHeight واقعی شود
+    inp.style.height = "auto";
+    const lh = parseFloat(getComputedStyle(inp).lineHeight) || 22;
+    const maxPx = Math.round(lh * MAX_LINES + 16); // 16 ~ پدینگ عمودی تقریبی
+    const next = Math.min(inp.scrollHeight, maxPx);
+    inp.style.height = next + "px";
+    // اگر بیشتر از سقف شد، اسکرول بده؛ وگرنه پنهان
+    inp.style.overflowY = (inp.scrollHeight > maxPx) ? "auto" : "hidden";
+  }
+  inp.addEventListener("input", autoGrow);
+  // بار اول هم تنظیم کن
+  setTimeout(autoGrow, 0);
+
+  // بعد از هر ارسال که ورودی را خالی می‌کنیم، دوباره جمعش کن
+  const _send = send;
+  window.send = async function(){
+    await _send.apply(this, arguments);
+    // اگر در send مقدار inp را خالی می‌کنی، اینجا هم جمع کن
+    autoGrow();
+  };
+})();
+
 const sendIcon = $("sendIcon");
 const stopIcon = $("stopIcon");
 const statusEl = $("status");
@@ -561,6 +660,8 @@ const KEY_MODEL_MODE="model_mode_v1";      // 'auto' | 'manual'
 const KEY_MODEL_MANUAL="model_manual_v1";  // string model id
 const KEY_RATINGS="message_ratings_v1";    // { [msgId]: 'up' | 'down' }
 const KEY_LOCAL_RATINGS = "local_ratings_v1"; // { [msgId]: "up" | "down" }
+const KEY_CHAT_SEQ = "chat_seq_counter_v1";
+
 function loadLocalRatings(){ try{return JSON.parse(localStorage.getItem(KEY_LOCAL_RATINGS)||"{}")}catch{return{}} }
 function saveLocalRatings(x){ localStorage.setItem(KEY_LOCAL_RATINGS, JSON.stringify(x||{})); }
 
@@ -630,10 +731,15 @@ const storedTW = localStorage.getItem(KEY_TW);
 if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
 animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
-fzRange.oninput=()=>{ const v=parseInt(fzRange.value,10)||16; fzVal.textContent=String(v);
+fzRange.oninput=()=>{ 
+  const v=parseInt(fzRange.value,10)||16; 
+  fzVal.textContent=String(v);
   document.documentElement.style.setProperty('--fz', v+"px", 'important');
   document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
+  // ✅ ارتفاع textarea را متناسب با فونت جدید تنظیم کن
+  try { inp.style.height = "auto"; inp.dispatchEvent(new Event('input')); } catch{}
 };
+
 
 // dialogs open/close
 openSettingsBtn.onclick=()=>{ settingsModal.classList.add("show"); settingsModal.setAttribute("aria-hidden","false"); };
@@ -649,6 +755,9 @@ saveSettings.onclick=()=>{ localStorage.setItem(KEY_RULES, rulesSettings.value||
   localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
   localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
   if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,"");
+    // ✅ بازمحاسبه‌ی ارتفاع textarea بعد از ذخیره
+    try { inp.style.height = "auto"; inp.dispatchEvent(new Event('input')); } catch{}
+
   applyTheme(); closeModal();
 };
 settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) closeModal(); });
@@ -657,26 +766,72 @@ settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) close
 const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
 const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
 const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
-const saveChats=(chs)=> localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
+function saveChats(chs){
+  // فقط اگر آرایهٔ معتبر است ذخیره کن؛ وگرنه هیچ کاری نکن
+  if (Array.isArray(chs)) {
+    localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
+  }
+}
+// ذخیره‌سازی تغییرات «چت فعال» داخل آرایه
+function persistCurrentChat(){
+  const ch = currentChat();
+  if (!ch) return;
+  const chs = loadChats();
+  const i = chs.findIndex(c => c.id === ch.id);
+  if (i >= 0){
+    chs[i] = ch;
+    saveChats(chs);
+  }
+}
+// شمارنده‌ی مستقل برای عنوان گفتگوها
+function nextChatSeq(){
+  // اگر قبلاً مقداردهی نشده، از روی عنوان‌های موجود یک مقدار اولیه پیدا کن
+  let seq = Number(localStorage.getItem("chat_seq_counter_v1") || "0");
+  if (!seq) {
+    const chs = loadChats();
+    let maxSeen = 0;
+    for (const c of chs) {
+      const m = /گفتگوی جدید\s*\((\d+)\)/.exec(c.title || "");
+      if (m) maxSeen = Math.max(maxSeen, Number(m[1] || 0));
+    }
+    seq = maxSeen;
+  }
+  seq += 1;
+  localStorage.setItem("chat_seq_counter_v1", String(seq));
+  return seq;
+}
+
 async function createNewActiveChat(){
   const id = uid();
+
+  // شمارندهٔ مستقل عنوان
+  const seq = nextChatSeq();
+  const title = `گفتگوی جدید (${seq})`;
+
+  // ✅ این خط باعث می‌شود آرایهٔ چت‌های فعلی را داشته باشیم
   const chs = loadChats();
-  chs.unshift({ id, title: "گفت‌وگوی جدید", messages: [], updatedAt: Date.now() });
+
+  chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
   saveChats(chs);
+
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
   msgsEl.innerHTML = "";
 
-  // ثبت آغاز گفتگو در سرور
+  // ثبت آغاز گفتگو در سرور (اختیاری)
   try {
     await fetch(API.replace("/api/chat","/api/track/chat_open"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: id, title: "گفت‌وگوی جدید" })
+      body: JSON.stringify({ chat_id: id, title })
     });
   } catch {}
 
   renderActiveChat();
+
+  // خوشامدگویی داخل گفت‌وگوی تازه
+  addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
 }
+
 
 function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return loadChats().find(c=>c.id===id); }
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
@@ -796,9 +951,31 @@ function renderChatList(filter=""){
     const delBtn=document.createElement("button"); delBtn.className="chat-del"; delBtn.title="حذف";
     delBtn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9z"/></svg>`;
     delBtn.onclick=(ev)=>{ ev.stopPropagation(); deleteChatWithUndo(c.id, c.title); renderChatList(chatSearch.value); };
-    div.appendChild(delBtn);
+    // دکمه ویرایش عنوان
+const editBtn = document.createElement("button");
+editBtn.className = "icon-btn";
+editBtn.title = "ویرایش عنوان";
+editBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M4 21h4l11-11-4-4L4 17v4z" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+editBtn.onclick = (ev) => {
+  ev.stopPropagation();
+  renameChatWithPrompt(c.id, c.title);
+};
+
+// ظرفِ دکمه‌ها در سمت چپ
+const actions = document.createElement("div");
+actions.className = "chat-actions";
+
+// ترتیبِ داخل ظرف: اول مداد، بعد سطل
+actions.appendChild(editBtn);
+actions.appendChild(delBtn);
+
+// ظرف را به آیتم اضافه کن
+div.appendChild(actions);
+
+
     div.onclick=()=>{ setActiveChat(c.id); closeChatList.onclick(); };
     chatItems.appendChild(div);
+    
   });
 }
 chatSearch.oninput=()=> renderChatList(chatSearch.value);
@@ -824,6 +1001,50 @@ function deleteChatWithUndo(id, title){
   }
   showSnack(`شما گفتگوی «${title}» را حذف نمودید |`, ()=>{ const chs2=loadChats(); chs2.unshift(removed); saveChats(chs2); });
 }
+function renameChatWithPrompt(id, oldTitle){
+  const modal = document.getElementById("renameModal");
+  const input = document.getElementById("renameInput");
+  const btnCancel = document.getElementById("renameCancel");
+  const btnSave = document.getElementById("renameSave");
+
+  input.value = oldTitle || "";
+  modal.style.display = "flex";
+  input.focus();
+
+  const close = () => { modal.style.display = "none"; };
+
+  btnCancel.onclick = close;
+  btnSave.onclick = async () => {
+    const title = input.value.trim();
+    if (!title || title === oldTitle) return close();
+
+    const chs = loadChats();
+    const i = chs.findIndex(c => c.id === id);
+    if (i >= 0){
+      chs[i].title = title;
+      chs[i].updatedAt = Date.now();
+      saveChats(chs);
+    }
+    if ((currentChat()?.id) === id){
+      updateCurrentChat(c => { c.title = title; });
+    }
+
+    if (typeof renderChatList === "function") {
+      renderChatList(chatSearch?.value || "");
+    }
+
+    try {
+      await fetch(API.replace("/api/chat","/api/rename"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: id, title })
+      });
+    } catch {}
+
+    close();
+  };
+}
+
 
 // probe
 (async function probeKeys(){
@@ -848,19 +1069,7 @@ async function check(provider, model){
 }
 
 // اگر سرور آی‌دی پیام کاربر را هم برگرداند، به آخرین پیام کاربر بچسبان
-try{
-  if (j?.user_msg_id) {
-    const ch = currentChat();
-    for (let i = ch.messages.length - 1; i >= 0; i--) {
-      if (ch.messages[i].role === "user") {
-        const v = ch.messages[i].versions[ch.messages[i].active];
-        v.meta = v.meta || {};
-        v.meta.server_id = j.user_msg_id;
-        break;
-      }
-    }
-  }
-}catch{}
+
 
 
 const openModelHelp = $("openModelHelp");
@@ -990,7 +1199,21 @@ function scrollChatToBottom() {
 }
 
 // پیام/کانتکست
-function pushMsg(role, content, meta={}){ const id=mid(); updateCurrentChat(c=>{ c.messages.push({id, role, versions:[{content, meta, ts:Date.now()}], active:0}); }); return id; }
+function pushMsg(role, content, meta = {}) {
+  const id = mid();
+  // همیشه CID را داخل متای نسخه ذخیره کن
+  const verMeta = Object.assign({}, meta, { client_id: id });
+  updateCurrentChat(c => {
+    c.messages.push({
+      id,
+      role,
+      versions: [{ content, meta: verMeta, ts: Date.now() }],
+      active: 0
+    });
+  });
+  return id;
+}
+
 function appendVersion(id, content, meta={}){ updateCurrentChat(c=>{ const m=c.messages.find(x=>x.id===id); if(!m) return; m.versions.push({content,meta,ts:Date.now()}); m.active=m.versions.length-1; }); }
 function contextLast(n=16){ const ch=currentChat(); if(!ch) return []; return ch.messages.slice(-n).map(m=>({role:m.role, content:m.versions[m.active].content})); }
 
@@ -1114,17 +1337,35 @@ if (saved === "up"){
 
 // جزییات پیام
 function openMsgInfo(msgObj, bubbleEl){
-  const v=msgObj.versions[msgObj.active];
-  const fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{dateStyle:"medium",timeStyle:"short"});
-  const model=v.meta?.model||"-";
-  const text = (msgObj.role==="assistant" ? bubbleEl.querySelector(".rendered")?.innerText||v.content : v.content)||"";
-  const tokenEst = estimateTokens(text);
-  const sid = (v.meta && v.meta.server_id) ? v.meta.server_id : msgObj.id;
+  const v = msgObj.versions[msgObj.active];
+const fmt = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { dateStyle:"medium", timeStyle:"short" });
+const model = v.meta?.model || "-";
+const text = (msgObj.role === "assistant" ? bubbleEl.querySelector(".rendered")?.innerText || v.content : v.content) || "";
+const tokenEst = estimateTokens(text);
+
+// دو شناسه را جداگانه محاسبه کن
+const cid = v.meta?.client_id || msgObj.id;          // همیشه موجود است
+const sid = v.meta?.server_id || "-";                // اگر سرور داده باشد
+
 msgInfoBody.innerHTML =
-  `<div>شناسه پیام: <b>${sid}</b></div>`+
-  `<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div>`+
-  (msgObj.role==="assistant" ? `<div>مدل: <b>${model}</b></div>` : ``)+
+  `<div>شناسهٔ کلاینت (CID): <b class="mono">${cid}</b> <button id="copyCid" class="link ghost" style="margin-inline-start:8px">کپی</button></div>` +
+  `<div>شناسهٔ سرور (SID): <b class="mono">${sid}</b></div>` +
+  `<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div>` +
+  (msgObj.role==="assistant" ? `<div>مدل: <b>${model}</b></div>` : ``) +
   `<div>تخمین توکن: <b>${tokenEst}</b></div>`;
+
+  // دکمهٔ کپی CID
+setTimeout(() => {
+  const btnCopyCid = document.getElementById("copyCid");
+  if (btnCopyCid) {
+    btnCopyCid.onclick = async () => {
+      await navigator.clipboard.writeText(cid);
+      btnCopyCid.textContent = "کپی شد";
+      setTimeout(() => btnCopyCid.textContent = "کپی", 1200);
+    };
+  }
+}, 0);
+
 
   // اکشن‌های مخصوص
   msgInfoActions.innerHTML="";
@@ -1181,23 +1422,60 @@ async function typewriter(container, text){
     await new Promise(r=>setTimeout(r,8));
   }
 }
+// --- helper: انتخاب متن مناسب برای عنوان از پیام‌های اخیر کاربر
+function pickMeaningfulUserText(messages){
+  // آخرین ۴ پیام کاربر را از آخر به اول بررسی می‌کنیم
+  const users = messages.filter(m => m.role === "user").slice(-4).reverse();
+  for (const m of users){
+    const txt = (m.versions?.[m.active||0]?.content ?? m.content ?? "").trim();
+    if (!txt) continue;
+    // حذف احوال‌پرسی‌های رایج
+    const cleansed = txt
+      .replace(/^(سلام|سلام\.|سلام!|سلام وقت بخیر|وقت بخیر|درود|hi|hello)[!،.\s-:]*/i, "")
+      .replace(/(مرسی|ممنون)\s*$/i, "")
+      .trim();
 
+    // حداقل ۲ کلمه و حداقل 10 کاراکتر
+    if (cleansed.split(/\s+/).length >= 2 && cleansed.length >= 10){
+      // کوتاه‌سازی
+      return cleansed.slice(0, 60);
+    }
+  }
+  // اگر پیدا نشد: آخرین پیام کاربر هرچند کوتاه
+  const last = users[0];
+  const fallback = (last?.versions?.[last.active||0]?.content ?? last?.content ?? "").trim();
+  return fallback.slice(0, 60);
+}
 // عنوان خودکار
 async function maybeSetTitle(){
-  const ch=currentChat(); if(!ch) return;
-  const uCount=ch.messages.filter(m=>m.role==="user").length;
-  if (ch.title==="گفت‌وگوی جدید" && uCount>=2){
-    try{
-      const {provider, model} = getProviderAndModel();
-      const r = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,model,messages:[
-        {role:"system",content:"یک عنوان بسیار کوتاه، فارسی و تیتر‌وار برای این موضوع تولید کن. فقط خود عنوان را برگردان."},
-        {role:"user",content: ch.messages.find(m=>m.role==="user")?.versions[0]?.content || ""}
-      ]})});
-      const j=await r.json(); const title=(j?.content||"گفت‌وگو").slice(0,80);
-      const id=localStorage.getItem(KEY_ACTIVE_CHAT);
-      const chs=loadChats(); const i=chs.findIndex(x=>x.id===id); if(i>=0){ chs[i].title=title; saveChats(chs); }
-    }catch{}
-  }
+  const ch = currentChat();
+  if (!ch) return;
+
+  // فقط اگر هنوز عنوان «پیش‌فرض/خالی» است اسم‌گذاری کن
+  const rawTitle = (ch.title||"").trim();
+  const isDefault = !rawTitle || /^گفت[-‌]وگو(ی جدید)?$/i.test(rawTitle);
+
+  const uCount = ch.messages.filter(m => m.role === "user").length;
+  if (!isDefault || uCount < 2) return; // بعد از حداقل دو پیامِ کاربر
+
+  const seed = pickMeaningfulUserText(ch.messages).replace(/["'«»]/g,"").trim();
+  if (!seed) return;
+
+  // همین را به عنوان بگذار
+  ch.title = seed;
+persistCurrentChat();                    // ✅ عنوان را در localStorage ثبت کن
+// اگر فهرست گفتگوها باز است، تازه‌سازی‌اش کن (اختیاری)
+if (typeof renderChatList === "function") {
+  renderChatList(chatSearch?.value || "");
+}
+
+  // (اختیاری) اگر API برای تغییر عنوان داری، اینجا هم بفرست
+  try{
+    await fetch(API.replace("/api/chat","/api/rename"), {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ chat_id: ch.id, title: seed })
+    });
+  }catch{}
 }
 
 // انتخاب مدل برای درخواست
@@ -1212,12 +1490,46 @@ function getProviderAndModel(){
   return { model, provider: providerFromModel(model) };
 }
 
+// helper: همیشه آرایه‌ی پیام‌ها را امن برگرداند تا ارور نده
+function safeMsgs(){
+  const ch = (typeof currentChat === "function") ? currentChat() : null;
+  return Array.isArray(ch?.messages) ? ch.messages : [];
+}
+
 // ارسال
 async function send(){
   const text=inp.value.trim(); if(!text||busy) return;
 
   addUser(text); inp.value=""; inp.focus();
   maybeSetTitle();
+// اگر کاربر عکس خواست، مستقیماً API image را بزن
+const imageQuery = wantsImage(text);
+if (imageQuery) {
+  try{
+    statusEl.textContent = "در حال آوردن تصویر…";
+    const r = await fetch(API_BASE + "/image", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ q: imageQuery })
+    });
+    const j = await r.json();
+    if (j?.ok && j.url){
+      // بعنوان پیام دستیار، عکس را با مارک‌داون بفرست
+      const host = (()=>{ try{ return new URL(j.source||j.url).host.replace(/^www\./,''); }catch{return ""} })();
+      addBot(`![${j.title||imageQuery}](${j.url})\n\nمنبع: ${host? `(${host})` : ''}`);
+      setBusy(false); statusEl.textContent = "";
+      return; // این راند پیام تمام شد
+    } else {
+      addBot("متأسفم، نتوانستم تصویری مناسب پیدا کنم.", true);
+      setBusy(false); statusEl.textContent = "";
+      return;
+    }
+  }catch(e){
+    addBot("خطا در واکشی تصویر.", true);
+    setBusy(false); statusEl.textContent = "";
+    return;
+  }
+}
 
     // اگر پیام از نوع جستجو در وب است، به کاربر اطلاع بده
     if (isWebQuery(text)) {
@@ -1231,39 +1543,118 @@ async function send(){
 else statusEl.textContent = "درحال پاسخ…";
 
   try{
-    const {provider, model} = getProviderAndModel();
-    const payload=[
-      {role:"system", content:GLOBAL_RULES.trim()},
-      ...( (localStorage.getItem(KEY_RULES)||"").trim() ? [{role:"system", content:(localStorage.getItem(KEY_RULES)||"").trim()}] : []),
-      ...contextLast(16),
-      {role:"user", content:text}
-    ];
-    const r=await fetch(API,{
-  method:"POST",
-  signal:controller.signal,
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-    provider, model,
-    messages: payload,
-    auto: (getMode()==="auto"),
-    web: WEB_ON,   // ← این خط اضافه شد
-    chat_id: (currentChat()?.id || null)   // ← NEW
+    // قبل از ساخت payload، مدل و provider را بگیر
+const { provider, model } = getProviderAndModel();
+// متن کاربر در متغیر text فرض شده
+const prevMsgs = safeMsgs();  // به‌جای currentChat().messages
+
+// اگر کدی برای ساخت عنوان داری، از prevMsgs استفاده کن، نه currentChat().messages
+const tail = prevMsgs.slice(-8); // نمونه: آخرین ۸ پیام برای ساخت عنوان
+const userHunks = tail.filter(m => m.role === "user").map(m => (m.content || ""));
+const titleCandidateSource = [...userHunks, text].join(" \n ").trim();
+// اینجا همان منطق فعلی خلاصه‌سازی/حذف سلام و … خودت را اجرا کن اگر داری
+
+// تمام پیام‌های فعلیِ چت (پیام کاربر که همین الان addUser شده هم داخلشه)
+const messagesToSend = safeMsgs().map(m => ({
+  role: m.role,
+  content: m.versions?.[m.active]?.content ?? m.content ?? "",
+  id: m.id,
+  meta: m.versions?.[m.active]?.meta ?? m.meta ?? null
+}));
+
+
+// درخواست به سرور
+const r = await fetch(API, {
+  method: "POST",
+  signal: controller.signal,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    provider,
+    model,
+    messages: messagesToSend,
+    auto: (getMode() === "auto"),
+    web: WEB_ON,
+    chat_id: (currentChat()?.id || null),
+    user_rules: (localStorage.getItem(KEY_RULES) || "")
   })
 });
+
+
 if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
 else statusEl.textContent = "درحال پاسخ…";
 
 
-    const raw=await r.text(); let j=null; try{j=JSON.parse(raw)}catch{ addBot(`Raw: ${raw}`,true); setBusy(false); return;}
-    if(j?.content){
-      const usedModel = j.model || model;
-      if(getMode()==="auto"){ setAutoLastModel(usedModel); refreshModelChip(); } // نمایش مدل واقعی
-      const meta={ model: usedModel, server_id: (j.assistant_msg_id || null) };
-      const res=addBot("",false,meta);
-      await typewriter(res.bubble.querySelector(".rendered"), j.content);
-      appendVersion(res.id, j.content, meta);
-      res.row.ensureArrows && res.row.ensureArrows?.();
-    }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
+const raw = await r.text();
+let j = null;
+try {
+  j = JSON.parse(raw);
+} catch {
+  addBot(`Raw: ${raw}`, true);
+  setBusy(false);
+  return;
+}
+
+// ✅ جدید: بعد از دریافت پاسخ، SID پیام "کاربر" را روی آخرین پیام user بچسبان
+if (j && j.user_msg_id) {
+  const ch = currentChat();
+  if (ch && ch.messages && ch.messages.length) {
+    const lastUser = [...ch.messages].reverse().find(mm => mm.role === "user");
+    if (lastUser) {
+      const v = lastUser.versions?.[lastUser.active || 0];
+      if (v) {
+        v.meta = Object.assign({}, v.meta, { server_id: j.user_msg_id });
+      } else {
+        lastUser.meta = Object.assign({}, lastUser.meta, { server_id: j.user_msg_id });
+      }
+    }
+  }
+}
+
+if (j?.content) {
+  const usedModel = j.model || model;
+  if (getMode() === "auto") { setAutoLastModel(usedModel); refreshModelChip(); } // نمایش مدل واقعی
+
+  // متادیتای اولیهٔ پیام دستیار (شامل SID اگر سرور داد)
+  const meta = { model: usedModel, server_id: (j.assistant_msg_id || null) };
+
+  // پیام دستیار را اضافه کن
+  const res = addBot("", false, meta);
+  await typewriter(res.bubble.querySelector(".rendered"), j.content);
+  appendVersion(res.id, j.content, meta);
+    // ✅ به‌روزرسانی عنوان و ذخیره در لیست گفتگوها
+    persistCurrentChat?.();
+  maybeSetTitle?.();
+  if (typeof renderChatList === "function") {
+    renderChatList(chatSearch?.value || "");
+  }
+
+  persistCurrentChat?.();
+maybeSetTitle?.();
+if (typeof renderChatList === "function") {
+  renderChatList(chatSearch?.value || "");
+}
+
+
+  // ✅ (اختیاری اما پیشنهادی): مپ‌کردن CID دستیار به سرور، برای اینکه در ادمین هم CID بات دیده شود
+  try {
+    if (j.assistant_msg_id && j.chat_id && res?.id) {
+      fetch(API.replace("/api/chat","/mapCid"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: j.chat_id,                 // شناسه چت سمت کلاینت/سرور
+          message_id: j.assistant_msg_id,     // SID پیام دستیار
+          client_id: res.id                   // CID پیام دستیار در کلاینت
+        })
+      });
+    }
+  } catch {}
+
+  res.row.ensureArrows && res.row.ensureArrows?.();
+} else {
+  addBot(`خطا: ${j?.error || "unknown"}\n\nRaw: ${JSON.stringify(j?.detail ?? j)}`, true);
+}
+
   }catch(e){
     if(stoppedByUser) showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e), true);
   }finally{ setBusy(false); controller=null; }
@@ -1371,7 +1762,10 @@ async function addUser(text){
 
   const id = pushMsg("user", text);
   row.dataset.id = id;
-  const msg = currentChat().messages.find(m => m.id === id);
+  const msg = safeMsgs().find(m => m.id === id);
+  persistCurrentChat?.();   // ذخیره نسخهٔ به‌روز چت در localStorage
+maybeSetTitle?.();        // تلاش برای تعیین/به‌روزرسانی عنوان از سمت کلاینت
+
   attachActions(row, b, msg);
 
   return id;
@@ -1393,7 +1787,8 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   scrollChatToBottom();
 
   let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
-  const msg=currentChat().messages.find(m=>m.id===id);
+  const msg = safeMsgs().find(m => m.id === id);
+
   attachActions(row,b,msg);
   try{ hljs.highlightAll(); }catch{}
   // ← ثبت پیام دستیار
@@ -1436,7 +1831,6 @@ const sid = msg?.versions?.[msg.active||0]?.meta?.server_id || msgId;
 
 
 // آغاز
-addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
 renderActiveChat();
 refreshModelChip();
 
@@ -1464,6 +1858,17 @@ function updateWebToggleUI(){
 }
 
 </script>
+<!-- مودال ویرایش عنوان گفتگو -->
+<div id="renameModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0005;z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#fff;padding:20px;border-radius:12px;max-width:320px;width:90%;box-shadow:0 4px 20px #0002;">
+    <h3 style="margin-top:0">ویرایش عنوان گفتگو</h3>
+    <input id="renameInput" type="text" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;" />
+    <div style="margin-top:12px;text-align:end">
+      <button id="renameCancel" style="margin-inline-end:8px;">انصراف</button>
+      <button id="renameSave">ذخیره</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
