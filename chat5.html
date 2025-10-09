@@ -1503,20 +1503,56 @@ async function send(){
   addUser(text); inp.value=""; inp.focus();
   maybeSetTitle();
 // اگر کاربر عکس خواست، مستقیماً API image را بزن
+// اگر کاربر عکس خواست، مستقیماً API image را بزن
 const imageQuery = wantsImage(text);
 if (imageQuery) {
   try{
     statusEl.textContent = "در حال آوردن تصویر…";
+
+    // ۱) پیام کاربر را هم در UI و هم سرور ثبت کن
+    const userCid = await addUser(text); // ← اینجا id کلاینتی پیام کاربر را می‌گیریم
+    // لاگِ پیام کاربر در سرور
+    try {
+      await fetch(API_BASE + "/log", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          chat_id: currentChat()?.id,
+          role: "user",
+          content: text,
+          meta: { client_id: userCid }
+        })
+      });
+    } catch {}
+
+    // ۲) تصویر را بگیر
     const r = await fetch(API_BASE + "/image", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ q: imageQuery })
     });
     const j = await r.json();
+
     if (j?.ok && j.url){
-      // بعنوان پیام دستیار، عکس را با مارک‌داون بفرست
       const host = (()=>{ try{ return new URL(j.source||j.url).host.replace(/^www\./,''); }catch{return ""} })();
-      addBot(`![${j.title||imageQuery}](${j.url})\n\nمنبع: ${host? `(${host})` : ''}`);
+      const md  = `![${j.title||imageQuery}](${j.url})\n\nمنبع: ${host? `(${host})` : ''}`;
+
+      // ۳) پیام دستیار را هم در UI اضافه کن و هم در سرور لاگ کن
+      const bot = addBot(md, false, { model: "image" });
+      try {
+        await fetch(API_BASE + "/log", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({
+            chat_id: currentChat()?.id,
+            role: "assistant",
+            content: md,
+            meta: { client_id: bot.id },
+            model: "image"
+          })
+        });
+      } catch {}
+
       setBusy(false); statusEl.textContent = "";
       return; // این راند پیام تمام شد
     } else {
@@ -1530,6 +1566,7 @@ if (imageQuery) {
     return;
   }
 }
+
 
     // اگر پیام از نوع جستجو در وب است، به کاربر اطلاع بده
     if (isWebQuery(text)) {
