@@ -199,9 +199,42 @@ body{
 
     /* فهرست گفتگوها */
     .chats{display:flex;gap:6px;align-items:center}
-    .icon-btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-    .dark .icon-btn{background:#0f172a;border-color:#1f2937}
-    .icon-btn svg{width:16px;height:16px;fill:var(--ink)}
+/* دکمه‌های لیست گفتگو */
+/* دکمه‌های لیست گفتگو */
+.icon-btn{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:10px;
+  padding:6px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color: var(--ink);                 /* رنگ مبنا */
+}
+.dark .icon-btn{
+  background:#0f172a;
+  border-color:#1f2937;
+  color: var(--ink);                 /* در دارک هم روشن بماند */
+}
+/* خودِ svg را مثل قبل «پر» رنگ کن؛ نه stroke عمومی */
+.icon-btn svg{
+  width:16px;
+  height:16px;
+  fill: currentColor;
+}
+
+/* فقط اگر داخل SVG المنتی stroke داشت، همان را ظریف کن */
+.icon-btn svg [stroke]{
+  stroke: currentColor;
+  stroke-width: 1.3;                 /* نازک و تمیز */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+
+
     .chat-list{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:95}
     .chat-list.show{display:flex}
     .chat-panel{background:#fff;border-radius:16px;max-width:700px;width:100%;padding:16px;max-height:80vh;display:flex;flex-direction:column}
@@ -282,6 +315,19 @@ body{
   align-items:center;
   gap:8px;
 }
+
+/* ردیف فعال در فهرست گفتگوها */
+.chat-item.active{
+  background:#abddff;         /* سبز خیلی کمرنگ */
+  border-color:#52baff;
+}
+.dark .chat-item.active{
+  background:#052e1c;         /* سبز تیره برای دارک مود */
+  border-color:#14532d;
+}
+
+
+
 .chat-actions{
   display:flex;
   gap:6px;
@@ -341,7 +387,8 @@ body{
       <div id="modelChip" class="chip" title="تعیین مدل هوش مصنوعی">
         <span class="badge" id="chipMode">خودکار</span>
         <span class="sep">|</span>
-        <span id="chipModel">gpt-5</span>
+        <span id="chipModel">gpt-4.1-mini</span>
+
       </div>
 
       <span id="status" class="pill">آماده</span>
@@ -424,7 +471,7 @@ body{
     <div class="modal-row">
       <label style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="autoTheme" checked>
-        حالت خودکار روز/شب (۱۹ تا ۵:۳۰ شب = تیره)
+        حالت خودکار روز/شب (۱۸:۳۰ تا ۵:۳۰ صبح = تیره)
       </label>
       <div style="display:flex;gap:8px">
         <button id="forceLight" class="ghost link">روشن</button>
@@ -455,24 +502,21 @@ body{
 
       <div class="model-grid">
         <div class="model-left" id="modelTable">
-          <!-- جدول دو ستونه مدل‌ها -->
           <div class="model-row">
-            <div class="model-cell" data-model="gpt-5">gpt ۵</div>
             <div class="model-cell" data-model="gpt-4.1-mini">gpt ۴.۱ mini</div>
-          </div>
-          <div class="model-row">
-            <div class="model-cell" data-model="gpt-5-chat">gpt ۵-chat</div>
             <div class="model-cell" data-model="gpt-4o-mini">gpt ۴o mini</div>
           </div>
           <div class="model-row">
-            <div class="model-cell" data-model="gpt-5-mini">gpt ۵-mini</div>
             <div class="model-cell" data-model="gemini-1.5-flash-latest">gemini-1.5-flash</div>
+            <div class="model-cell" data-model="xai/grok-2">Grok 2 Mini</div>
+
           </div>
           <div class="model-row" style="border-bottom:0">
-            <div class="model-cell" data-model="gpt-5-nano">gpt ۵-nano</div>
-            <div class="model-cell" data-model="xai/grok-3-mini">Grok 3 Mini</div>
+            <div class="model-cell" data-model="deepseek-chat">DeepSeek-Chat</div>
+            <div class="model-cell disabled" data-model="">—</div>
           </div>
         </div>
+        
 
         <div class="model-right">
 
@@ -701,7 +745,7 @@ function applyTheme(){
   else if (force==="light") dark=false;
   else if (auto){
     const now=new Date(); const h=now.getHours()+now.getMinutes()/60;
-    dark=(h>=19 || h<5.5);
+    dark=(h>=18.5 || h<5.5);
   }
   document.documentElement.classList.toggle("dark", dark);
 }
@@ -835,7 +879,15 @@ async function createNewActiveChat(){
 
 function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return loadChats().find(c=>c.id===id); }
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
-function setActiveChat(id){ localStorage.setItem(KEY_ACTIVE_CHAT, id); renderActiveChat(); }
+function setActiveChat(id){
+  localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  renderActiveChat();
+  // اگر پنل فهرست باز است، های‌لایت را به‌روزرسانی کن
+  if (document.getElementById("chatList")?.classList.contains("show")) {
+    renderChatList(document.getElementById("chatSearch")?.value || "");
+  }
+}
+
 
 // رندر
 function renderActiveChat(){
@@ -945,9 +997,14 @@ function renderChatList(filter=""){
     const hay = (c.title+" "+(c.messages||[]).map(m=>m.versions?.[m.active||0]?.content||"").join(" ")).toLowerCase();
     if(q && !hay.includes(q.toLowerCase())) return;
 
-    const div=document.createElement("div"); div.className="chat-item";
-    const last= c.updatedAt? fmt.format(new Date(c.updatedAt)) : "-";
-    div.innerHTML=`<div><h4>${c.title}</h4><small>آخرین فعالیت: ${last}</small></div>`;
+    const div=document.createElement("div"); 
+div.className="chat-item";
+if (localStorage.getItem(KEY_ACTIVE_CHAT) === c.id) {
+  div.classList.add("active");           // ← های‌لایت ردیفِ چتِ فعلی
+}
+const last= c.updatedAt? fmt.format(new Date(c.updatedAt)) : "-";
+div.innerHTML=`<div><h4>${c.title}</h4><small>آخرین فعالیت: ${last}</small></div>`;
+
     const delBtn=document.createElement("button"); delBtn.className="chat-del"; delBtn.title="حذف";
     delBtn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v8h-2V9zm4 0h2v8h-2V9z"/></svg>`;
     delBtn.onclick=(ev)=>{ ev.stopPropagation(); deleteChatWithUndo(c.id, c.title); renderChatList(chatSearch.value); };
@@ -1048,11 +1105,16 @@ function renameChatWithPrompt(id, oldTitle){
 
 // probe
 (async function probeKeys(){
-  const okGithub = await check("github","gpt-5-mini"); // یکی از مدل‌های جدید
-  const okGemini = await check("gemini","gemini-1.5-flash-latest");
-  if (probeInModal) probeInModal.textContent = `GitHub ${okGithub?"✅":"⚠️"} | Gemini ${okGemini?"✅":"⚠️"}`;
+  const okGH  = await check("github",     "gpt-4.1-mini");
+  const okOR  = await check("openrouter", "x-ai/grok-2-mini");
 
+  const okGem = await check("gemini",     "gemini-1.5-flash-latest");
+  if (probeInModal) {
+    probeInModal.textContent =
+      `GitHub ${okGH?"✅":"⚠️"} | OpenRouter ${okOR?"✅":"⚠️"} | Gemini ${okGem?"✅":"⚠️"}`;
+  }
 })();
+
 
 async function check(provider, model){
   try{
@@ -1079,7 +1141,14 @@ const closeModelHelp = $("closeModelHelp");
 
 
 // ====== انتخاب مدل: وضعیت و UI ======
-const PREFERRED_AUTO = ["gpt-5","gpt-5-chat","gpt-5-mini","gpt-5-nano","gpt-4.1-mini","gpt-4o-mini","xai/grok-3-mini"];
+const PREFERRED_AUTO = [
+  "gpt-4.1-mini",
+  "gpt-4o-mini",
+  "x-ai/grok-2-mini",
+  "deepseek-chat",
+  "gemini-1.5-flash-latest"
+];
+
 function getMode(){ return localStorage.getItem(KEY_MODEL_MODE) || "auto"; }
 function setMode(m){ localStorage.setItem(KEY_MODEL_MODE, m); }
 function getManualModel(){ return localStorage.getItem(KEY_MODEL_MANUAL) || "gpt-4.1-mini"; }
@@ -1188,7 +1257,25 @@ function autolinkMarkdown(s=""){
   return s;
 }
 
-function providerFromModel(m){ return m.startsWith("gemini-") ? "gemini" : "github"; }
+function providerFromModel(m=""){
+  // 1) مدل‌های Gemini
+  if (m.startsWith("gemini-")) return "gemini";
+
+  // 2) مدل‌هایی که باید از OpenRouter صدا بزنیم
+  const openRouterModels = [
+    "xai/grok-3-mini",
+    "grok-3-mini",
+    "deepseek-chat",
+    "deepseek",
+    "groq-llama-70b",
+    "groq-llama-8b"
+  ];
+  if (m.includes("/") || openRouterModels.includes(m)) return "openrouter";
+
+  // 3) بقیه (GPTهای GitHub)
+  return "github";
+}
+
 function scrollChatToBottom() {
   const el = document.getElementById("msgs");
   if (!el) return;
