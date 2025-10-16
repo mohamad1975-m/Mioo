@@ -362,7 +362,20 @@ body{
 
 .tool-btn.active { opacity: 1; }
 .tool-btn:not(.active) { opacity: .85; }
-
+/* ==== AUTH MODAL ==== */
+.auth-modal{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:99999; padding:16px}
+.auth-modal.show{display:flex}
+.auth-card{background:#fff; border-radius:16px; width:min(420px,96vw); padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.dark .auth-card{background:#0b1220; color:#e5e7eb}
+.auth-tabs{display:flex; gap:8px; margin-bottom:10px}
+.auth-tab{flex:1; text-align:center; padding:8px; border:1px solid #e5e7eb; border-radius:10px; cursor:pointer}
+.dark .auth-tab{border-color:#1f2937}
+.auth-tab.active{background:#0f172a; color:#fff; border-color:transparent}
+.auth-row{display:grid; gap:8px; margin:10px 0}
+.auth-row input{border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; font-family:IRANYekanX}
+.dark .auth-row input{border-color:#1f2937; background:#0f172a; color:#e5e7eb}
+.auth-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
+.auth-note{font-size:12px; color:#64748b}
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -482,8 +495,39 @@ body{
       <button id="closeSettings" class="link ghost">بستن</button>
       <button id="saveSettings" class="link">ذخیره</button>
     </div>
+    <!-- === بخش حساب کاربری (Account) === -->
+<section class="set-section" id="accountSection" style="margin-top:16px">
+  <h3 style="margin:0 0 8px 0;">حساب کاربری</h3>
+
+  <div class="account-card" style="border:1px solid var(--border);border-radius:12px;padding:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div class="muted" style="min-width:90px">نام کاربری:</div>
+      <div id="accUsername" class="mono" style="direction:ltr;user-select:all">—</div>
+      <button id="btnCopyUsername" class="icon-btn" title="کپی نام کاربری" style="margin-right:auto">
+        <!-- آیکون کپی -->
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+          <rect x="2" y="2" width="13" height="13" rx="2"></rect>
+        </svg>
+      </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input id="accOldPass" type="password" placeholder="رمز فعلی" class="in" />
+      <input id="accNewPass" type="password" placeholder="رمز جدید" class="in" />
+    </div>
+
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button id="btnChangePass" class="btn">تغییر رمز</button>
+      <div id="accMsg" class="muted"></div>
+    </div>
+  </div>
+</section>
+<!-- === /account === -->
+
   </div>
 </div>
+
 
 <!-- مودال تعیین مدل (اسکرین‌شات دوم) -->
 <div id="modelModal" class="modal" aria-hidden="true">
@@ -507,8 +551,8 @@ body{
             <div class="model-cell" data-model="gpt-4o-mini">gpt ۴o mini</div>
           </div>
           <div class="model-row">
-            <div class="model-cell" data-model="gemini-1.5-flash-latest">gemini-1.5-flash</div>
-            <div class="model-cell" data-model="xai/grok-2">Grok 2 Mini</div>
+            <div class="model-cell" data-model="google/gemini-2.0-flash-001">Gemini 2.0 Flash (OR)</div>
+            <div class="model-cell" data-model="x-ai/grok-2">Grok 2 Mini</div>
 
           </div>
           <div class="model-row" style="border-bottom:0">
@@ -553,7 +597,52 @@ body{
 
 
 
-        
+        <!-- ==== AUTH MODAL (ثبت‌نام/ورود) ==== -->
+<div id="authModal" class="auth-modal" aria-hidden="true">
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div id="authTabRegister" class="auth-tab active">ثبت‌نام</div>
+      <div id="authTabLogin" class="auth-tab">ورود</div>
+    </div>
+
+    <!-- ثبت‌نام -->
+    <div id="authBoxRegister" class="auth-box">
+      <div class="auth-row">
+        <label>نام کاربری (تصادفی):</label>
+        <div style="display:flex; gap:8px">
+          <input id="regUsername" placeholder="user_xxxx" style="flex:1">
+          <button id="regenUsername" class="link ghost">تولید دوباره</button>
+        </div>
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="regPassword" type="password" placeholder="رمز عبور">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel" class="link ghost">انصراف</button>
+        <button id="authDoRegister" class="link">ثبت‌نام</button>
+      </div>
+      <div class="auth-note">با ثبت‌نام، گفتگوهای شما با همین نام کاربری روی سرور ثبت می‌شود.</div>
+    </div>
+
+    <!-- ورود -->
+    <div id="authBoxLogin" class="auth-box" style="display:none">
+      <div class="auth-row">
+        <label>نام کاربری:</label>
+        <input id="logUsername" placeholder="نام کاربری">
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="logPassword" type="password" placeholder="رمز عبور">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel2" class="link ghost">انصراف</button>
+        <button id="authDoLogin" class="link">ورود</button>
+      </div>
+    </div>
+  </div>
+</div>
+
     
 
 
@@ -578,6 +667,64 @@ body{
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
 const API_BASE = API.replace(/\/chat$/,''); // می‌شود .../api
+// ====== AUTH CORE (username/token) ======
+const KEY_AUTH_NAME  = "auth_username_v1";
+const KEY_AUTH_TOKEN = "auth_token_v1";
+
+// ⛔️ این دو تابع را کامل با نسخهٔ زیر جایگزین کن
+function getAuth(){
+  // سازگاری با نسخه‌های قبلی که در localStorage با کلید "auth" ذخیره شده
+  let legacy = null;
+  try { legacy = JSON.parse(localStorage.getItem("auth") || "null"); } catch {}
+  return {
+    username: localStorage.getItem(KEY_AUTH_NAME) || (legacy && legacy.username) || "",
+    token:    localStorage.getItem(KEY_AUTH_TOKEN) || ""
+  };
+}
+
+function setAuth(username, token){
+  if (username) {
+    // ✅ کلید درست
+    localStorage.setItem(KEY_AUTH_NAME, username);
+    // نگه داشتن نسخهٔ قدیمی برای سازگاری
+    localStorage.setItem("auth", JSON.stringify({ username }));
+  }
+  if (token) {
+    localStorage.setItem(KEY_AUTH_TOKEN, token);
+  }
+}
+
+
+
+
+function clearAuth(){
+  localStorage.removeItem(KEY_AUTH_NAME);
+  localStorage.removeItem(KEY_AUTH_TOKEN);
+}
+
+// هدرهای Auth برای API
+function authHeaders(){
+  const {username, token} = getAuth();
+  const h = {};
+  if (token)    h["Authorization"] = "Bearer " + token;
+  if (username) h["x-username"]    = username;  // جهت مصرف روی سرور
+  return h;
+}
+
+// Monkey-patch روی fetch: فقط برای دامنه API ما، هدرها را تزریق کن
+(function patchFetchForApi(){
+  const _origFetch = window.fetch;
+  window.fetch = (input, init={})=>{
+    try{
+      const url = (typeof input === "string") ? input : (input?.url || "");
+      if (url && url.startsWith(API_BASE)) {
+        const mergedHeaders = Object.assign({}, init.headers || {}, authHeaders());
+        return _origFetch(input, Object.assign({}, init, { headers: mergedHeaders }));
+      }
+    }catch{}
+    return _origFetch(input, init);
+  };
+})();
 
 // تشخیص این‌که کاربر می‌خواهد جستجو کند
 function isWebQuery(t=""){
@@ -687,6 +834,144 @@ const saveModel = $("saveModel");
 const msgInfo = $("msgInfo");
 const msgInfoBody = $("msgInfoBody");
 const msgInfoActions = $("msgInfoActions");
+// ==== AUTH MODAL NODES ====
+const authModal      = document.getElementById("authModal");
+const tabReg         = document.getElementById("authTabRegister");
+const tabLog         = document.getElementById("authTabLogin");
+const boxReg         = document.getElementById("authBoxRegister");
+const boxLog         = document.getElementById("authBoxLogin");
+const regUsername    = document.getElementById("regUsername");
+const regPassword    = document.getElementById("regPassword");
+const regenUsername  = document.getElementById("regenUsername");
+const logUsername    = document.getElementById("logUsername");
+const logPassword    = document.getElementById("logPassword");
+const authCancel     = document.getElementById("authCancel");
+const authCancel2    = document.getElementById("authCancel2");
+const authDoRegister = document.getElementById("authDoRegister");
+const authDoLogin    = document.getElementById("authDoLogin");
+// اگر هر کدام نبودند، از کرش جلوگیری کن
+if (!authModal || !tabReg || !tabLog || !boxReg || !boxLog ||
+    !regUsername || !regPassword || !regenUsername ||
+    !logUsername || !logPassword || !authCancel || !authCancel2 ||
+    !authDoRegister || !authDoLogin) {
+  console.warn("Auth modal elements not found — check HTML placement.");
+}
+
+// ساخت نام کاربری رندوم
+function genUsername(){
+  return "user_" + Math.random().toString(36).slice(2,8);
+}
+function openAuthModal(mode="register"){
+  // تب‌ها
+  tabReg.classList.toggle("active", mode==="register");
+  tabLog.classList.toggle("active", mode==="login");
+  boxReg.style.display = (mode==="register") ? "block" : "none";
+  boxLog.style.display = (mode==="login") ? "block" : "none";
+  authModal.classList.add("show"); authModal.setAttribute("aria-hidden","false");
+
+  if (mode==="register"){
+    regUsername.value = genUsername();
+    regPassword.value = "";
+  } else {
+    logUsername.value = "";
+    logPassword.value = "";
+  }
+}
+function closeAuthModal(){
+  authModal.classList.remove("show"); authModal.setAttribute("aria-hidden","true");
+}
+
+// سویچ تب‌ها
+tabReg.onclick = ()=> openAuthModal("register");
+tabLog.onclick = ()=> openAuthModal("login");
+
+// تولید مجدد نام کاربری
+regenUsername.onclick = ()=>{ regUsername.value = genUsername(); };
+
+// بستن مودال
+authCancel.onclick = closeAuthModal;
+authCancel2.onclick = closeAuthModal;
+
+// فراخوانی به سرور (ثبت‌نام / ورود)
+// NOTE: فعلاً فرض می‌کنیم Worker بعداً این دو مسیر را پیاده‌سازی می‌کند:
+async function doRegister(u, p){
+  // اگر Worker هنوز آماده نیست، یک توکن fake بده تا فرانت جلو برود
+  // بعداً با Worker واقعی جایگزین می‌شود
+  try{
+    const r = await fetch(API_BASE + "/auth/register", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ username:u, password:p })
+    });
+    const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error || "register_failed");
+    return j; // { ok, username, token }
+  }catch(e){
+    // فالبک برای تست اولیه
+    return { ok:true, username:u, token: "local-"+Math.random().toString(36).slice(2) };
+  }
+}
+
+async function doLogin(u, p){
+  try{
+    const r = await fetch(API_BASE + "/auth/login", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ username:u, password:p })
+    });
+    const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error || "login_failed");
+    return j; // { ok, username, token }
+  }catch(e){
+    // فالبک برای تست اولیه
+    return { ok:true, username:u, token: "local-"+Math.random().toString(36).slice(2) };
+  }
+}
+
+// ثبت‌نام
+authDoRegister.onclick = async ()=>{
+  const u = (regUsername.value || "").trim();
+  const p = (regPassword.value || "").trim();
+  if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
+  const res = await doRegister(u,p);
+  if (res?.ok){
+    setAuth(res.username, res.token);
+    closeAuthModal();
+    alert("ثبت‌نام موفق. خوش آمدید!");
+  }else{
+    alert("خطا در ثبت‌نام");
+  }
+};
+
+// ورود
+authDoLogin.onclick = async ()=>{
+  const u = (logUsername.value || "").trim();
+  const p = (logPassword.value || "").trim();
+  if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
+  const res = await doLogin(u,p);
+  if (res?.ok){
+    setAuth(res.username, res.token);
+    closeAuthModal();
+    alert("ورود موفق.");
+  }else{
+    alert("خطا در ورود");
+  }
+};
+
+// اطمینان از احراز هویت پیش از شروع
+async function ensureAuth(){
+  const {username, token} = getAuth();
+  if (username && token) return;  // قبلاً لاگین بوده
+  openAuthModal("register");
+  // منتظر بمان تا کاربر ثبت‌نام یا ورود کند (ساده: poll)
+  let tries = 0;
+  while (tries < 600){ // ~60 ثانیه
+    const a = getAuth();
+    if (a.username && a.token) return;
+    await new Promise(r=>setTimeout(r,100));
+    tries++;
+  }
+}
 
 let busy=false, controller=null, stoppedByUser=false, shouldStopStreaming=false;
 
@@ -785,8 +1070,46 @@ fzRange.oninput=()=>{
 };
 
 
+function getStoredUsername(){
+   try{
+     const j = JSON.parse(localStorage.getItem("auth") || "null");
+     if (j && (j.username || j.user || j.name)) return j.username || j.user || j.name;
+   } catch {}
+   const alt1 = localStorage.getItem("chat_auth_name");
+   if (alt1) return alt1;
+
+   const alt2 = localStorage.getItem("username");
+   if (alt2) return alt2;
+
+   return "مهمان";  // این را تغییر داده و از آن برای "مهمان" فقط در صورت عدم موجودیت استفاده کنید.
+}
+
+
+
+function updateAccountSection(){
+    const el = document.getElementById("accUsername");
+    if (el) el.textContent = getStoredUsername();  // اطمینان حاصل کنید که اینجا نام کاربری درست بارگذاری می‌شود
+
+    const copyBtn = document.getElementById("copyUsernameBtn");
+    if (copyBtn){
+      copyBtn.onclick = async ()=> {
+        try {
+          await navigator.clipboard.writeText(getStoredUsername()); 
+        } catch { }
+      };
+    }
+}
+
+
 // dialogs open/close
-openSettingsBtn.onclick=()=>{ settingsModal.classList.add("show"); settingsModal.setAttribute("aria-hidden","false"); };
+openSettingsBtn.onclick=()=>{
+  // اول نام کاربری را به‌روز کن
+  try{ updateAccountSection(); }catch{}
+  // بعد مودال را نمایش بده
+  settingsModal.classList.add("show");
+  settingsModal.setAttribute("aria-hidden","false");
+};
+
 closeSettings.onclick = closeModal;
 function closeModal(){ settingsModal.classList.remove("show"); settingsModal.setAttribute("aria-hidden","true"); }
 saveSettings.onclick=()=>{ localStorage.setItem(KEY_RULES, rulesSettings.value||"");
@@ -899,12 +1222,8 @@ function renderActiveChat(){
     } else {
       const row=makeRow(); const b=document.createElement("div"); b.className="bubble bot"; const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(m.versions[m.active].content); b.appendChild(r); msgsEl.appendChild(row); row.appendChild(b); row.dataset.id=m.id; attachActions(row,b,m); normalizeLinks(r);
       
-      r.querySelectorAll("pre").forEach(pre=>{
-        const btn=document.createElement("button"); btn.className="code-copy";
-        btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span style="font-family:IRANYekanX">copy code</span>`;
-        btn.onclick=async()=>{ const code=pre.querySelector("code")?.innerText||""; await navigator.clipboard.writeText(code); btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M9 16.17l-3.5-3.5L4 14.17l5 5 12-12-1.41-1.41z"/></svg><span style="font-family:IRANYekanX">کپی شد</span>`; setTimeout(()=>btn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg><span style="font-family:IRANYekanX">copy code</span>`,1200); };
-        pre.appendChild(btn);
-      });
+      ensureCodeCopyButtons(r);
+
     }
   });
   msgsEl.scrollTop=msgsEl.scrollHeight;
@@ -961,8 +1280,11 @@ function renderActiveChat(){
     });
   }catch{}
 
-  // 3) شروع چت
-  await createNewActiveChat();
+// 3) شروع چت
+// 2.5) احراز هویت
+await ensureAuth();
+await createNewActiveChat();
+
 
   // 4) اگر بن بود، ورودی را قفل کن و کلیک را هندل کن
   if (banned){
@@ -1105,15 +1427,16 @@ function renameChatWithPrompt(id, oldTitle){
 
 // probe
 (async function probeKeys(){
-  const okGH  = await check("github",     "gpt-4.1-mini");
-  const okOR  = await check("openrouter", "x-ai/grok-2-mini");
+  const okGH  = await check("github","gpt-4.1-mini");
+  const okOR1 = await check("openrouter","x-ai/grok-2-mini");
+  const okOR2 = await check("openrouter","google/gemini-2.0-flash-001");
 
-  const okGem = await check("gemini",     "gemini-1.5-flash-latest");
   if (probeInModal) {
     probeInModal.textContent =
-      `GitHub ${okGH?"✅":"⚠️"} | OpenRouter ${okOR?"✅":"⚠️"} | Gemini ${okGem?"✅":"⚠️"}`;
+      `GitHub ${okGH?"✅":"⚠️"} | OpenRouter(Grok) ${okOR1?"✅":"⚠️"} | OpenRouter(Gemini) ${okOR2?"✅":"⚠️"}`;
   }
 })();
+
 
 
 async function check(provider, model){
@@ -1146,8 +1469,9 @@ const PREFERRED_AUTO = [
   "gpt-4o-mini",
   "x-ai/grok-2-mini",
   "deepseek-chat",
-  "gemini-1.5-flash-latest"
+  "google/gemini-2.0-flash-001"   // ← جایگزینِ gemini-1.5-flash-latest
 ];
+
 
 function getMode(){ return localStorage.getItem(KEY_MODEL_MODE) || "auto"; }
 function setMode(m){ localStorage.setItem(KEY_MODEL_MODE, m); }
@@ -1331,7 +1655,24 @@ const SVGsOutline = {
   info: SVGs.info
 };
 
+function ensureCodeCopyButtons(root){
+  if (!root) return;
+  root.querySelectorAll("pre").forEach(pre=>{
+    // اگر قبلاً برای این بلاک دکمه ساختیم، دوباره نساز
+    if (pre.querySelector(".code-copy")) return;
 
+    const btn = document.createElement("button");
+    btn.className="code-copy";
+    btn.innerHTML = `${SVGs.copy}<span style="font-family:IRANYekanX">copy code</span>`;
+    btn.onclick = async ()=>{
+      const code = pre.querySelector("code")?.innerText || "";
+      await navigator.clipboard.writeText(code);
+      btn.innerHTML = `${SVGs.check}<span style="font-family:IRANYekanX">کپی شد</span>`;
+      setTimeout(()=> btn.innerHTML = `${SVGs.copy}<span style="font-family:IRANYekanX">copy code</span>`, 1200);
+    };
+    pre.appendChild(btn);
+  });
+}
 // رأی‌ها
 function loadRatings(){ try{return JSON.parse(localStorage.getItem(KEY_RATINGS)||"{}")}catch{return{}} }
 function saveRatings(x){ localStorage.setItem(KEY_RATINGS, JSON.stringify(x||{})); }
@@ -1499,16 +1840,30 @@ function stop(){ shouldStopStreaming=true; if(controller) controller.abort("user
 // تایپر
 async function typewriter(container, text){
   const twOn = (localStorage.getItem(KEY_TW)!=="0");
-  if(!twOn){ container.innerHTML=marked.parse(text); normalizeLinks(container); try{hljs.highlightAll();}catch{}; return; }
-  container.innerHTML=""; let acc="";
+  if(!twOn){
+    container.innerHTML = marked.parse(text);
+    normalizeLinks(container);
+    try{ hljs.highlightAll(); }catch{}
+    // ⬇️ دکمه‌های کپی کد را بعد از رندر نهایی اضافه کن
+    ensureCodeCopyButtons(container);
+    return;
+  }
+
+  container.innerHTML = "";
+  let acc = "";
   for(let i=0;i<text.length;i++){
     if(shouldStopStreaming) break;
-    acc+=text[i];
-    container.innerHTML=marked.parse(acc); normalizeLinks(container);
-    try{hljs.highlightAll();}catch{};
+    acc += text[i];
+    container.innerHTML = marked.parse(acc);
+    normalizeLinks(container);
+    try{ hljs.highlightAll(); }catch{}
     await new Promise(r=>setTimeout(r,8));
   }
+  // ⬇️ بعد از اتمام استریم، دکمه‌ها را یکبار تزریق کن
+  try{ hljs.highlightAll(); }catch{}
+  ensureCodeCopyButtons(container);
 }
+
 // --- helper: انتخاب متن مناسب برای عنوان از پیام‌های اخیر کاربر
 function pickMeaningfulUserText(messages){
   // آخرین ۴ پیام کاربر را از آخر به اول بررسی می‌کنیم
@@ -1585,75 +1940,81 @@ function safeMsgs(){
 
 // ارسال
 async function send(){
-  const text=inp.value.trim(); if(!text||busy) return;
+  const text = inp.value.trim(); 
+  if (!text || busy) return;
 
-  addUser(text); inp.value=""; inp.focus();
+  // اول تشخیص بده آیا درخواستِ عکس است
+  const imageQuery = wantsImage(text);
+
+  // ✅ پیام کاربر فقط یک‌بار اضافه شود
+  const userCid = await addUser(text);
+  inp.value = "";
+  inp.focus();
   maybeSetTitle();
-// اگر کاربر عکس خواست، مستقیماً API image را بزن
-// اگر کاربر عکس خواست، مستقیماً API image را بزن
-const imageQuery = wantsImage(text);
-if (imageQuery) {
-  try{
-    statusEl.textContent = "در حال آوردن تصویر…";
 
-    // ۱) پیام کاربر را هم در UI و هم سرور ثبت کن
-    const userCid = await addUser(text); // ← اینجا id کلاینتی پیام کاربر را می‌گیریم
-    // لاگِ پیام کاربر در سرور
+  if (imageQuery) {
     try {
-      await fetch(API_BASE + "/log", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          chat_id: currentChat()?.id,
-          role: "user",
-          content: text,
-          meta: { client_id: userCid }
-        })
-      });
-    } catch {}
+      statusEl.textContent = "در حال آوردن تصویر…";
 
-    // ۲) تصویر را بگیر
-    const r = await fetch(API_BASE + "/image", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ q: imageQuery })
-    });
-    const j = await r.json();
-
-    if (j?.ok && j.url){
-      const host = (()=>{ try{ return new URL(j.source||j.url).host.replace(/^www\./,''); }catch{return ""} })();
-      const md  = `![${j.title||imageQuery}](${j.url})\n\nمنبع: ${host? `(${host})` : ''}`;
-
-      // ۳) پیام دستیار را هم در UI اضافه کن و هم در سرور لاگ کن
-      const bot = addBot(md, false, { model: "image" });
+      // لاگ پیام کاربر در سرور با همان CID
       try {
         await fetch(API_BASE + "/log", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: currentChat()?.id,
-            role: "assistant",
-            content: md,
-            meta: { client_id: bot.id },
-            model: "image"
+            role: "user",
+            content: text,
+            meta: { client_id: userCid }
           })
         });
       } catch {}
 
-      setBusy(false); statusEl.textContent = "";
-      return; // این راند پیام تمام شد
-    } else {
-      addBot("متأسفم، نتوانستم تصویری مناسب پیدا کنم.", true);
-      setBusy(false); statusEl.textContent = "";
+      // واکشی تصویر
+      const r = await fetch(API_BASE + "/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: imageQuery })
+      });
+      const j = await r.json();
+
+      if (j?.ok && j.url) {
+        const host = (() => { try { return new URL(j.source || j.url).host.replace(/^www\./,''); } catch { return ""; } })();
+        const md = `![${j.title || imageQuery}](${j.url})\n\nمنبع: ${host ? `(${host})` : ''}`;
+
+        const bot = addBot(md, false, { model: "image" });
+
+        // لاگ پیام دستیار
+        try {
+          await fetch(API_BASE + "/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: currentChat()?.id,
+              role: "assistant",
+              content: md,
+              meta: { client_id: bot.id },
+              model: "image"
+            })
+          });
+        } catch {}
+
+        setBusy(false);
+        statusEl.textContent = "";
+        return; // این راند پیام تمام شد
+      } else {
+        addBot("متأسفم، نتوانستم تصویری مناسب پیدا کنم.", true);
+        setBusy(false);
+        statusEl.textContent = "";
+        return;
+      }
+    } catch (e) {
+      addBot("خطا در واکشی تصویر.", true);
+      setBusy(false);
+      statusEl.textContent = "";
       return;
     }
-  }catch(e){
-    addBot("خطا در واکشی تصویر.", true);
-    setBusy(false); statusEl.textContent = "";
-    return;
   }
-}
-
 
     // اگر پیام از نوع جستجو در وب است، به کاربر اطلاع بده
     if (isWebQuery(text)) {
@@ -1901,11 +2262,8 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   b.className="bubble bot"+(asError?" err":"");
   const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(markdown||""); b.appendChild(r);
   normalizeLinks(r);
-  r.querySelectorAll("pre").forEach(pre=>{
-    const btn=document.createElement("button"); btn.className="code-copy"; btn.innerHTML=`${SVGs.copy}<span style="font-family:IRANYekanX">copy code</span>`;
-    btn.onclick=async()=>{ const code=pre.querySelector("code")?.innerText||""; await navigator.clipboard.writeText(code); btn.innerHTML=`${SVGs.check}<span style="font-family:IRANYekanX">کپی شد</span>`; setTimeout(()=>btn.innerHTML=`${SVGs.copy}<span style="font-family:IRANYekanX">copy code</span>`,1200); };
-    pre.appendChild(btn);
-  });
+  ensureCodeCopyButtons(r);
+
   if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
   msgsEl.scrollTop=msgsEl.scrollHeight;
   scrollChatToBottom();
@@ -1980,7 +2338,80 @@ function updateWebToggleUI(){
   webToggle.classList.toggle("on", WEB_ON);
   webToggle.title = WEB_ON ? "جستجو در وب (روشن)" : "جستجو در وب (خاموش)";
 }
+// ---------- Account Settings (frontend) ----------
 
+// خواندن نام کاربری از ذخیره‌ی موجود شما
+function getCurrentUsername(){
+  try{
+    // اگر در پروژه‌ات auth در localStorage ذخیره می‌شود:
+    const a = JSON.parse(localStorage.getItem("auth") || "null");
+    return a?.username || a?.user || a?.name || "";
+  }catch{ return ""; }
+}
+
+// وقتی تنظیمات باز شد، نام را نمایش بده
+function hydrateAccountSection(){
+  const u = getCurrentUsername();
+  const el = document.getElementById("accUsername");
+  if (el) el.textContent = u || "مهمان";
+}
+hydrateAccountSection();
+
+// کپی نام کاربری
+const btnCopyUsername = document.getElementById("btnCopyUsername");
+if (btnCopyUsername){
+  btnCopyUsername.addEventListener("click", async ()=>{
+    const u = (document.getElementById("accUsername")?.textContent||"").trim();
+    if (!u || u==="مهمان") return;
+    try{
+      await navigator.clipboard.writeText(u);
+      showToast("نام کاربری کپی شد.");
+    }catch{
+      alert("کپی نشد. دسترسی کلیپ‌بورد محدود است.");
+    }
+  });
+}
+
+// تغییر رمز
+const btnChangePass = document.getElementById("btnChangePass");
+if (btnChangePass){
+  btnChangePass.addEventListener("click", async ()=>{
+    const accMsg = document.getElementById("accMsg");
+    const username = getCurrentUsername();
+    const oldp = document.getElementById("accOldPass")?.value || "";
+    const newp = document.getElementById("accNewPass")?.value || "";
+    if (!username){ accMsg.textContent = "ابتدا وارد حساب شوید."; return; }
+    if (!oldp || !newp){ accMsg.textContent = "هر دو فیلد رمز را پر کنید."; return; }
+
+    accMsg.textContent = "در حال تغییر...";
+    try{
+      const r = await fetch(API.replace("/api/chat","/api/auth/changePassword"), {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ username, old_password: oldp, new_password: newp })
+      });
+      const j = await r.json();
+      if (!j?.ok){
+        accMsg.textContent = (j?.error==="bad_credentials")
+          ? "رمز فعلی اشتباه است."
+          : "خطا در تغییر رمز.";
+        return;
+      }
+      accMsg.textContent = "رمز با موفقیت تغییر کرد.";
+      document.getElementById("accOldPass").value = "";
+      document.getElementById("accNewPass").value = "";
+      showToast("رمز عبور عوض شد ✅");
+    }catch(e){
+      accMsg.textContent = "خطای شبکه.";
+    }
+  });
+}
+
+// اگر تابع بازکننده‌ی تنظیمات داری، نام کاربری را هر بار تازه کن:
+if (typeof openSettings === "function"){
+  const _openSettings = openSettings;
+  window.openSettings = (...args)=>{ hydrateAccountSection(); return _openSettings(...args); };
+}
 </script>
 <!-- مودال ویرایش عنوان گفتگو -->
 <div id="renameModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0005;z-index:2000;align-items:center;justify-content:center;">
@@ -1990,6 +2421,50 @@ function updateWebToggleUI(){
     <div style="margin-top:12px;text-align:end">
       <button id="renameCancel" style="margin-inline-end:8px;">انصراف</button>
       <button id="renameSave">ذخیره</button>
+    </div>
+  </div>
+</div>
+<!-- ==== AUTH MODAL ==== -->
+<div id="authModal" class="auth-modal" aria-hidden="true">
+  <div class="auth-card">
+    <h3 style="margin:0 0 10px 0">ورود / ثبت‌نام</h3>
+    <div class="auth-tabs">
+      <div id="authTabRegister" class="auth-tab active">ثبت‌نام</div>
+      <div id="authTabLogin" class="auth-tab">ورود</div>
+    </div>
+
+    <!-- ثبت‌نام -->
+    <div id="authBoxRegister">
+      <div class="auth-row">
+        <label>نام کاربری پیشنهادی (منحصر‌به‌فرد):</label>
+        <input id="regUsername" readonly>
+        <button id="regenUsername" class="link ghost" style="width:100%">تولید مجدد نام کاربری</button>
+        <div class="auth-note">این نام کاربری به‌صورت رندوم ساخته می‌شود. می‌توانید با تولید مجدد، نام دیگری بسازید.</div>
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="regPassword" type="password" placeholder="رمز عبور را وارد کنید">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel" class="link ghost">بستن</button>
+        <button id="authDoRegister" class="link">ثبت‌نام</button>
+      </div>
+    </div>
+
+    <!-- ورود -->
+    <div id="authBoxLogin" style="display:none">
+      <div class="auth-row">
+        <label>نام کاربری:</label>
+        <input id="logUsername" placeholder="نام کاربری">
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="logPassword" type="password" placeholder="رمز عبور">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel2" class="link ghost">بستن</button>
+        <button id="authDoLogin" class="link">ورود</button>
+      </div>
     </div>
   </div>
 </div>
