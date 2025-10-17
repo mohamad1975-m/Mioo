@@ -103,6 +103,46 @@
   border-radius: 12px; /* گوشه‌های گرد */
   margin: 6px 0;
 }
+.user-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  /* حداکثر ارتفاع حدود ۴ کارت؛ برای بقیه اسکرول می‌شود */
+  max-height:260px;
+  overflow:auto;
+  /* تمام‌عرض شدن در ردیف */
+  flex:1;
+  width:100%;
+}
+
+
+.user-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+  cursor:pointer;
+}
+.dark .user-item{ background:#0b1220; border-color:#1f2937; }
+.user-item:hover{ background:#f8fafc; }
+.dark .user-item:hover{ background:#0f172a; }
+.user-item.active{
+  background:#eef2ff;
+  border-color:#c7d2fe;
+}
+.dark .user-item.active{
+  background:#1f2937;
+  border-color:#334155;
+}
+.user-meta{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.user-meta small{ color:var(--muted); }
 
 
   </style>
@@ -128,9 +168,13 @@
 
   <div class="card" id="viewChats">
     <div class="row">
-      <select id="userList"></select>
-      <button class="btn" id="refreshUsers">به‌روزرسانی</button>
-      <span class="pill" id="userInfo">-</span>
+      <!-- لیست کاربران به‌جای منوی کشویی -->
+<!-- لیست کاربران + دکمه، تمام‌عرض -->
+<div style="display:flex; flex-direction:column; gap:8px; flex:1">
+  <button class="btn" id="refreshUsers" style="align-self:flex-start">به‌روزرسانی</button>
+  <div id="userList" class="user-list"></div>
+</div>
+
     </div>
     <div class="hr"></div>
 <!-- پروفایل کاربر -->
@@ -144,6 +188,8 @@
       <button class="link ghost" id="btnLogins">تاریخچه ورود</button>
       <button class="link ghost" id="btnNotes" title="نوت خصوصی (آیکون نوت پد)">🗒️ نوت</button>
       <button class="link" id="btnBan">بن کردن</button>
+      <button id="btnUserAuth" class="link ghost">حساب</button>
+
     </div>
   </div>
 </div>
@@ -248,7 +294,9 @@ const profileBox = document.getElementById("profileBox");
 const profMeta   = document.getElementById("profMeta");
 const btnLogins  = document.getElementById("btnLogins");
 const btnNotes   = document.getElementById("btnNotes");
-const btnBan     = document.getElementById("btnBan");
+const btnBan = document.getElementById("btnBan");
+
+
 
 
 // Analytics nodes
@@ -287,21 +335,6 @@ document.addEventListener("click", (e)=>{
 });
 
 
-// Load users
-async function loadUsers(){
-  const data = await jget("/admin/users");
-  userList.innerHTML = "";
-  (data.users||[]).forEach(u=>{
-    const opt=document.createElement("option");
-    opt.value=u.uid;
-    opt.textContent=`${u.uid} — ${u.chats} چت — آخرین‌بار: ${fmt(u.lastSeen)}`;
-    userList.appendChild(opt);
-  });
-  userInfo.textContent = (data.users?.length||0)+" کاربر";
-  if (data.users?.length) loadChatsFor(userList.value);
-  if (data.users?.length) loadUserProfile(userList.value);
-
-}
 
 async function loadUserProfile(uid){
   profileBox.style.display = "none";
@@ -386,13 +419,6 @@ btnBan.onclick = async () => {
 
   }catch{}
 }
-
-refreshUsers.onclick = loadUsers;
-userList.onchange = ()=>{
-  loadChatsFor(userList.value);
-  loadUserProfile(userList.value);
-};
-
 
 // Chats table
 let currentChats = [];
@@ -624,8 +650,96 @@ exportAll.onclick = async()=>{
 };
 
 // Boot
-loadUsers();
 loadStats();
+
+// ---------------- لیست کاربران جدید ----------------
+async function loadUsersList(){
+  const box = document.getElementById("userList");
+  if (!box) return;
+  box.innerHTML = "درحال بارگذاری…";
+
+  try{
+    const r = await fetch(API + "/admin/users");
+    const j = await r.json();
+    const users = Array.isArray(j?.users) ? j.users : [];
+    if (!users.length){
+      box.textContent = "کاربری یافت نشد.";
+      return;
+    }
+
+    box.innerHTML = "";
+    users.forEach(u=>{
+      const div = document.createElement("div");
+      div.className = "user-item";
+      div.dataset.uid = u.uid;
+
+      const right = document.createElement("div");
+      right.className = "user-meta";
+      right.innerHTML = `
+        <b class="mono" style="direction:ltr">${u.uid}</b>
+        <small>تعداد گفتگو: ${u.chats}</small>
+      `;
+
+      const left = document.createElement("small");
+      left.textContent = u.lastSeen ? new Date(u.lastSeen).toLocaleString('fa-IR') : "-";
+
+      div.appendChild(right);
+      div.appendChild(left);
+
+      div.onclick = ()=>{
+        document.querySelectorAll(".user-item.active").forEach(x=>x.classList.remove("active"));
+        div.classList.add("active");
+        loadUserChats(u.uid);
+        loadUserProfile(u.uid);
+      };
+
+      box.appendChild(div);
+    });
+  }catch(e){
+    box.textContent = "خطا در دریافت کاربران";
+  }
+}
+
+async function loadUserChats(uid){
+  const host = document.getElementById("chatsTableWrap");
+  if (!host) return;
+
+  host.innerHTML = "درحال بارگذاری گفتگوها…";
+  try{
+    const r = await fetch(API + `/admin/chats?uid=${encodeURIComponent(uid)}`);
+    const j = await r.json();
+    const chats = Array.isArray(j?.chats) ? j.chats : [];
+
+    if (!chats.length){
+      host.textContent = "گفتگویی برای این کاربر یافت نشد.";
+      return;
+    }
+
+    host.innerHTML = "";
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead><tr><th>شناسه</th><th>عنوان</th><th>آخرین‌به‌روزرسانی</th><th>اکشن</th></tr></thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector("tbody");
+    chats.forEach(c=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="mono">${c.chatId}</td>
+        <td>${c.title || "-"}</td>
+        <td>${c.updatedAt ? new Date(c.updatedAt).toLocaleString('fa-IR') : "-"}</td>
+        <td><button class="btn ghost" onclick="showChat('${c.chatId}')">نمایش</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    host.appendChild(table);
+  }catch(e){
+    host.textContent = "خطا در دریافت گفتگوها";
+  }
+}
+
+// اجرای اولیه
+document.addEventListener("DOMContentLoaded", loadUsersList);
 
 // DOM refs
 const last30Chats = document.getElementById("last30Chats");
@@ -687,14 +801,6 @@ async function adminAnalyticsPlus(env){
   });
 }
 
-
-    const ctx = weekChart.getContext("2d");
-    ctx.clearRect(0,0,weekChart.width,weekChart.height);
-    const w = weekChart.width, h = weekChart.height;
-    const pad = 24;
-    const bw = (w - pad*2) / buckets.length * 0.7;
-    const space = (w - pad*2) / buckets.length;
-    const max = Math.max(1, ...buckets);
     // محور
     ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
@@ -711,13 +817,86 @@ async function adminAnalyticsPlus(env){
       ctx.fillText(lbl, x+bw/2-6, h-pad+16);
       ctx.fillStyle="#0f172a";
     }
-    try {
-  // کد رسم نمودار
-} catch(e) {
-  console.log(e);
-}
 
 
+
+  // یک دراوِ کمکی برای نمودار هفتگی
+  function drawWeek(buckets){
+    const ctx = weekChart.getContext("2d");
+    ctx.clearRect(0,0,weekChart.width,weekChart.height);
+
+    const w = weekChart.width, h = weekChart.height;
+    const pad = 24;
+    const space = (w - pad*2) / Math.max(1, buckets.length);
+    const bw = space * 0.7;
+    const max = Math.max(1, ...buckets);
+
+    // محور
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, h - pad);
+    ctx.lineTo(w - pad, h - pad);
+    ctx.stroke();
+
+    // میله‌ها
+    for (let i=0; i<buckets.length; i++){
+      const x = pad + i*space + (space - bw)/2;
+      const bh = Math.round((h - pad*2) * (buckets[i]/max));
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(x, h - pad - bh, bw, bh);
+
+      // برچسب روزها
+      ctx.fillStyle="#64748b";
+      ctx.font="12px IRANYekanX, Tahoma";
+      const lbl = ["ش","ی","د","س","چ","پ","ج"][i] || "";
+      ctx.fillText(lbl, x + bw/2 - 6, h - pad + 16);
+    }
+  }
+
+  // آمار پیشرفته سمت کلاینت (با فالبک)
+  async function loadStatsPlus(){
+    try{
+      // سعی می‌کنیم از /admin/analyticsPlus بگیریم؛ اگر نبود، فالبک به summary
+      let j = null;
+      try{
+        const r = await fetch(API + "/admin/analyticsPlus");
+        if (r.ok) j = await r.json();
+      }catch{}
+
+      if(!j){
+        const s = await (await fetch(API + "/admin/summary")).json();
+        // فقط اعداد کلی را می‌گذاریم؛ نمودار را خالی می‌کشیم
+        last30Chats.textContent = "—";
+        last30Msgs.textContent  = "—";
+        todayChats.textContent  = String(s.chats||0);
+        todayMsgs.textContent   = String(s.messages||0);
+        todayUsers.textContent  = String(s.users||0);
+        modelsBox.textContent   = "";
+        drawWeek([]); 
+        return;
+      }
+
+      // اگر ساختار analyticsPlus موجود بود:
+      last30Chats.textContent = j.last30?.chats ?? "—";
+      last30Msgs.textContent  = j.last30?.msgs  ?? "—";
+      todayChats.textContent  = j.today?.chats  ?? "—";
+      todayMsgs.textContent   = j.today?.msgs   ?? "—";
+      todayUsers.textContent  = j.today?.users  ?? "—";
+
+      // مدل‌ها
+      const models = j.models || {};
+      modelsBox.textContent = Object.keys(models).length
+        ? Object.entries(models).map(([k,v])=>`${k}: ${v}`).join("\n")
+        : "—";
+
+      // نمودار هفتگی
+      drawWeek(j.week?.buckets || []);
+    }catch(e){
+      console.log("loadStatsPlus error:", e);
+      drawWeek([]);  // لااقل نمودار خالی باشد و شکست نخورد
+    }
+  }
 // فراخوانی در بوت و با دکمه‌ی Refresh
 loadStatsPlus();
 refreshStats.addEventListener("click", ()=>{
@@ -730,6 +909,24 @@ refreshStats.addEventListener("click", ()=>{
 <!-- دکمه و پانل «مشاهده‌ی همه‌ی گفتگوها» -->
 <div class="panel" id="allPanel" style="display:none"></div>
 <div class="panel" id="livePanel" style="display:none"></div>
+
+<!-- مودال حساب کاربر -->
+<div id="authAdminModal" class="modal" aria-hidden="true" style="display:none">
+  <div class="modal-card">
+    <h3 style="margin-top:0">حساب کاربر</h3>
+    <div class="modal-row">
+      <div>نام کاربری: <b id="authAdmUsername" class="mono">—</b></div>
+      <div id="authAdmMeta" class="muted" style="font-size:12px"></div>
+    </div>
+    <div class="modal-row">
+      <input id="authAdmNewPass" type="password" placeholder="پسورد جدید">
+    </div>
+    <div class="actions">
+      <button id="authAdmClose" class="link ghost">بستن</button>
+      <button id="authAdmSave" class="link">ثبت پسورد جدید</button>
+    </div>
+  </div>
+</div>
 
 <!-- مودال حذف گفتگو -->
 <div class="modal" id="delModal" aria-hidden="true">
@@ -817,7 +1014,7 @@ refreshStats.addEventListener("click", ()=>{
 left.innerHTML = `
   <div>
     <b>${r.title || "بدون عنوان"}</b>
-    <div class="meta">کاربر: ${r.uid} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
+    <div class="meta">کاربر: ${r.username} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
   </div>
 `;
 
@@ -872,7 +1069,7 @@ item.appendChild(right);
           (r.preview||"") + " " +
           (r._allText || "") + " " +
           (r.chatId||"") + " " +
-          (r.uid||"")
+          (r.username||"")
         ).toLowerCase();
         return hay.includes(q);
       });
@@ -893,7 +1090,8 @@ item.appendChild(right);
   // 2) برای هر کاربر، لیست چت‌ها
   for (const u of (ju.users||[])){
     try{
-      const rc = await fetch(API + "/admin/chats?uid=" + encodeURIComponent(u.uid));
+      const rc = await fetch(API.replace("/api/chat","/api/admin/allChats"))
+
       const jc = await rc.json();
       for (const c of (jc.chats||[])){
         // ستاره را بعداً با گرفتن ریتینگ هر چت موقع بازشدن نشان می‌دهیم یا ساده: false
@@ -1156,6 +1354,73 @@ btnLive.onclick = ()=>{
   LIVE_SINCE = 0;
   pollLive();
   LIVE_TIMER = setInterval(pollLive, 2000);
+};
+// ==== دکمه حساب کاربر (ادمین) ====
+const btnUserAuth   = document.getElementById("btnUserAuth");
+const authAdmModal  = document.getElementById("authAdminModal");
+const authAdmUserEl = document.getElementById("authAdmUsername");
+const authAdmMetaEl = document.getElementById("authAdmMeta");
+const authAdmNewPass= document.getElementById("authAdmNewPass");
+const authAdmClose  = document.getElementById("authAdmClose");
+const authAdmSave   = document.getElementById("authAdmSave");
+
+// گرفتن uid از کاربر انتخاب‌شده (همان متغیر فعلی loadUserProfile)
+function getSelectedUid(){
+  const active = document.querySelector(".user-item.active");
+  return active ? active.dataset.uid : null;
+}
+
+btnUserAuth.onclick = async ()=>{
+  const uid = getSelectedUid();
+  if(!uid) return alert("لطفاً یک کاربر را از لیست انتخاب کنید.");
+
+  authAdmUserEl.textContent = uid;
+  authAdmNewPass.value = "";
+  authAdmMetaEl.textContent = "در حال دریافت اطلاعات…";
+
+  try{
+    const r = await fetch(API + "/admin/authInfo?uid=" + encodeURIComponent(uid));
+    const j = await r.json();
+    if(j?.ok){
+      const mk = ts => ts ? new Date(ts).toLocaleString("fa-IR") : "-";
+      authAdmMetaEl.textContent = `وضعیت پسورد: ${j.user.hasPassword ? "دارد" : "ندارد"} | ساخت: ${mk(j.user.createdAt)} | آخرین تغییر: ${mk(j.user.updatedAt)}`;
+    }else{
+      authAdmMetaEl.textContent = "خطا در دریافت اطلاعات.";
+    }
+  }catch{
+    authAdmMetaEl.textContent = "خطا در ارتباط با سرور.";
+  }
+
+  authAdmModal.style.display = "flex";
+  authAdmModal.setAttribute("aria-hidden","false");
+};
+
+authAdmClose.onclick = ()=>{
+  authAdmModal.style.display = "none";
+  authAdmModal.setAttribute("aria-hidden","true");
+};
+
+authAdmSave.onclick = async ()=>{
+  const uid = getSelectedUid();
+  const np = authAdmNewPass.value.trim();
+  if(!uid) return alert("کاربر انتخاب نشده.");
+  if(!np)  return alert("رمز جدید را وارد کنید.");
+
+  try{
+    const r = await fetch(API + "/admin/setPassword", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ uid, new_password: np })
+    });
+    const j = await r.json();
+    if(j?.ok){
+      alert("رمز جدید ثبت شد.");
+      authAdmClose.click();
+    }else{
+      alert("خطا: " + (j.error || "نامشخص"));
+    }
+  }catch{
+    alert("خطای شبکه در ثبت رمز.");
+  }
 };
 
   </script>
