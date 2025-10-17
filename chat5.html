@@ -315,11 +315,32 @@ body{
   align-items:center;
   gap:8px;
 }
+/* === Key status grid/cards === */
+.key-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap:10px;
+  margin-top:8px;
+}
+.key-card{
+  display:flex; align-items:center; gap:10px;
+  border:1px solid #e5e7eb; border-radius:12px; padding:10px;
+  background:#fff;
+}
+.dark .key-card{ background:#0b1220; border-color:#1f2937; }
+.key-emoji{
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border-radius:999px; font-size:16px; line-height:1;
+}
+.key-emoji.ok{ background:#dcfce7; color:#16a34a; }
+.key-emoji.warn{ background:#fee2e2; color:#dc2626; }
+.key-label{ font-family:IRANYekanX, Tahoma; font-size:14px; color:var(--ink); }
+.key-sub{ font-size:12px; color:var(--muted); margin-inline-start:auto; }
 
 /* ردیف فعال در فهرست گفتگوها */
 .chat-item.active{
-  background:#abddff;         /* سبز خیلی کمرنگ */
-  border-color:#52baff;
+  background:#eef2ff;         /* سبز خیلی کمرنگ */
+  border-color:#475569;
 }
 .dark .chat-item.active{
   background:#052e1c;         /* سبز تیره برای دارک مود */
@@ -552,7 +573,7 @@ body{
           </div>
           <div class="model-row">
             <div class="model-cell" data-model="google/gemini-2.0-flash-001">Gemini 2.0 Flash (OR)</div>
-            <div class="model-cell" data-model="x-ai/grok-2">Grok 2 Mini</div>
+            <div class="model-cell" data-model="Grok-3-Mini">Grok 3 Mini</div>
 
           </div>
           <div class="model-row" style="border-bottom:0">
@@ -570,7 +591,8 @@ body{
       <hr style="border:none;border-top:1px dashed #cbd5e1; margin:12px 0">
       <div>
         <b>وضعیت کلیدها</b>
-        <div id="probeInModal" class="mono" style="margin-top:6px">درحال بررسی…</div>
+        <div id="probeInModal" class="key-grid" aria-live="polite">درحال بررسی…</div>
+
       </div>
 
       <div class="actions" style="margin-top:12px">
@@ -666,7 +688,90 @@ body{
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
+// --- username helper & header sender ---
+function currentUsername(){
+  const a = getAuth && getAuth();
+  if (a && a.username && String(a.username).trim()) return String(a.username).trim();
+  const ls = localStorage.getItem("username");
+  if (ls && String(ls).trim()) return String(ls).trim();
+  const el = document.getElementById("username") || document.getElementById("usernameInput");
+  return (el && String(el.value||"").trim()) || "";
+}
+
+
+async function checkBanOrBlock(){
+  try{
+    const r = await fetch(API_BASE + "/banStatus", {
+
+      headers: { "x-username": currentUsername() }
+    });
+    const j = await r.json();
+    if (j && j.banned){
+      // UI را قفل کن و پیام بده
+      disableChatUI(j.message || "اکانت شما بن شده است.");
+      throw new Error("banned");
+    }
+  }catch(e){
+    // اگر خطای شبکه بود، مزاحم نشو
+    console.warn("ban check error:", e);
+  }
+}
+
+function disableChatUI(msg){
+  const box = document.getElementById("chatBox") || document.body;
+  const ta  = document.getElementById("msg") || document.querySelector("textarea");
+  const btn = document.getElementById("sendBtn") || document.querySelector("button#send, button[data-send]");
+  if (ta)  { ta.disabled = true; ta.placeholder = msg; }
+  if (btn) { btn.disabled = true; btn.textContent = "بن‌شده"; }
+  // اگر جای نمایش خطا داری، استفاده کن:
+  alert(msg);
+}
 const API_BASE = API.replace(/\/chat$/,''); // می‌شود .../api
+// --- Change password (user settings) ---
+const btnChangePass = document.getElementById("btnChangePass");
+btnChangePass.addEventListener("click", async () => {
+  // username را از لاگین ذخیره‌شده برمی‌داریم
+  const u = (getAuth()?.username || "").trim();
+
+
+     const old_password = (document.getElementById("accOldPass")?.value || "").trim();
+const new_password = (document.getElementById("accNewPass")?.value || "").trim();
+
+
+  if (!u || !old_password || !new_password) {
+    alert("همه فیلدها را پر کنید.");
+    return;
+  }
+
+  try {
+    const r = await fetch(API_BASE + "/auth/changePassword", {
+
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-username": u   // برای سازگاری با سرور، ولی معیار اصلی body است
+      },
+      body: JSON.stringify({ username: u, old_password, new_password })
+    });
+
+    const j = await r.json().catch(() => ({}));
+
+    if (j?.ok) {
+      alert("رمز عبور با موفقیت تغییر کرد.");
+      (document.getElementById("accOldPass")||{}).value = "";
+(document.getElementById("accNewPass")||{}).value = "";
+
+    } else if (j?.error === "bad_credentials") {
+      alert("رمز فعلی اشتباه است.");
+    } else if (j?.error === "missing_fields") {
+      alert("فیلدی جا مانده است.");
+    } else {
+      alert("خطای سرور/شبکه.");
+    }
+  } catch (e) {
+    alert("خطای شبکه.");
+  }
+});
 // ====== AUTH CORE (username/token) ======
 const KEY_AUTH_NAME  = "auth_username_v1";
 const KEY_AUTH_TOKEN = "auth_token_v1";
@@ -894,38 +999,26 @@ authCancel2.onclick = closeAuthModal;
 
 // فراخوانی به سرور (ثبت‌نام / ورود)
 // NOTE: فعلاً فرض می‌کنیم Worker بعداً این دو مسیر را پیاده‌سازی می‌کند:
+// --- جایگزین کامل:
 async function doRegister(u, p){
-  // اگر Worker هنوز آماده نیست، یک توکن fake بده تا فرانت جلو برود
-  // بعداً با Worker واقعی جایگزین می‌شود
-  try{
-    const r = await fetch(API_BASE + "/auth/register", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ username:u, password:p })
-    });
-    const j = await r.json();
-    if (!j?.ok) throw new Error(j?.error || "register_failed");
-    return j; // { ok, username, token }
-  }catch(e){
-    // فالبک برای تست اولیه
-    return { ok:true, username:u, token: "local-"+Math.random().toString(36).slice(2) };
-  }
+  const r = await fetch(API_BASE + "/auth/register", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ username:u, password:p })
+  });
+  const j = await r.json();
+  // انتظار: { ok:true, username, token } یا { ok:false, error:"..." }
+  return j;
 }
 
 async function doLogin(u, p){
-  try{
-    const r = await fetch(API_BASE + "/auth/login", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ username:u, password:p })
-    });
-    const j = await r.json();
-    if (!j?.ok) throw new Error(j?.error || "login_failed");
-    return j; // { ok, username, token }
-  }catch(e){
-    // فالبک برای تست اولیه
-    return { ok:true, username:u, token: "local-"+Math.random().toString(36).slice(2) };
-  }
+  const r = await fetch(API_BASE + "/auth/login", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ username:u, password:p })
+  });
+  const j = await r.json();
+  return j;
 }
 
 // ثبت‌نام
@@ -934,13 +1027,21 @@ authDoRegister.onclick = async ()=>{
   const p = (regPassword.value || "").trim();
   if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
   const res = await doRegister(u,p);
+  
   if (res?.ok){
-    setAuth(res.username, res.token);
-    closeAuthModal();
-    alert("ثبت‌نام موفق. خوش آمدید!");
-  }else{
-    alert("خطا در ثبت‌نام");
-  }
+  setAuth(res.username, res.token);
+  closeAuthModal();
+  alert("ثبت‌نام موفق. خوش آمدید!");
+}else{
+  alert(
+  res?.error === "user_exists"
+    ? "این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید."
+    : res?.error === "server"
+      ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
+      : (res?.error || "خطا در ثبت‌نام")
+);
+
+}
 };
 
 // ورود
@@ -950,12 +1051,19 @@ authDoLogin.onclick = async ()=>{
   if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
   const res = await doLogin(u,p);
   if (res?.ok){
-    setAuth(res.username, res.token);
-    closeAuthModal();
-    alert("ورود موفق.");
-  }else{
-    alert("خطا در ورود");
-  }
+  setAuth(res.username, res.token);
+  closeAuthModal();
+  alert("ورود موفق.");
+}else{
+  alert(
+  res?.error === "bad_credentials"
+    ? "نام کاربری یا رمز عبور نادرست است."
+    : res?.error === "server"
+      ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
+      : (res?.error || "خطا در ورود")
+);
+
+}
 };
 
 // اطمینان از احراز هویت پیش از شروع
@@ -1233,13 +1341,8 @@ function renderActiveChat(){
 }
 
 // first start (ban check + login track)
-(async function initStart(){
-  // 1) وضعیت بن
-  let banned=false, banMsg="";
-  try{
-    const r = await fetch(API.replace("/api/chat","/api/banStatus"));
-    const j = await r.json(); banned = !!j?.banned; banMsg = j?.message||"اکانت شما بن شده است.";
-  }catch{}
+
+
 
     // 2) ثبت لاگین + مدل دستگاه (با UA-CH و فallback)
     async function getDeviceLabel(){
@@ -1272,36 +1375,37 @@ function renderActiveChat(){
     return (brand? (brand+" | "):"") + ua;
   }
 
+  async function trackLogin(){
   try{
     const device = await getDeviceLabel();
     await fetch(API.replace("/api/chat","/api/track/login"), {
-      method:"POST", headers:{"Content-Type":"application/json"},
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ device })
     });
   }catch{}
+}
+
 
 // 3) شروع چت
 // 2.5) احراز هویت
-await ensureAuth();
-await createNewActiveChat();
+(async function initStart(){
+  // 1) ثبت لاگین + مدل دستگاه ...
+  //   (همان کدهای فعلی‌ات اینجا می‌ماند)
+  await trackLogin();
+
+  // 2) احراز هویت (ثبت‌نام/ورود)
+  await ensureAuth();
+
+  // 3) حالا که username/token داری → وضعیت بن را چک کن
+  await checkBanOrBlock();
+
+  // 4) ادامه‌ی کد: createNewActiveChat() و ...
+  await createNewActiveChat();
 
 
-  // 4) اگر بن بود، ورودی را قفل کن و کلیک را هندل کن
-  if (banned){
-    inp.setAttribute("disabled","disabled");
-    inp.placeholder = banMsg;
-    const banner = document.createElement("div");
-    banner.className = "bubble bot err";
-    banner.style.margin="8px";
-    banner.innerHTML = banMsg;
-    msgsEl.prepend(banner);
-    inp.addEventListener("click", ()=>{
-      alert(banMsg);
-    });
-    // همچنین دکمه ارسال را هم قفل کن
-    btn.setAttribute("disabled","disabled");
-    statusEl.textContent = "حساب شما بن است";
-  }
+
+
 })();
 
 
@@ -1427,14 +1531,25 @@ function renameChatWithPrompt(id, oldTitle){
 
 // probe
 (async function probeKeys(){
-  const okGH  = await check("github","gpt-4.1-mini");
-  const okOR1 = await check("openrouter","x-ai/grok-2-mini");
-  const okOR2 = await check("openrouter","google/gemini-2.0-flash-001");
+  const results = [
+    { label: "GitHub",               model: "gpt-4.1-mini",                 ok: await check("github","gpt-4.1-mini") },
+    { label: "OpenRouter (Grok)",    model: "Grok-3-Mini",                  ok: await check("openrouter","Grok-3-Mini") },
+    { label: "OpenRouter (Gemini)",  model: "google/gemini-2.0-flash-001",  ok: await check("openrouter","google/gemini-2.0-flash-001") },
+  ];
 
-  if (probeInModal) {
-    probeInModal.textContent =
-      `GitHub ${okGH?"✅":"⚠️"} | OpenRouter(Grok) ${okOR1?"✅":"⚠️"} | OpenRouter(Gemini) ${okOR2?"✅":"⚠️"}`;
-  }
+  if (!probeInModal) return;
+
+  probeInModal.innerHTML = results.map(r => {
+    const emoji = r.ok ? "✅" : "⚠️";
+    const cls   = r.ok ? "ok" : "warn";
+    return `
+      <div class="key-card">
+        <div class="key-emoji ${cls}">${emoji}</div>
+        <div class="key-label">${r.label}</div>
+        <div class="key-sub">${r.model}</div>
+      </div>
+    `;
+  }).join("");
 })();
 
 
@@ -1467,7 +1582,7 @@ const closeModelHelp = $("closeModelHelp");
 const PREFERRED_AUTO = [
   "gpt-4.1-mini",
   "gpt-4o-mini",
-  "x-ai/grok-2-mini",
+  "Grok-3-Mini",
   "deepseek-chat",
   "google/gemini-2.0-flash-001"   // ← جایگزینِ gemini-1.5-flash-latest
 ];
@@ -1940,6 +2055,8 @@ function safeMsgs(){
 
 // ارسال
 async function send(){
+  await checkBanOrBlock();
+
   const text = inp.value.trim(); 
   if (!text || busy) return;
 
@@ -2052,7 +2169,10 @@ const messagesToSend = safeMsgs().map(m => ({
 const r = await fetch(API, {
   method: "POST",
   signal: controller.signal,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    "x-username": currentUsername()
+  },
   body: JSON.stringify({
     provider,
     model,
@@ -2063,7 +2183,6 @@ const r = await fetch(API, {
     user_rules: (localStorage.getItem(KEY_RULES) || "")
   })
 });
-
 
 if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
 else statusEl.textContent = "درحال پاسخ…";
@@ -2372,46 +2491,7 @@ if (btnCopyUsername){
   });
 }
 
-// تغییر رمز
-const btnChangePass = document.getElementById("btnChangePass");
-if (btnChangePass){
-  btnChangePass.addEventListener("click", async ()=>{
-    const accMsg = document.getElementById("accMsg");
-    const username = getCurrentUsername();
-    const oldp = document.getElementById("accOldPass")?.value || "";
-    const newp = document.getElementById("accNewPass")?.value || "";
-    if (!username){ accMsg.textContent = "ابتدا وارد حساب شوید."; return; }
-    if (!oldp || !newp){ accMsg.textContent = "هر دو فیلد رمز را پر کنید."; return; }
 
-    accMsg.textContent = "در حال تغییر...";
-    try{
-      const r = await fetch(API.replace("/api/chat","/api/auth/changePassword"), {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ username, old_password: oldp, new_password: newp })
-      });
-      const j = await r.json();
-      if (!j?.ok){
-        accMsg.textContent = (j?.error==="bad_credentials")
-          ? "رمز فعلی اشتباه است."
-          : "خطا در تغییر رمز.";
-        return;
-      }
-      accMsg.textContent = "رمز با موفقیت تغییر کرد.";
-      document.getElementById("accOldPass").value = "";
-      document.getElementById("accNewPass").value = "";
-      showToast("رمز عبور عوض شد ✅");
-    }catch(e){
-      accMsg.textContent = "خطای شبکه.";
-    }
-  });
-}
-
-// اگر تابع بازکننده‌ی تنظیمات داری، نام کاربری را هر بار تازه کن:
-if (typeof openSettings === "function"){
-  const _openSettings = openSettings;
-  window.openSettings = (...args)=>{ hydrateAccountSection(); return _openSettings(...args); };
-}
 </script>
 <!-- مودال ویرایش عنوان گفتگو -->
 <div id="renameModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0005;z-index:2000;align-items:center;justify-content:center;">
