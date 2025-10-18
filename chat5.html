@@ -719,6 +719,15 @@ body{
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
+function closeAuthModal(){
+  const m = document.getElementById("authModal");
+  if (!m) return;
+  m.style.display = "none";
+  m.classList.remove("show");
+  m.setAttribute("aria-hidden","true");
+  document.body.classList.remove("no-scroll");
+}
+
 // --- username helper & header sender ---
 function currentUsername(){
   const a = getAuth && getAuth();
@@ -1093,6 +1102,8 @@ renderChatList("");
 try{ await syncUp(); }catch{}
 
   alert("ثبت‌نام موفق. خوش آمدید!");
+  closeAuthModal();
+
 }else{
   alert(
   res?.error === "user_exists"
@@ -1118,6 +1129,8 @@ renderChatList("");
 try{ await syncUp(); }catch{}
 
   alert("ورود موفق.");
+  closeAuthModal();
+
 }else{
   alert(
   res?.error === "bad_credentials"
