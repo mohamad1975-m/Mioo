@@ -542,6 +542,10 @@ body{
       <button id="btnChangePass" class="btn">تغییر رمز</button>
       <div id="accMsg" class="muted"></div>
     </div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button id="btnLogout" class="link ghost">خروج از حساب کاربری</button>
+    </div>
+    
   </div>
 </section>
 <!-- === /account === -->
@@ -1396,6 +1400,30 @@ function renderActiveChat(){
 
   // 2) احراز هویت (ثبت‌نام/ورود)
   await ensureAuth();
+// --- validate session: آیا این دستگاه هنوز داخل اکانت است؟ ---
+try {
+  const me = getAuth();
+  // لیست دستگاه‌های همین کاربر را از سرور بگیر
+  const r = await fetch(API_BASE + "/admin/devices?uid=" + encodeURIComponent(me.username));
+  const j = await r.json();
+  const list = Array.isArray(j?.devices) ? j.devices : [];
+  // آیا توکن فعلی ما هنوز بین دستگاه‌های فعال هست؟
+  const stillIn = list.some(d => d.token === me.token);
+
+  if (!stillIn) {
+    // این دستگاه توسط ادمین از اکانت بیرون افتاده → کاربر را لاگ‌اوت کن و پنجرهٔ لاگین را نشان بده
+    clearAuth();
+    // اگر دوست داری چت‌های محلی را هم پاک کنی که بعد از خروج دیده نشوند، این دو خط را هم فعال کن:
+    // localStorage.removeItem("chats_v2");
+    // localStorage.removeItem("active_chat_v1");
+
+    openAuthModal("login");
+    throw new Error("session_revoked");
+  }
+} catch (e) {
+  // خطای شبکه را نادیده بگیر تا تجربه خراب نشود
+  console.warn("device validate error:", e);
+}
 
   // 3) حالا که username/token داری → وضعیت بن را چک کن
   await checkBanOrBlock();
@@ -2491,6 +2519,35 @@ if (btnCopyUsername){
   });
 }
 
+// --- خروج از حساب کاربری ---
+const btnLogout = document.getElementById("btnLogout");
+if (btnLogout){
+  btnLogout.onclick = async () => {
+    if (!confirm("آیا از خروج از حساب کاربری مطمئن هستید؟")) return;
+    const token = localStorage.getItem("auth_token_v1") || localStorage.getItem("auth_token") || "";
+    const username = localStorage.getItem("auth_username_v1") || localStorage.getItem("username") || "";
+    try {
+      await fetch(API_BASE + "/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, username })
+      });
+    } catch {}
+
+    // پاک کردن اطلاعات لاگین محلی
+    localStorage.removeItem("auth_token_v1");
+    localStorage.removeItem("auth_username_v1");
+    localStorage.removeItem("auth");
+    localStorage.removeItem("username");
+
+    // پاک کردن چت‌ها (چون چت‌ها به اکانت مربوط‌اند)
+    localStorage.removeItem("chats_v2");
+    localStorage.removeItem("active_chat_v1");
+
+    alert("با موفقیت از حساب خارج شدید.");
+    location.reload(); // بازگشت به صفحهٔ ورود/ثبت‌نام
+  };
+}
 
 </script>
 <!-- مودال ویرایش عنوان گفتگو -->
