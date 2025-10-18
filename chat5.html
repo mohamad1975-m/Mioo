@@ -187,7 +187,17 @@ body{
     .gear svg{width:20px;height:20px;fill:var(--ink)}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:90}
     .modal.show{display:flex}
-    .modal-card{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+    .modal-card{
+  background:#fff;
+  border-radius:16px;
+  max-width:520px;
+  width:100%;
+  padding:16px;
+  box-shadow:0 10px 40px rgba(0,0,0,.2);
+  max-height:90vh;            /* ← مهم: ارتفاع محدود */
+  overflow:auto;              /* ← مهم: اسکرول محتوا */
+}
+
     .dark .modal-card{background:#0b1220;color:#e5e7eb}
     .modal-card h3{margin:0 0 10px 0;font-size:18px}
     .modal-row{display:grid;gap:8px;margin:12px 0}
@@ -396,6 +406,22 @@ body{
 .auth-row input{border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; font-family:IRANYekanX}
 .dark .auth-row input{border-color:#1f2937; background:#0f172a; color:#e5e7eb}
 .auth-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
+/* موبایل: تک‌ستونه شدن فرم‌ها و کنترل ارتفاع‌ها */
+@media (max-width: 600px), (hover:none) and (pointer:coarse){
+  .modal-card{ max-height:92vh; overflow:auto; }
+  .modal-row{ display:block; }              /* ردیف‌ها زیر هم */
+  .account-card{ max-height:60vh; overflow:auto; } /* کارت حساب کاربری هم اسکرول بخورد */
+}
+/* گرید فیلدهای پسورد */
+.acc-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+@media (max-width: 600px), (hover:none) and (pointer:coarse){
+  .acc-grid{ grid-template-columns:1fr; }  /* ← موبایل: تک‌ستونه */
+}
+
 .auth-note{font-size:12px; color:#64748b}
   </style>
 
@@ -533,7 +559,8 @@ body{
       </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div id="accGrid" class="acc-grid">
+
       <input id="accOldPass" type="password" placeholder="رمز فعلی" class="in" />
       <input id="accNewPass" type="password" placeholder="رمز جدید" class="in" />
     </div>
@@ -976,19 +1003,33 @@ function openAuthModal(mode="register"){
   tabLog.classList.toggle("active", mode==="login");
   boxReg.style.display = (mode==="register") ? "block" : "none";
   boxLog.style.display = (mode==="login") ? "block" : "none";
-  authModal.classList.add("show"); authModal.setAttribute("aria-hidden","false");
 
+  // نمایش مودال
+  authModal.style.display = "block";
+  // یک رندر بعد کلاس show را بزن که ترنزیشن‌ها اذیت نشوند
+  requestAnimationFrame(()=> authModal.classList.add("show"));
+  authModal.setAttribute("aria-hidden","false");
+
+  // پاک‌سازی و فوکوس
   if (mode==="register"){
     regUsername.value = genUsername();
     regPassword.value = "";
+    setTimeout(()=> regUsername.focus(), 0);
   } else {
     logUsername.value = "";
     logPassword.value = "";
+    setTimeout(()=> logUsername.focus(), 0);
   }
 }
+
 function closeAuthModal(){
-  authModal.classList.remove("show"); authModal.setAttribute("aria-hidden","true");
+  // ابتدا کلاس را بردار تا انیمیشن بسته شدن اجرا شود
+  authModal.classList.remove("show");
+  authModal.setAttribute("aria-hidden","true");
+  // بعد از پایان انیمیشن، کلا پنهانش کن
+  setTimeout(()=>{ authModal.style.display = "none"; }, 150);
 }
+
 
 // سویچ تب‌ها
 tabReg.onclick = ()=> openAuthModal("register");
@@ -998,8 +1039,21 @@ tabLog.onclick = ()=> openAuthModal("login");
 regenUsername.onclick = ()=>{ regUsername.value = genUsername(); };
 
 // بستن مودال
-authCancel.onclick = closeAuthModal;
-authCancel2.onclick = closeAuthModal;
+authCancel.onclick = () => {
+  const _seqKey = seqKey();
+
+  clearAuth();
+  localStorage.removeItem("chats_v2");
+  localStorage.removeItem("active_chat_v1");
+  localStorage.removeItem(_seqKey);
+
+  msgsEl.innerHTML = "";
+  chatItems.innerHTML = "";
+  alert("برای ادامه باید وارد شوید.");
+  openAuthModal("register");
+
+};
+authCancel2.onclick = authCancel.onclick;
 
 // فراخوانی به سرور (ثبت‌نام / ورود)
 // NOTE: فعلاً فرض می‌کنیم Worker بعداً این دو مسیر را پیاده‌سازی می‌کند:
@@ -1034,7 +1088,10 @@ authDoRegister.onclick = async ()=>{
   
   if (res?.ok){
   setAuth(res.username, res.token);
-  closeAuthModal();
+  await createNewActiveChat();
+renderChatList("");
+try{ await syncUp(); }catch{}
+
   alert("ثبت‌نام موفق. خوش آمدید!");
 }else{
   alert(
@@ -1056,7 +1113,10 @@ authDoLogin.onclick = async ()=>{
   const res = await doLogin(u,p);
   if (res?.ok){
   setAuth(res.username, res.token);
-  closeAuthModal();
+  await createNewActiveChat();
+renderChatList("");
+try{ await syncUp(); }catch{}
+
   alert("ورود موفق.");
 }else{
   alert(
@@ -1101,7 +1161,12 @@ const KEY_MODEL_MODE="model_mode_v1";      // 'auto' | 'manual'
 const KEY_MODEL_MANUAL="model_manual_v1";  // string model id
 const KEY_RATINGS="message_ratings_v1";    // { [msgId]: 'up' | 'down' }
 const KEY_LOCAL_RATINGS = "local_ratings_v1"; // { [msgId]: "up" | "down" }
-const KEY_CHAT_SEQ = "chat_seq_counter_v1";
+const KEY_CHAT_SEQ_PREFIX = "chat_seq_counter__";
+function seqKey(){
+  const u = (getAuth()?.username || "guest").trim();
+  return KEY_CHAT_SEQ_PREFIX + u;
+}
+
 
 function loadLocalRatings(){ try{return JSON.parse(localStorage.getItem(KEY_LOCAL_RATINGS)||"{}")}catch{return{}} }
 function saveLocalRatings(x){ localStorage.setItem(KEY_LOCAL_RATINGS, JSON.stringify(x||{})); }
@@ -1245,12 +1310,65 @@ settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) close
 const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
 const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
 const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
-function saveChats(chs){
-  // فقط اگر آرایهٔ معتبر است ذخیره کن؛ وگرنه هیچ کاری نکن
+async function saveChats(chs){
   if (Array.isArray(chs)) {
     localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
+    // همگام‌سازی به سرور (بدون منتظر ماندن برای پاسخ)
+    try{
+      fetch(API.replace("/api/chat","/api/user/chats"),{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({chats: chs})
+      });
+    }catch{}
   }
 }
+
+async function syncUp(){
+  try{
+    const chs = loadChats();
+    await fetch(API.replace("/api/chat","/api/user/chats"),{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({chats: chs})
+    });
+    // قوانین اختصاصی
+    const rules = (localStorage.getItem(KEY_RULES)||"").trim();
+    await fetch(API.replace("/api/chat","/api/user/rules"),{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({rules})
+    });
+  }catch{}
+}
+
+async function syncDown(){
+  try{
+    // چت‌ها
+    const r = await fetch(API.replace("/api/chat","/api/user/chats"));
+    const j = await r.json().catch(()=> ({}));
+    if (Array.isArray(j?.chats)) {
+      // مرج ساده: سمت سرور مرجع است
+      saveChats(j.chats);
+      // اگر هنوز چت فعالی انتخاب نشده، اولی را فعال کن
+      const first = j.chats[0];
+      if (first && !localStorage.getItem(KEY_ACTIVE_CHAT)) {
+        localStorage.setItem(KEY_ACTIVE_CHAT, first.id);
+      }
+      // لیست را تازه کن
+      if (typeof renderChatList === "function") renderChatList(chatSearch?.value||"");
+      renderActiveChat?.();
+    }
+    // قوانین اختصاصی
+    const r2 = await fetch(API.replace("/api/chat","/api/user/rules"));
+    const j2 = await r2.json().catch(()=> ({}));
+    if (typeof j2?.rules === "string") {
+      localStorage.setItem(KEY_RULES, j2.rules);
+    }
+  }catch{}
+}
+
+
 // ذخیره‌سازی تغییرات «چت فعال» داخل آرایه
 function persistCurrentChat(){
   const ch = currentChat();
@@ -1262,12 +1380,16 @@ function persistCurrentChat(){
     saveChats(chs);
   }
 }
+
 // شمارنده‌ی مستقل برای عنوان گفتگوها
 function nextChatSeq(){
-  // اگر قبلاً مقداردهی نشده، از روی عنوان‌های موجود یک مقدار اولیه پیدا کن
-  let seq = Number(localStorage.getItem("chat_seq_counter_v1") || "0");
+  // کلید مخصوص همین کاربر
+  const k = seqKey();
+
+  // اگر قبلاً مقداردهی نشده، از روی عنوان‌های موجود همین کاربر یک مقدار اولیه پیدا کن
+  let seq = Number(localStorage.getItem(k) || "0");
   if (!seq) {
-    const chs = loadChats();
+    const chs = loadChats(); // فقط چت‌های همین کاربر در localStorage
     let maxSeen = 0;
     for (const c of chs) {
       const m = /گفتگوی جدید\s*\((\d+)\)/.exec(c.title || "");
@@ -1275,10 +1397,12 @@ function nextChatSeq(){
     }
     seq = maxSeen;
   }
+
   seq += 1;
-  localStorage.setItem("chat_seq_counter_v1", String(seq));
+  localStorage.setItem(k, String(seq));
   return seq;
 }
+
 
 async function createNewActiveChat(){
   const id = uid();
@@ -1292,6 +1416,8 @@ async function createNewActiveChat(){
 
   chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
   saveChats(chs);
+  await syncUp();
+
 
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
   msgsEl.innerHTML = "";
@@ -1326,6 +1452,12 @@ function setActiveChat(id){
 
 // رندر
 function renderActiveChat(){
+  const a = getAuth();
+  if (!a?.username || !a?.token) {
+    msgsEl.innerHTML = "";
+    return;
+  }
+
   msgsEl.innerHTML="";
   const chat=currentChat(); if(!chat) return;
   chat.messages.forEach(m=>{
@@ -1416,6 +1548,10 @@ try {
     // اگر دوست داری چت‌های محلی را هم پاک کنی که بعد از خروج دیده نشوند، این دو خط را هم فعال کن:
     // localStorage.removeItem("chats_v2");
     // localStorage.removeItem("active_chat_v1");
+    clearAuth();
+localStorage.removeItem("chats_v2");
+localStorage.removeItem("active_chat_v1");
+msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
 
     openAuthModal("login");
     throw new Error("session_revoked");
@@ -1427,6 +1563,8 @@ try {
 
   // 3) حالا که username/token داری → وضعیت بن را چک کن
   await checkBanOrBlock();
+// ↓↓↓ همگام‌سازی اولیه از سرور به کلاینت
+await syncDown();
 
   // 4) ادامه‌ی کد: createNewActiveChat() و ...
   await createNewActiveChat();
@@ -1443,6 +1581,12 @@ closeChatList.onclick=()=>{ chatList.classList.remove("show"); chatList.setAttri
 chatList.addEventListener("click",(e)=>{ if(e.target===chatList){ closeChatList.onclick(); } });
 
 function renderChatList(filter=""){
+  const a = getAuth();
+  if (!a?.username || !a?.token) {
+    chatItems.innerHTML = "<div class='muted'>برای دیدن گفتگوها وارد حساب شوید.</div>";
+    return;
+  }
+
   const chs=loadChats();
   const fmt=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{dateStyle:"medium", timeStyle:"short"});
   const q=filter.trim();
@@ -1490,7 +1634,12 @@ div.appendChild(actions);
   });
 }
 chatSearch.oninput=()=> renderChatList(chatSearch.value);
-newChatBtn.onclick=()=>{ createNewActiveChat(); renderChatList(chatSearch.value); };
+newChatBtn.onclick=async()=>{ 
+  createNewActiveChat(); 
+  renderChatList(chatSearch.value); 
+  try{ await syncUp(); }catch{} 
+};
+
 
 // snackbar undo
 let undoTimer=null;
@@ -2049,6 +2198,8 @@ async function maybeSetTitle(){
   // همین را به عنوان بگذار
   ch.title = seed;
 persistCurrentChat();                    // ✅ عنوان را در localStorage ثبت کن
+try{ await syncUp(); }catch{}
+
 // اگر فهرست گفتگوها باز است، تازه‌سازی‌اش کن (اختیاری)
 if (typeof renderChatList === "function") {
   renderChatList(chatSearch?.value || "");
