@@ -1097,10 +1097,11 @@ authDoRegister.onclick = async ()=>{
   
   if (res?.ok){
   setAuth(res.username, res.token);
-  await createNewActiveChat();
-renderChatList("");
-try{ await syncUp(); }catch{}
-
+  await syncDown();                 // ← اضافه شود
+  const had = loadChats().length > 0;
+  if (!had) await createNewActiveChat();
+  renderChatList("");
+  try{ await syncUp(); }catch{}
   alert("ثبت‌نام موفق. خوش آمدید!");
   closeAuthModal();
 
@@ -1117,31 +1118,37 @@ try{ await syncUp(); }catch{}
 };
 
 // ورود
-authDoLogin.onclick = async ()=>{
+authDoLogin.onclick = async () => {
   const u = (logUsername.value || "").trim();
   const p = (logPassword.value || "").trim();
   if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
-  const res = await doLogin(u,p);
-  if (res?.ok){
-  setAuth(res.username, res.token);
-  await createNewActiveChat();
-renderChatList("");
-try{ await syncUp(); }catch{}
 
-  alert("ورود موفق.");
-  closeAuthModal();
+  const res = await doLogin(u, p);
+  if (res?.ok) {
+    setAuth(res.username, res.token);
 
-}else{
-  alert(
-  res?.error === "bad_credentials"
-    ? "نام کاربری یا رمز عبور نادرست است."
-    : res?.error === "server"
-      ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
+    // 1) اول از سرور بکش پایین تا چت‌های دستگاه‌های دیگر بیاید
+    await syncDown();
+
+    // 2) اگر هیچ چتی نبود، فقط آن‌وقت یکی بساز
+    const had = loadChats().length > 0;
+    if (!had) await createNewActiveChat();
+
+    // 3) رندر لیست و همگام‌سازی بالا
+    renderChatList(chatSearch?.value || "");
+    try { await syncUp(); } catch {}
+
+    alert("ورود موفق.");
+    closeAuthModal();
+  } else {
+    alert(
+      res?.error === "bad_credentials" ? "نام کاربری یا رمز عبور نادرست است."
+      : res?.error === "server" ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
       : (res?.error || "خطا در ورود")
-);
-
-}
+    );
+  }
 };
+
 
 // اطمینان از احراز هویت پیش از شروع
 async function ensureAuth(){
@@ -1324,17 +1331,16 @@ const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
 const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
 const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
 async function saveChats(chs){
-  if (Array.isArray(chs)) {
-    localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
-    // همگام‌سازی به سرور (بدون منتظر ماندن برای پاسخ)
-    try{
-      fetch(API.replace("/api/chat","/api/user/chats"),{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({chats: chs})
-      });
-    }catch{}
-  }
+  if (!Array.isArray(chs)) return;
+  localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
+  // ✅ با هدر صحیح و صبر برای اطمینان از آپلود
+  try{
+    await fetch(API.replace("/api/chat","/api/user/chats"),{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({chats: chs})
+    });
+  }catch{}
 }
 
 async function syncUp(){
@@ -1357,22 +1363,40 @@ async function syncUp(){
 
 async function syncDown(){
   try{
-    // چت‌ها
+    // --- چت‌ها از سرور
     const r = await fetch(API.replace("/api/chat","/api/user/chats"));
     const j = await r.json().catch(()=> ({}));
     if (Array.isArray(j?.chats)) {
-      // مرج ساده: سمت سرور مرجع است
-      saveChats(j.chats);
-      // اگر هنوز چت فعالی انتخاب نشده، اولی را فعال کن
-      const first = j.chats[0];
-      if (first && !localStorage.getItem(KEY_ACTIVE_CHAT)) {
-        localStorage.setItem(KEY_ACTIVE_CHAT, first.id);
+      const remote = j.chats;
+      const local  = loadChats();
+
+      // ادغام بر اساس id
+      const byId = new Map();
+      for (const c of local)  byId.set(c.id, c);
+      for (const rc of remote){
+        const lc = byId.get(rc.id);
+        if (!lc) byId.set(rc.id, rc);
+        else {
+          // جدیدتر را نگه دار
+          const lts = Number(lc.updatedAt||0);
+          const rts = Number(rc.updatedAt||0);
+          byId.set(rc.id, rts > lts ? rc : lc);
+        }
       }
-      // لیست را تازه کن
+      // آرایهٔ نهایی، مرتب بر اساس آخرین فعالیت
+      const merged = [...byId.values()].sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
+      await saveChats(merged);
+
+      // چت فعال اگر وجود ندارد، اولی را فعال کن
+      const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
+      if (!activeId && merged[0]) localStorage.setItem(KEY_ACTIVE_CHAT, merged[0].id);
+
+      // رندرها
       if (typeof renderChatList === "function") renderChatList(chatSearch?.value||"");
       renderActiveChat?.();
     }
-    // قوانین اختصاصی
+
+    // --- قوانین اختصاصی
     const r2 = await fetch(API.replace("/api/chat","/api/user/rules"));
     const j2 = await r2.json().catch(()=> ({}));
     if (typeof j2?.rules === "string") {
@@ -1380,6 +1404,16 @@ async function syncDown(){
     }
   }catch{}
 }
+
+// --- Auto sync hooks (بعد از تعریف syncDown) ---
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { try { syncDown(); } catch {} }
+});
+
+// هر 8 ثانیه یک بار هم چک کن (می‌تونی کمتر/بیشترش کنی)
+setInterval(() => { try { syncDown(); } catch {} }, 5000);
+
+
 
 
 // ذخیره‌سازی تغییرات «چت فعال» داخل آرایه
@@ -1395,14 +1429,25 @@ function persistCurrentChat(){
 }
 
 // شمارنده‌ی مستقل برای عنوان گفتگوها
-function nextChatSeq(){
-  // کلید مخصوص همین کاربر
-  const k = seqKey();
+// شمارنده‌ی سراسری عنوان گفتگو (ابتدا از سرور، در صورت خطا: fallback محلی)
+async function nextChatSeq(){
+  // 1) تلاش برای گرفتن شماره از سرور (سراسری برای همین کاربر)
+  try{
+    const r = await fetch(API.replace("/api/chat","/api/user/nextChatSeq"), { method:"POST" });
+    const j = await r.json().catch(()=> ({}));
+    const n = Number(j?.n || 0);
+    if (n > 0) {
+      // همچنین localStorage را هم هم‌راستا کن تا در حالت آفلاین عقب نماند
+      localStorage.setItem(seqKey(), String(n));
+      return n;
+    }
+  }catch{}
 
-  // اگر قبلاً مقداردهی نشده، از روی عنوان‌های موجود همین کاربر یک مقدار اولیه پیدا کن
+  // 2) Fallback محلی (وقتی سرور در دسترس نیست)
+  const k = seqKey();
   let seq = Number(localStorage.getItem(k) || "0");
   if (!seq) {
-    const chs = loadChats(); // فقط چت‌های همین کاربر در localStorage
+    const chs = loadChats();
     let maxSeen = 0;
     for (const c of chs) {
       const m = /گفتگوی جدید\s*\((\d+)\)/.exec(c.title || "");
@@ -1410,19 +1455,20 @@ function nextChatSeq(){
     }
     seq = maxSeen;
   }
-
   seq += 1;
   localStorage.setItem(k, String(seq));
   return seq;
 }
 
 
+
 async function createNewActiveChat(){
   const id = uid();
 
   // شمارندهٔ مستقل عنوان
-  const seq = nextChatSeq();
-  const title = `گفتگوی جدید (${seq})`;
+  const seq = await nextChatSeq();
+
+  const title = `گفتگوی  (${seq})`;
 
   // ✅ این خط باعث می‌شود آرایهٔ چت‌های فعلی را داشته باشیم
   const chs = loadChats();
@@ -1580,7 +1626,15 @@ msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
 await syncDown();
 
   // 4) ادامه‌ی کد: createNewActiveChat() و ...
+  // بعد از syncDown:
+const hadChats = (loadChats().length > 0);
+if (!hadChats) {
   await createNewActiveChat();
+} else {
+  renderActiveChat();
+  renderChatList(chatSearch?.value || "");
+}
+
 
 
 
