@@ -1300,17 +1300,19 @@ function updateAccountSection(){
 
 // dialogs open/close
 openSettingsBtn.onclick=()=>{
-  // اول نام کاربری را به‌روز کن
   try{ updateAccountSection(); }catch{}
-  // بعد مودال را نمایش بده
+  // هر بار باز شدن تنظیمات، آخرین قوانینِ همگام‌شده را بگذار
+  try { rulesSettings.value = localStorage.getItem(KEY_RULES) || ""; } catch {}
   settingsModal.classList.add("show");
   settingsModal.setAttribute("aria-hidden","false");
 };
 
+
 closeSettings.onclick = closeModal;
 function closeModal(){ settingsModal.classList.remove("show"); settingsModal.setAttribute("aria-hidden","true"); }
-saveSettings.onclick=()=>{ localStorage.setItem(KEY_RULES, rulesSettings.value||"");
-  const v=parseInt(fzRange.value,10);
+saveSettings.onclick=async ()=>{
+  localStorage.setItem(KEY_RULES, rulesSettings.value || "");
+  const v = parseInt(fzRange.value,10);
   document.documentElement.style.setProperty('--fz', v+"px", 'important');
   document.documentElement.style.setProperty('--tool', (Math.max(12, v-4))+"px");
   localStorage.setItem(KEY_FZ, String(v));
@@ -1319,11 +1321,16 @@ saveSettings.onclick=()=>{ localStorage.setItem(KEY_RULES, rulesSettings.value||
   localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
   localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
   if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,"");
-    // ✅ بازمحاسبه‌ی ارتفاع textarea بعد از ذخیره
-    try { inp.style.height = "auto"; inp.dispatchEvent(new Event('input')); } catch{}
 
-  applyTheme(); closeModal();
+  try { inp.style.height = "auto"; inp.dispatchEvent(new Event('input')); } catch{}
+
+  applyTheme();
+  closeModal();
+
+  // بلافاصله قوانین تازه را به سرور بفرست تا همه‌ی دستگاه‌ها بگیرند
+  try { await syncUp(); } catch {}
 };
+
 settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) closeModal(); });
 
 // chat storage helpers
@@ -1367,34 +1374,28 @@ async function syncDown(){
     const r = await fetch(API.replace("/api/chat","/api/user/chats"));
     const j = await r.json().catch(()=> ({}));
     if (Array.isArray(j?.chats)) {
-      const remote = j.chats;
-      const local  = loadChats();
+  // فقطِ سرور = منبع حقیقت
+  const remote = j.chats.map(c => ({
+    ...c,
+    updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
+  }));
+  const sorted = remote.sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
 
-      // ادغام بر اساس id
-      const byId = new Map();
-      for (const c of local)  byId.set(c.id, c);
-      for (const rc of remote){
-        const lc = byId.get(rc.id);
-        if (!lc) byId.set(rc.id, rc);
-        else {
-          // جدیدتر را نگه دار
-          const lts = Number(lc.updatedAt||0);
-          const rts = Number(rc.updatedAt||0);
-          byId.set(rc.id, rts > lts ? rc : lc);
-        }
-      }
-      // آرایهٔ نهایی، مرتب بر اساس آخرین فعالیت
-      const merged = [...byId.values()].sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
-      await saveChats(merged);
+  await saveChats(sorted);
 
-      // چت فعال اگر وجود ندارد، اولی را فعال کن
-      const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
-      if (!activeId && merged[0]) localStorage.setItem(KEY_ACTIVE_CHAT, merged[0].id);
+  // اگر چت فعالی نداریم، اولی را فعال کن
+  const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
+  if (!activeId && sorted[0]) {
+    localStorage.setItem(KEY_ACTIVE_CHAT, sorted[0].id);
+  }
 
-      // رندرها
-      if (typeof renderChatList === "function") renderChatList(chatSearch?.value||"");
-      renderActiveChat?.();
-    }
+  // رندرها
+  if (typeof renderChatList === "function") {
+    renderChatList(chatSearch?.value || "");
+  }
+  renderActiveChat?.();
+}
+
 
     // --- قوانین اختصاصی
     const r2 = await fetch(API.replace("/api/chat","/api/user/rules"));
@@ -1626,14 +1627,11 @@ msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
 await syncDown();
 
   // 4) ادامه‌ی کد: createNewActiveChat() و ...
-  // بعد از syncDown:
-const hadChats = (loadChats().length > 0);
-if (!hadChats) {
-  await createNewActiveChat();
-} else {
-  renderActiveChat();
-  renderChatList(chatSearch?.value || "");
-}
+// بعد از syncDown:
+// همیشه پس از رفرش یک گفت‌وگوی تازه بساز و کاربر را همان‌جا ببر
+await createNewActiveChat();
+renderChatList(chatSearch?.value || "");
+try { await syncUp(); } catch {}
 
 
 
@@ -1718,16 +1716,49 @@ function showSnack(text, onUndo){
   undoTimer=setTimeout(()=>{ snack.style.display="none"; },5000);
 }
 function deleteChatWithUndo(id, title){
-  const chs=loadChats(); const idx=chs.findIndex(c=>c.id===id);
-  if(idx<0) return;
-  const removed = chs.splice(idx,1)[0];
+  const chs = loadChats();
+  const idx = chs.findIndex(c => c.id === id);
+  if (idx < 0) return;
+
+  // نگه‌دار برای Undo
+  const removed = chs.splice(idx, 1)[0];
+
+  // 1) حذف لوکال + رندر
   saveChats(chs);
-  if(localStorage.getItem(KEY_ACTIVE_CHAT)===id){
-    if(!chs.length) createNewActiveChat(); else localStorage.setItem(KEY_ACTIVE_CHAT, chs[0].id);
-    renderActiveChat();
+  if (localStorage.getItem(KEY_ACTIVE_CHAT) === id) {
+    if (!chs.length) {
+      createNewActiveChat();
+    } else {
+      localStorage.setItem(KEY_ACTIVE_CHAT, chs[0].id);
+      renderActiveChat();
+    }
   }
-  showSnack(`شما گفتگوی «${title}» را حذف نمودید |`, ()=>{ const chs2=loadChats(); chs2.unshift(removed); saveChats(chs2); });
+
+  // 2) حذف سمت سرور (تا syncDown برش نگردونه)
+  (async () => {
+    try {
+      await fetch(API.replace("/api/chat","/api/user/deleteChat"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: id })
+      });
+      // بعد از حذفِ سرور، یک syncDown سبک تا لیست تازه شود
+      try { await syncDown(); } catch {}
+    } catch {}
+  })();
+
+  // 3) واگرد: اگر کاربر Undo زد، همان چت را دوباره بالا/پایین همسان‌سازی کن
+  showSnack(`شما گفتگوی «${title}» را حذف نمودید |`, async () => {
+    const list = loadChats();
+    list.unshift(removed);
+    await saveChats(list);
+    localStorage.setItem(KEY_ACTIVE_CHAT, removed.id);
+    renderActiveChat();
+    renderChatList(chatSearch?.value || "");
+    try { await syncUp(); } catch {}
+  });
 }
+
 function renameChatWithPrompt(id, oldTitle){
   const modal = document.getElementById("renameModal");
   const input = document.getElementById("renameInput");
