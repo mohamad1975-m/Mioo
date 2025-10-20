@@ -188,6 +188,8 @@
       <button class="link ghost" id="btnLogins">تاریخچه ورود</button>
       <button class="link ghost" id="btnNotes" title="نوت خصوصی (آیکون نوت پد)">🗒️ نوت</button>
       <button class="link" id="btnBan">بن کردن</button>
+      <button class="link ghost" id="btnDevices">دستگاه‌ها</button>
+
       <button id="btnUserAuth" class="link ghost">حساب</button>
 
     </div>
@@ -295,6 +297,53 @@ const profMeta   = document.getElementById("profMeta");
 const btnLogins  = document.getElementById("btnLogins");
 const btnNotes   = document.getElementById("btnNotes");
 const btnBan = document.getElementById("btnBan");
+const btnDevices = document.getElementById("btnDevices");
+btnDevices.onclick = async () => {
+  const activeUid = window.activeUid;
+if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
+
+  try {
+    const r = await fetch(API + "/admin/devices?uid=" + encodeURIComponent(activeUid));
+    const j = await r.json();
+
+    const list = Array.isArray(j?.devices) ? j.devices : [];
+    const html = list.length
+      ? list.map(d => `
+          <div class="item">
+            <div class="user-meta">
+              <b class="mono" style="direction:ltr">${d.token.slice(0, 10)}…</b>
+              <small>دستگاه: ${d.device || "-"}</small>
+              <small>ایجاد: ${d.createdAt ? new Date(d.createdAt).toLocaleString('fa-IR') : "-"}</small>
+              <small>آخرین‌فعالیت: ${d.lastSeen ? new Date(d.lastSeen).toLocaleString('fa-IR') : "-"}</small>
+            </div>
+            <div class="row">
+              <button class="link ghost" data-revoke="${d.token}">خروج از این دستگاه</button>
+            </div>
+          </div>
+        `).join("")
+      : "<div class='muted'>هیچ دستگاه فعالی ثبت نشده.</div>";
+
+    openModal("دستگاه‌های کاربر", html);
+
+    // هندلر خروج از دستگاه
+    document.querySelectorAll("[data-revoke]").forEach(b => {
+      b.onclick = async () => {
+        const token = b.getAttribute("data-revoke");
+        if (!confirm("آیا مطمئن هستید که می‌خواهید از این دستگاه خارج شوید؟")) return;
+        await fetch(API + "/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, username: activeUid })
+        });
+        alert("این دستگاه با موفقیت از حساب خارج شد.");
+        btnDevices.click(); // بازخوانی لیست دستگاه‌ها
+      };
+    });
+  } catch (e) {
+    console.error(e);
+    openModal("دستگاه‌های کاربر", "<div class='error'>خطا در دریافت لیست دستگاه‌ها</div>");
+  }
+};
 
 
 
@@ -419,6 +468,53 @@ btnBan.onclick = async () => {
 
   }catch{}
 }
+btnDevices.onclick = async () => {
+  const activeUid = window.activeUid;
+if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
+
+  try {
+    // مسیر صحیح API با uid
+    const r = await fetch(API + "/admin/devices?uid=" + encodeURIComponent(activeUid));
+    const j = await r.json();
+
+    const list = Array.isArray(j?.devices) ? j.devices : [];
+    const html = list.length
+      ? list.map(d => `
+          <div class="item">
+            <div class="user-meta">
+              <b class="mono" style="direction:ltr">${d.token.slice(0, 10)}…</b>
+              <small>دستگاه: ${d.device || "-"}</small>
+              <small>ایجاد: ${d.createdAt ? new Date(d.createdAt).toLocaleString('fa-IR') : "-"}</small>
+              <small>آخرین‌فعالیت: ${d.lastSeen ? new Date(d.lastSeen).toLocaleString('fa-IR') : "-"}</small>
+            </div>
+            <div class="row">
+              <button class="link ghost" data-revoke="${d.token}">خروج از این دستگاه</button>
+            </div>
+          </div>
+        `).join("")
+      : "<div class='muted'>هیچ دستگاه فعالی ثبت نشده.</div>";
+
+    openModal("دستگاه‌های کاربر", html);
+
+    // هندلر خروج از دستگاه
+    document.querySelectorAll("[data-revoke]").forEach(b => {
+      b.onclick = async () => {
+        const token = b.getAttribute("data-revoke");
+        if (!confirm("آیا مطمئن هستید که می‌خواهید از این دستگاه خارج شوید؟")) return;
+        await fetch(API + "/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, username: activeUid })
+        });
+        alert("این دستگاه با موفقیت از حساب خارج شد.");
+        btnDevices.click(); // بازخوانی لیست دستگاه‌ها
+      };
+    });
+  } catch (e) {
+    console.error(e);
+    openModal("دستگاه‌های کاربر", "<div class='muted'>خطا در دریافت لیست دستگاه‌ها</div>");
+  }
+};
 
 // Chats table
 let currentChats = [];
@@ -691,6 +787,8 @@ async function loadUsersList(){
         div.classList.add("active");
         loadUserChats(u.uid);
         loadUserProfile(u.uid);
+        window.activeUid = u.uid;   // ✅ کاربر انتخاب‌شده را سراسری نگه دار
+
       };
 
       box.appendChild(div);
@@ -925,6 +1023,16 @@ refreshStats.addEventListener("click", ()=>{
       <button id="authAdmClose" class="link ghost">بستن</button>
       <button id="authAdmSave" class="link">ثبت پسورد جدید</button>
     </div>
+  </div>
+</div>
+<!-- مودال عمومی برای نمایش جزئیات (chatModal) -->
+<div id="chatModal" class="modal" aria-hidden="true" style="display:none">
+  <div class="modal-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <h3 id="chatModalTitle" style="margin:0">جزئیات</h3>
+      <button id="chatModalClose" class="link ghost">بستن</button>
+    </div>
+    <div id="chatModalBody"></div>
   </div>
 </div>
 
