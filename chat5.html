@@ -36,14 +36,15 @@
       --chip:#334155; --chip-ink:#e5e7eb;
     }
     html, body { height: 100%; }
-body{
+    body{
   margin:0;
   min-height: 100dvh;            /* احترام به نوارهای موبایل */
-  background:var(--bg);
+  background: #0b1020 url('https://s34.picofile.com/file/8487624900/10_11zon_2_.jpg') center/cover fixed no-repeat;
   font-family:IRANYekanX, Tahoma, Arial, sans-serif;
   color:var(--ink);
   font-size:var(--fz);
 }
+
 .wrap{
   max-width:1000px;
   margin:24px auto;
@@ -104,7 +105,8 @@ body{
 
 
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
+    body{margin:0;font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
+
     .wrap{max-width:1000px;margin:24px auto;padding:0 14px}
     .head{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -1009,6 +1011,22 @@ const $ = id => document.getElementById(id);
 const msgsEl = $("msgs");
 const inp = $("inp");
 const btn = $("sendBtn");
+let justOpened = false; // وقتی به یک چت وارد می‌شویم، فقط همان بار اول برو پایین
+
+// --- دنبال کردن پایین فقط وقتی کاربر نزدیک پایین است
+let followBottom = true;
+function isNearBottom(){
+  const gap = 64; // px
+  return (msgsEl.scrollHeight - (msgsEl.scrollTop + msgsEl.clientHeight)) <= gap;
+}
+function shouldFollowBottom(){
+  return followBottom && isNearBottom();
+}
+// وقتی کاربر اسکرول می‌کند، اگر از پایین فاصله بگیرد، دنبال‌کردن را قطع کن
+msgsEl.addEventListener('scroll', ()=>{
+  followBottom = isNearBottom();
+});
+
 // === Fly animation from input to the last user bubble ===
 function rectCenter(r){
   return { x: r.left + r.width, y: r.top + r.height/2 };
@@ -1733,7 +1751,9 @@ async function createNewActiveChat(){
   chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
   saveChats(chs); // fire-and-forget
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
-  msgsEl.innerHTML = "";
+justOpened = true;
+msgsEl.innerHTML = "";
+
   // همگام‌سازی سرور در پس‌زمینه؛ UI را معطل نکن
   syncUp().catch(()=>{});
 
@@ -1759,7 +1779,9 @@ function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return l
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
 function setActiveChat(id){
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  justOpened = true;
   renderActiveChat();
+
   // اگر پنل فهرست باز است، های‌لایت را به‌روزرسانی کن
   if (document.getElementById("chatList")?.classList.contains("show")) {
     renderChatList(document.getElementById("chatSearch")?.value || "");
@@ -1787,8 +1809,17 @@ function renderActiveChat(){
 
     }
   });
-  msgsEl.scrollTop=msgsEl.scrollHeight;
-  scrollChatToBottom();
+  if (justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
+  } else if (shouldFollowBottom()) {
+    if (shouldFollowBottom() || justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
+  }
+
+  }
+
+
+
 
   try{ hljs.highlightAll(); }catch{}
 }
@@ -2508,6 +2539,8 @@ async function typewriter(container, text, onTick){
     normalizeLinks(container);
     try{ hljs.highlightAll(); }catch{}
     if (typeof onTick === "function") onTick(acc);   // ⬅️ هر کاراکتر، متن ذخیره شود
+    if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
+
     await new Promise(r=>setTimeout(r,8));
   }
   try{ hljs.highlightAll(); }catch{}
@@ -2921,8 +2954,8 @@ async function addUser(text){
   b.textContent = text;
   row.appendChild(b);
   msgsEl.appendChild(row);
-  msgsEl.scrollTop = msgsEl.scrollHeight;
-  scrollChatToBottom();
+if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
+
 
   const id = pushMsg("user", text);
   row.dataset.id = id;
@@ -2944,8 +2977,17 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   ensureCodeCopyButtons(r);
 
   if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
-  msgsEl.scrollTop=msgsEl.scrollHeight;
-  scrollChatToBottom();
+  if (justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
+  } else if (shouldFollowBottom()) {
+    if (shouldFollowBottom() || justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
+  }
+
+  }
+
+
+
 
   let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
   const msg = safeMsgs().find(m => m.id === id);
@@ -3093,50 +3135,7 @@ if (btnLogout){
     </div>
   </div>
 </div>
-<!-- ==== AUTH MODAL ==== -->
-<div id="authModal" class="auth-modal" aria-hidden="true">
-  <div class="auth-card">
-    <h3 style="margin:0 0 10px 0">ورود / ثبت‌نام</h3>
-    <div class="auth-tabs">
-      <div id="authTabRegister" class="auth-tab active">ثبت‌نام</div>
-      <div id="authTabLogin" class="auth-tab">ورود</div>
-    </div>
 
-    <!-- ثبت‌نام -->
-    <div id="authBoxRegister">
-      <div class="auth-row">
-        <label>نام کاربری پیشنهادی (منحصر‌به‌فرد):</label>
-        <input id="regUsername" readonly>
-        <button id="regenUsername" class="link ghost" style="width:100%">تولید مجدد نام کاربری</button>
-        <div class="auth-note">این نام کاربری به‌صورت رندوم ساخته می‌شود. می‌توانید با تولید مجدد، نام دیگری بسازید.</div>
-      </div>
-      <div class="auth-row">
-        <label>رمز عبور:</label>
-        <input id="regPassword" type="password" placeholder="رمز عبور را وارد کنید">
-      </div>
-      <div class="auth-actions">
-        <button id="authCancel" class="link ghost">بستن</button>
-        <button id="authDoRegister" class="link">ثبت‌نام</button>
-      </div>
-    </div>
-
-    <!-- ورود -->
-    <div id="authBoxLogin" style="display:none">
-      <div class="auth-row">
-        <label>نام کاربری:</label>
-        <input id="logUsername" placeholder="نام کاربری">
-      </div>
-      <div class="auth-row">
-        <label>رمز عبور:</label>
-        <input id="logPassword" type="password" placeholder="رمز عبور">
-      </div>
-      <div class="auth-actions">
-        <button id="authCancel2" class="link ghost">بستن</button>
-        <button id="authDoLogin" class="link">ورود</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
