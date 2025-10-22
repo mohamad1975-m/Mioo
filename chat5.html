@@ -131,6 +131,25 @@ body{
   font-size: inherit;   /* ✅ فونتِ textarea از :root/body بگیرد */
 }
 
+/* === Fly-send animation helper === */
+.fly-ghost{
+  position: fixed;
+  inset: auto auto auto auto; /* فقط با transform جابه‌جا می‌شود */
+  z-index: 9999;
+  background: var(--bubble-user);
+  color: var(--bubble-user-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  line-height: 1.9;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  white-space: pre-wrap;
+  max-width: 68vw;
+  direction: rtl; unicode-bidi: plaintext;
+  transform-origin: top right;
+  will-change: transform, opacity;
+}
+
     .btn{border:0;background:#111;color:#fff;border-radius:12px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:6px}
     .dark .btn{background:#334155}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
@@ -423,6 +442,50 @@ body{
 }
 
 .auth-note{font-size:12px; color:#64748b}
+/* === Toasts (top-right, auto-dismiss) === */
+.toast-host{
+  position: fixed;
+  top: 14px;
+  inset-inline-end: 14px;        /* راستِ RTL، چپِ LTR */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999999;
+  pointer-events: none;          /* کلیک‌ها به پشت می‌رسند */
+}
+.toast{
+  pointer-events: auto;
+  min-width: 220px;
+  max-width: min(92vw, 360px);
+  padding: 10px 12px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: #10b981;           /* سبز پیش‌فرض */
+  color: #fff;
+  font-size: .95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .18s ease, transform .18s ease;
+  direction: rtl; unicode-bidi: plaintext;
+}
+.toast.show{
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.err{ background:#ef4444; }     /* قرمز خطا */
+.toast .t-close{
+  margin-inline-start: auto;
+  background: rgba(255,255,255,.2);
+  border: 0;
+  color:#fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -523,10 +586,6 @@ body{
       </select>
     </div>
     <div class="modal-row">
-      <label style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="animToggle" checked>
-        انیمیشن‌های رابط فعال باشد
-      </label>
     </div>
     <div class="modal-row">
       <label style="display:flex;align-items:center;gap:8px">
@@ -716,9 +775,55 @@ body{
     <button id="snackUndo">واگرد</button>
   </div>
 </div>
+<!-- Toasts container -->
+<div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
+/* === Toast helpers & alert patch === */
+const __toastHost = (()=> document.getElementById('toastHost'))();
+function showToast(message="", type="ok", {timeout=5000} = {}){
+  try{
+    const host = __toastHost || document.body;
+    const node = document.createElement('div');
+    node.className = 'toast' + (type === 'err' ? ' err' : '');
+    node.innerHTML = `
+      <span>${String(message||"").replace(/</g,"&lt;")}</span>
+      <button class="t-close">بستن</button>
+    `;
+    host.appendChild(node);
+    // animate in
+    requestAnimationFrame(()=> node.classList.add('show'));
+    // close handlers
+    const kill = ()=> {
+      node.classList.remove('show');
+      setTimeout(()=> node.remove(), 180);
+    };
+    node.querySelector('.t-close').onclick = kill;
+    if (timeout>0){
+      setTimeout(kill, timeout);
+    }
+    return kill;
+  }catch{ /* no-op */ }
+}
+
+// تشخیص خودکار خطا از متن
+function guessTypeByMsg(msg=""){
+  const s = (msg||"").toLowerCase();
+  const faErr = /خطا|نامعتبر|مجاز نیست|بن شده|شکست/i.test(msg||"");
+  const enErr = /(error|failed|unauthori[z|s]ed|forbidden|invalid|server)/i.test(s);
+  return (faErr || enErr) ? 'err' : 'ok';
+}
+
+// جایگزینیِ alert بومی با توست
+(function patchAlert(){
+  const nativeAlert = window.alert?.bind(window);
+  window.__nativeAlert = nativeAlert; // اگر لازم شد
+  window.alert = function(msg){
+    showToast(String(msg||""), guessTypeByMsg(msg));
+  };
+})();
+
 function closeAuthModal(){
   const m = document.getElementById("authModal");
   if (!m) return;
@@ -904,6 +1009,120 @@ const $ = id => document.getElementById(id);
 const msgsEl = $("msgs");
 const inp = $("inp");
 const btn = $("sendBtn");
+// === Fly animation from input to the last user bubble ===
+function rectCenter(r){
+  return { x: r.left + r.width, y: r.top + r.height/2 };
+}
+function makeGhost(text){
+  const g = document.createElement('div');
+  g.className = 'fly-ghost';
+  g.textContent = text;
+  document.body.appendChild(g);
+  return g;
+}
+function placeGhostAt(g, x, y, scale = 1){
+  g.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+
+async function flyFromInputToBubble(text, bubbleEl){
+    // اگر کاربر انیمیشن‌های رابط را خاموش کرده، افکت را اجرا نکن
+
+
+  try{
+    const t = (text || "").trim();
+    if (!t || !bubbleEl) return;
+
+    // مبدا: انتهای textarea (سمت راست در RTL)
+    const inpRect = inp.getBoundingClientRect();
+    // مقصد: مرکز حباب کاربر
+    const bubRect = bubbleEl.getBoundingClientRect();
+
+    const g = makeGhost(t);
+
+    // اندازه‌گیری مقیاس تقریبی متن
+    // (مقیاس اولیه=1 کافیست؛ حباب مقصد خودش متن را دارد)
+    const startX = inpRect.right - 10;                   // کمی از راست داخل‌تر
+    const startY = inpRect.top + inpRect.height/2 - 12;  // میانه‌ی عمودی
+    const endX   = bubRect.right - 12;
+    const endY   = bubRect.top + 14;
+
+    placeGhostAt(g, startX, startY, 0.98);
+
+    // انیمیشن
+    const anim = g.animate(
+      [
+        { transform: `translate(${startX}px, ${startY}px) scale(.98)`, opacity: 1 },
+        { transform: `translate(${endX}px, ${endY}px) scale(.88)`, opacity: .92 },
+        { transform: `translate(${endX}px, ${endY}px) scale(.82)`, opacity: 0 }
+      ],
+      { duration: 420, easing: 'cubic-bezier(.22,.61,.36,1)' }
+    );
+
+    await anim.finished.catch(()=>{});
+    g.remove();
+  }catch{}
+}
+
+// --- پچِ send: بعد از اجرای send اصلی، روی آخرین حباب کاربر افکت اجرا کن
+/* --- پچِ send با MutationObserver: افکت دقیقاً وقتی حباب کاربر به DOM اضافه شد اجرا می‌شود --- */
+(function patchSendForFlyObserver(){
+  function attach(){
+    if (window.__flyPatched) return true;
+    if (typeof window.send !== "function") return false;
+
+    const __origSend = window.send;
+    window.send = async function(){
+      const textSnapshot = (inp?.value || "").trim();
+      const p = __origSend.apply(this, arguments);
+
+      const container = document.getElementById('msgs') || msgsEl;
+      if (!container) return p;
+
+      let done = false;
+      const obs = new MutationObserver((mutations)=>{
+        if (done) return;
+        for (const m of mutations){
+          for (const node of m.addedNodes){
+            if (!(node instanceof HTMLElement)) continue;
+            const target = node.matches?.('.bubble.user')
+              ? node
+              : (node.querySelector?.('.bubble.user') || null);
+            if (target){
+              done = true;
+              requestAnimationFrame(async ()=>{
+                try{ container.scrollTop = container.scrollHeight; }catch{}
+                await flyFromInputToBubble(textSnapshot, target);
+              });
+              obs.disconnect();
+              break;
+            }
+          }
+        }
+      });
+
+      try { obs.observe(container, { childList:true, subtree:true }); } catch {}
+
+      // فالبک: اگر ظرف ۳ ثانیه حبابی دیده نشد، ناظر را جمع کن تا لیک نشود
+      setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
+
+      return p;
+    };
+
+    window.__flyPatched = true;
+    return true;
+  }
+
+  // تلاش فوری + تلاش‌های دوره‌ای تا وقتی send آماده شود
+  if (!attach()){
+    let tries = 0;
+    const t = setInterval(()=>{
+      if (attach() || ++tries > 50) clearInterval(t);
+    }, 150);
+    document.addEventListener('readystatechange', attach);
+  }
+})();
+
+
 // اتوگِرو برای textarea تا ۳ خط
 (function(){
   const MAX_LINES = 3;
@@ -921,13 +1140,17 @@ const btn = $("sendBtn");
   // بار اول هم تنظیم کن
   setTimeout(autoGrow, 0);
 
-  // بعد از هر ارسال که ورودی را خالی می‌کنیم، دوباره جمعش کن
-  const _send = send;
-  window.send = async function(){
-    await _send.apply(this, arguments);
-    // اگر در send مقدار inp را خالی می‌کنی، اینجا هم جمع کن
-    autoGrow();
-  };
+  // بعد از هر ارسال، ارتفاع را نُرم کن (با حفظ لایه‌های دیگرِ send)
+  (function augmentSendToAutoGrow(){
+    const __prev = window.send;
+    if (typeof __prev !== "function") return;
+    window.send = async function(){
+      const r = await __prev.apply(this, arguments);
+      try { autoGrow(); } catch {}
+      return r;
+    };
+  })();
+
 })();
 
 const sendIcon = $("sendIcon");
@@ -946,7 +1169,6 @@ const fzRange = $("fzRange");
 const fzVal = $("fzVal");
 const typewriterToggle = $("typewriterToggle");
 const sendShortcutSel = $("sendShortcut");
-const animToggle = $("animToggle");
 const autoTheme = $("autoTheme");
 const forceLight = $("forceLight");
 const forceDark  = $("forceDark");
@@ -1256,7 +1478,6 @@ if (savedFz) {
 const storedTW = localStorage.getItem(KEY_TW);
 if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
-animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
 fzRange.oninput=()=>{ 
   const v=parseInt(fzRange.value,10)||16; 
   fzVal.textContent=String(v);
@@ -1318,7 +1539,6 @@ saveSettings.onclick=async ()=>{
   localStorage.setItem(KEY_FZ, String(v));
   localStorage.setItem(KEY_TW, typewriterToggle.checked ? "1":"0");
   localStorage.setItem(KEY_SHORTCUT, sendShortcutSel.value);
-  localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
   localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
   if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,"");
 
@@ -1369,31 +1589,67 @@ async function syncUp(){
 }
 
 async function syncDown(){
+  if (busy) return;  // وقتی بات مشغول استریم است، همگام‌سازی پایین دستی را رد کن
+
   try{
     // --- چت‌ها از سرور
     const r = await fetch(API.replace("/api/chat","/api/user/chats"));
     const j = await r.json().catch(()=> ({}));
     if (Array.isArray(j?.chats)) {
-  // فقطِ سرور = منبع حقیقت
+  // ۱) آماده‌سازی داده‌های سرور (با تضمین updatedAt عددی)
   const remote = j.chats.map(c => ({
     ...c,
     updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
   }));
-  const sorted = remote.sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
 
-  await saveChats(sorted);
+  // ۲) چت‌های لوکال فعلی
+  const local = loadChats().map(c => ({
+    ...c,
+    updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
+  }));
+
+  // ۳) نگاشت بر اساس id برای مقایسه نسخه‌ها
+  const byIdLocal  = new Map(local.map(c => [c.id, c]));
+  const byIdRemote = new Map(remote.map(c => [c.id, c]));
+
+  // ۴) ادغام: برای هر chatId، نسخه‌ی «جدیدتر» را نگه دار
+  const merged = new Map();
+
+  // همۀ آیدی‌هایی که در هر دو سمت وجود دارند
+  const allIds = new Set([...byIdLocal.keys(), ...byIdRemote.keys()]);
+  for (const id of allIds) {
+    const L = byIdLocal.get(id);
+    const R = byIdRemote.get(id);
+
+    if (L && R) {
+      // هردو داریم: هر کدام جدیدتر است همان را بردار
+      merged.set(id, (R.updatedAt >= L.updatedAt) ? R : L);
+    } else if (R) {
+      // فقط سرور دارد (مثلاً از دستگاه دیگر ساخته شده)
+      merged.set(id, R);
+    } else if (L) {
+      // فقط لوکال دارد (هنوز آپلود نشده/آفلاین)
+      merged.set(id, L);
+    }
+  }
+
+  // ۵) به آرایه تبدیل و مرتب‌سازی بر اساس updatedAt نزولی
+  const list = [...merged.values()].sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
+
+  // ۶) ذخیره و رندر
+  await saveChats(list);
 
   // اگر چت فعالی نداریم، اولی را فعال کن
   const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
-  if (!activeId && sorted[0]) {
-    localStorage.setItem(KEY_ACTIVE_CHAT, sorted[0].id);
+  if (!activeId && list[0]) {
+    localStorage.setItem(KEY_ACTIVE_CHAT, list[0].id);
   }
 
   // رندرها
   if (typeof renderChatList === "function") {
     renderChatList(chatSearch?.value || "");
   }
-  renderActiveChat?.();
+  if (!busy) renderActiveChat?.();
 }
 
 
@@ -1475,11 +1731,12 @@ async function createNewActiveChat(){
   const chs = loadChats();
 
   chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
-  saveChats(chs);
-  await syncUp();
-
-
+  saveChats(chs); // fire-and-forget
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  msgsEl.innerHTML = "";
+  // همگام‌سازی سرور در پس‌زمینه؛ UI را معطل نکن
+  syncUp().catch(()=>{});
+
   msgsEl.innerHTML = "";
 
   // ثبت آغاز گفتگو در سرور (اختیاری)
@@ -1592,6 +1849,10 @@ function renderActiveChat(){
 
   // 2) احراز هویت (ثبت‌نام/ورود)
   await ensureAuth();
+    // نمایش قبلی را فوراً پاک کن تا چشم کاربر چت قدیمی را نبیند
+    try { localStorage.removeItem(KEY_ACTIVE_CHAT); } catch {}
+  try { msgsEl.innerHTML = ""; } catch {}
+
 // --- validate session: آیا این دستگاه هنوز داخل اکانت است؟ ---
 try {
   const me = getAuth();
@@ -1623,15 +1884,14 @@ msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
 
   // 3) حالا که username/token داری → وضعیت بن را چک کن
   await checkBanOrBlock();
-// ↓↓↓ همگام‌سازی اولیه از سرور به کلاینت
-await syncDown();
 
-  // 4) ادامه‌ی کد: createNewActiveChat() و ...
-// بعد از syncDown:
-// همیشه پس از رفرش یک گفت‌وگوی تازه بساز و کاربر را همان‌جا ببر
-await createNewActiveChat();
-renderChatList(chatSearch?.value || "");
-try { await syncUp(); } catch {}
+  // ⚡️ Fast-start: بدون معطلی شبکه، همین حالا یک گفت‌وگوی تازه بساز
+  await createNewActiveChat();
+  renderChatList(chatSearch?.value || "");
+
+  // سپس همگام‌سازی‌ها در پس‌زمینه انجام شوند تا UI تأخیر نداشته باشد
+  syncDown().catch(()=>{});
+  syncUp().catch(()=>{});
 
 
 
@@ -2228,14 +2488,14 @@ inp.addEventListener("keydown",(e)=>{
 function stop(){ shouldStopStreaming=true; if(controller) controller.abort("user_stop"); stoppedByUser=true; setBusy(false); }
 
 // تایپر
-async function typewriter(container, text){
+async function typewriter(container, text, onTick){
   const twOn = (localStorage.getItem(KEY_TW)!=="0");
   if(!twOn){
     container.innerHTML = marked.parse(text);
     normalizeLinks(container);
     try{ hljs.highlightAll(); }catch{}
-    // ⬇️ دکمه‌های کپی کد را بعد از رندر نهایی اضافه کن
     ensureCodeCopyButtons(container);
+    if (typeof onTick === "function") onTick(text);
     return;
   }
 
@@ -2247,12 +2507,13 @@ async function typewriter(container, text){
     container.innerHTML = marked.parse(acc);
     normalizeLinks(container);
     try{ hljs.highlightAll(); }catch{}
+    if (typeof onTick === "function") onTick(acc);   // ⬅️ هر کاراکتر، متن ذخیره شود
     await new Promise(r=>setTimeout(r,8));
   }
-  // ⬇️ بعد از اتمام استریم، دکمه‌ها را یکبار تزریق کن
   try{ hljs.highlightAll(); }catch{}
   ensureCodeCopyButtons(container);
 }
+
 
 // --- helper: انتخاب متن مناسب برای عنوان از پیام‌های اخیر کاربر
 function pickMeaningfulUserText(messages){
@@ -2569,8 +2830,19 @@ const payload = [{role:"system",content:GLOBAL_RULES.trim()}, ...((localStorage.
       const usedModel = j.model || model;
       if(getMode()==="auto"){ setAutoLastModel(usedModel); refreshModelChip(); }
       const rendered=bubbleEl.querySelector(".rendered");
-      await typewriter(rendered, j.content);
-      appendVersion(msgObj.id, j.content, {model: usedModel});
+      appendVersion(msgObj.id, "", { model: usedModel }); // نسخهٔ خالی برای استریم
+await typewriter(
+  rendered,
+  j.content,
+  (acc) => {
+    updateCurrentChat(c => {
+      const m = c.messages.find(x => x.id === msgObj.id);
+      if (m) m.versions[m.active].content = acc; // به‌روزرسانی لحظه‌ای متن
+    });
+  }
+);
+row.ensureArrows && row.ensureArrows();
+
       row.ensureArrows && row.ensureArrows();
     }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
   }catch(e){ if(e?.name==="AbortError") showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e),true); }
@@ -2610,9 +2882,20 @@ function editUserMessage(msgObj, row, bubbleEl){
         const usedModel = j.model || model;
         if(getMode()==="auto"){ setAutoLastModel(usedModel); refreshModelChip(); }
         const meta={model: usedModel}; const res=addBot("",false,meta);
-        await typewriter(res.bubble.querySelector(".rendered"), j.content);
-        appendVersion(res.id, j.content, meta);
-        res.row.ensureArrows && res.row.ensureArrows();
+        appendVersion(res.id, "", meta); // اول نسخهٔ خالی بساز
+await typewriter(
+  res.bubble.querySelector(".rendered"),
+  j.content,
+  (acc) => {
+    // هر تیکه را داخل همان نسخه ذخیره کن
+    updateCurrentChat(c => {
+      const m = c.messages.find(x => x.id === res.id);
+      if (m) m.versions[m.active].content = acc;
+    });
+  }
+);
+res.row.ensureArrows && res.row.ensureArrows?.();
+
       }else addBot(`خطا: ${j?.error||"unknown"}\n\nRaw: ${JSON.stringify(j?.detail??j)}`,true);
     }catch(e){ if(e?.name==="AbortError") showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e),true); }
     finally {
