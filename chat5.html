@@ -36,15 +36,14 @@
       --chip:#334155; --chip-ink:#e5e7eb;
     }
     html, body { height: 100%; }
-    body{
+body{
   margin:0;
   min-height: 100dvh;            /* احترام به نوارهای موبایل */
-  background: #0b1020 url('https://s34.picofile.com/file/8487624900/10_11zon_2_.jpg') center/cover fixed no-repeat;
+  background:var(--bg);
   font-family:IRANYekanX, Tahoma, Arial, sans-serif;
   color:var(--ink);
   font-size:var(--fz);
 }
-
 .wrap{
   max-width:1000px;
   margin:24px auto;
@@ -105,8 +104,7 @@
 
 
     *{box-sizing:border-box}
-    body{margin:0;font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
-
+    body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
     .wrap{max-width:1000px;margin:24px auto;padding:0 14px}
     .head{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -131,25 +129,6 @@
   min-height: 2.2em;        /* خط پایه */
   max-height: 8.2em;        /* حدوداً ۳ خط + پدینگ */
   font-size: inherit;   /* ✅ فونتِ textarea از :root/body بگیرد */
-}
-
-/* === Fly-send animation helper === */
-.fly-ghost{
-  position: fixed;
-  inset: auto auto auto auto; /* فقط با transform جابه‌جا می‌شود */
-  z-index: 9999;
-  background: var(--bubble-user);
-  color: var(--bubble-user-ink);
-  border-radius: 14px;
-  padding: 10px 12px;
-  line-height: 1.9;
-  box-shadow: var(--shadow);
-  pointer-events: none;
-  white-space: pre-wrap;
-  max-width: 68vw;
-  direction: rtl; unicode-bidi: plaintext;
-  transform-origin: top right;
-  will-change: transform, opacity;
 }
 
     .btn{border:0;background:#111;color:#fff;border-radius:12px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:6px}
@@ -588,6 +567,10 @@
       </select>
     </div>
     <div class="modal-row">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="animToggle" checked>
+        انیمیشن‌های رابط فعال باشد
+      </label>
     </div>
     <div class="modal-row">
       <label style="display:flex;align-items:center;gap:8px">
@@ -1011,136 +994,6 @@ const $ = id => document.getElementById(id);
 const msgsEl = $("msgs");
 const inp = $("inp");
 const btn = $("sendBtn");
-let justOpened = false; // وقتی به یک چت وارد می‌شویم، فقط همان بار اول برو پایین
-
-// --- دنبال کردن پایین فقط وقتی کاربر نزدیک پایین است
-let followBottom = true;
-function isNearBottom(){
-  const gap = 64; // px
-  return (msgsEl.scrollHeight - (msgsEl.scrollTop + msgsEl.clientHeight)) <= gap;
-}
-function shouldFollowBottom(){
-  return followBottom && isNearBottom();
-}
-// وقتی کاربر اسکرول می‌کند، اگر از پایین فاصله بگیرد، دنبال‌کردن را قطع کن
-msgsEl.addEventListener('scroll', ()=>{
-  followBottom = isNearBottom();
-});
-
-// === Fly animation from input to the last user bubble ===
-function rectCenter(r){
-  return { x: r.left + r.width, y: r.top + r.height/2 };
-}
-function makeGhost(text){
-  const g = document.createElement('div');
-  g.className = 'fly-ghost';
-  g.textContent = text;
-  document.body.appendChild(g);
-  return g;
-}
-function placeGhostAt(g, x, y, scale = 1){
-  g.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-}
-
-async function flyFromInputToBubble(text, bubbleEl){
-    // اگر کاربر انیمیشن‌های رابط را خاموش کرده، افکت را اجرا نکن
-
-
-  try{
-    const t = (text || "").trim();
-    if (!t || !bubbleEl) return;
-
-    // مبدا: انتهای textarea (سمت راست در RTL)
-    const inpRect = inp.getBoundingClientRect();
-    // مقصد: مرکز حباب کاربر
-    const bubRect = bubbleEl.getBoundingClientRect();
-
-    const g = makeGhost(t);
-
-    // اندازه‌گیری مقیاس تقریبی متن
-    // (مقیاس اولیه=1 کافیست؛ حباب مقصد خودش متن را دارد)
-    const startX = inpRect.right - 10;                   // کمی از راست داخل‌تر
-    const startY = inpRect.top + inpRect.height/2 - 12;  // میانه‌ی عمودی
-    const endX   = bubRect.right - 12;
-    const endY   = bubRect.top + 14;
-
-    placeGhostAt(g, startX, startY, 0.98);
-
-    // انیمیشن
-    const anim = g.animate(
-      [
-        { transform: `translate(${startX}px, ${startY}px) scale(.98)`, opacity: 1 },
-        { transform: `translate(${endX}px, ${endY}px) scale(.88)`, opacity: .92 },
-        { transform: `translate(${endX}px, ${endY}px) scale(.82)`, opacity: 0 }
-      ],
-      { duration: 420, easing: 'cubic-bezier(.22,.61,.36,1)' }
-    );
-
-    await anim.finished.catch(()=>{});
-    g.remove();
-  }catch{}
-}
-
-// --- پچِ send: بعد از اجرای send اصلی، روی آخرین حباب کاربر افکت اجرا کن
-/* --- پچِ send با MutationObserver: افکت دقیقاً وقتی حباب کاربر به DOM اضافه شد اجرا می‌شود --- */
-(function patchSendForFlyObserver(){
-  function attach(){
-    if (window.__flyPatched) return true;
-    if (typeof window.send !== "function") return false;
-
-    const __origSend = window.send;
-    window.send = async function(){
-      const textSnapshot = (inp?.value || "").trim();
-      const p = __origSend.apply(this, arguments);
-
-      const container = document.getElementById('msgs') || msgsEl;
-      if (!container) return p;
-
-      let done = false;
-      const obs = new MutationObserver((mutations)=>{
-        if (done) return;
-        for (const m of mutations){
-          for (const node of m.addedNodes){
-            if (!(node instanceof HTMLElement)) continue;
-            const target = node.matches?.('.bubble.user')
-              ? node
-              : (node.querySelector?.('.bubble.user') || null);
-            if (target){
-              done = true;
-              requestAnimationFrame(async ()=>{
-                try{ container.scrollTop = container.scrollHeight; }catch{}
-                await flyFromInputToBubble(textSnapshot, target);
-              });
-              obs.disconnect();
-              break;
-            }
-          }
-        }
-      });
-
-      try { obs.observe(container, { childList:true, subtree:true }); } catch {}
-
-      // فالبک: اگر ظرف ۳ ثانیه حبابی دیده نشد، ناظر را جمع کن تا لیک نشود
-      setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
-
-      return p;
-    };
-
-    window.__flyPatched = true;
-    return true;
-  }
-
-  // تلاش فوری + تلاش‌های دوره‌ای تا وقتی send آماده شود
-  if (!attach()){
-    let tries = 0;
-    const t = setInterval(()=>{
-      if (attach() || ++tries > 50) clearInterval(t);
-    }, 150);
-    document.addEventListener('readystatechange', attach);
-  }
-})();
-
-
 // اتوگِرو برای textarea تا ۳ خط
 (function(){
   const MAX_LINES = 3;
@@ -1158,17 +1011,13 @@ async function flyFromInputToBubble(text, bubbleEl){
   // بار اول هم تنظیم کن
   setTimeout(autoGrow, 0);
 
-  // بعد از هر ارسال، ارتفاع را نُرم کن (با حفظ لایه‌های دیگرِ send)
-  (function augmentSendToAutoGrow(){
-    const __prev = window.send;
-    if (typeof __prev !== "function") return;
-    window.send = async function(){
-      const r = await __prev.apply(this, arguments);
-      try { autoGrow(); } catch {}
-      return r;
-    };
-  })();
-
+  // بعد از هر ارسال که ورودی را خالی می‌کنیم، دوباره جمعش کن
+  const _send = send;
+  window.send = async function(){
+    await _send.apply(this, arguments);
+    // اگر در send مقدار inp را خالی می‌کنی، اینجا هم جمع کن
+    autoGrow();
+  };
 })();
 
 const sendIcon = $("sendIcon");
@@ -1187,6 +1036,7 @@ const fzRange = $("fzRange");
 const fzVal = $("fzVal");
 const typewriterToggle = $("typewriterToggle");
 const sendShortcutSel = $("sendShortcut");
+const animToggle = $("animToggle");
 const autoTheme = $("autoTheme");
 const forceLight = $("forceLight");
 const forceDark  = $("forceDark");
@@ -1496,6 +1346,7 @@ if (savedFz) {
 const storedTW = localStorage.getItem(KEY_TW);
 if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
+animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
 fzRange.oninput=()=>{ 
   const v=parseInt(fzRange.value,10)||16; 
   fzVal.textContent=String(v);
@@ -1557,6 +1408,7 @@ saveSettings.onclick=async ()=>{
   localStorage.setItem(KEY_FZ, String(v));
   localStorage.setItem(KEY_TW, typewriterToggle.checked ? "1":"0");
   localStorage.setItem(KEY_SHORTCUT, sendShortcutSel.value);
+  localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
   localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
   if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,"");
 
@@ -1607,60 +1459,24 @@ async function syncUp(){
 }
 
 async function syncDown(){
-  if (busy) return;  // وقتی بات مشغول استریم است، همگام‌سازی پایین دستی را رد کن
-
   try{
     // --- چت‌ها از سرور
     const r = await fetch(API.replace("/api/chat","/api/user/chats"));
     const j = await r.json().catch(()=> ({}));
     if (Array.isArray(j?.chats)) {
-  // ۱) آماده‌سازی داده‌های سرور (با تضمین updatedAt عددی)
+  // فقطِ سرور = منبع حقیقت
   const remote = j.chats.map(c => ({
     ...c,
     updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
   }));
+  const sorted = remote.sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
 
-  // ۲) چت‌های لوکال فعلی
-  const local = loadChats().map(c => ({
-    ...c,
-    updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
-  }));
-
-  // ۳) نگاشت بر اساس id برای مقایسه نسخه‌ها
-  const byIdLocal  = new Map(local.map(c => [c.id, c]));
-  const byIdRemote = new Map(remote.map(c => [c.id, c]));
-
-  // ۴) ادغام: برای هر chatId، نسخه‌ی «جدیدتر» را نگه دار
-  const merged = new Map();
-
-  // همۀ آیدی‌هایی که در هر دو سمت وجود دارند
-  const allIds = new Set([...byIdLocal.keys(), ...byIdRemote.keys()]);
-  for (const id of allIds) {
-    const L = byIdLocal.get(id);
-    const R = byIdRemote.get(id);
-
-    if (L && R) {
-      // هردو داریم: هر کدام جدیدتر است همان را بردار
-      merged.set(id, (R.updatedAt >= L.updatedAt) ? R : L);
-    } else if (R) {
-      // فقط سرور دارد (مثلاً از دستگاه دیگر ساخته شده)
-      merged.set(id, R);
-    } else if (L) {
-      // فقط لوکال دارد (هنوز آپلود نشده/آفلاین)
-      merged.set(id, L);
-    }
-  }
-
-  // ۵) به آرایه تبدیل و مرتب‌سازی بر اساس updatedAt نزولی
-  const list = [...merged.values()].sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
-
-  // ۶) ذخیره و رندر
-  await saveChats(list);
+  await saveChats(sorted);
 
   // اگر چت فعالی نداریم، اولی را فعال کن
   const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
-  if (!activeId && list[0]) {
-    localStorage.setItem(KEY_ACTIVE_CHAT, list[0].id);
+  if (!activeId && sorted[0]) {
+    localStorage.setItem(KEY_ACTIVE_CHAT, sorted[0].id);
   }
 
   // رندرها
@@ -1668,6 +1484,7 @@ async function syncDown(){
     renderChatList(chatSearch?.value || "");
   }
   if (!busy) renderActiveChat?.();
+
 }
 
 
@@ -1749,14 +1566,11 @@ async function createNewActiveChat(){
   const chs = loadChats();
 
   chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
-  saveChats(chs); // fire-and-forget
+  saveChats(chs);
+  await syncUp();
+
+
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
-justOpened = true;
-msgsEl.innerHTML = "";
-
-  // همگام‌سازی سرور در پس‌زمینه؛ UI را معطل نکن
-  syncUp().catch(()=>{});
-
   msgsEl.innerHTML = "";
 
   // ثبت آغاز گفتگو در سرور (اختیاری)
@@ -1779,9 +1593,7 @@ function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return l
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
 function setActiveChat(id){
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
-  justOpened = true;
   renderActiveChat();
-
   // اگر پنل فهرست باز است، های‌لایت را به‌روزرسانی کن
   if (document.getElementById("chatList")?.classList.contains("show")) {
     renderChatList(document.getElementById("chatSearch")?.value || "");
@@ -1809,17 +1621,8 @@ function renderActiveChat(){
 
     }
   });
-  if (justOpened) {
-    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
-  } else if (shouldFollowBottom()) {
-    if (shouldFollowBottom() || justOpened) {
-    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
-  }
-
-  }
-
-
-
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  scrollChatToBottom();
 
   try{ hljs.highlightAll(); }catch{}
 }
@@ -1880,10 +1683,6 @@ function renderActiveChat(){
 
   // 2) احراز هویت (ثبت‌نام/ورود)
   await ensureAuth();
-    // نمایش قبلی را فوراً پاک کن تا چشم کاربر چت قدیمی را نبیند
-    try { localStorage.removeItem(KEY_ACTIVE_CHAT); } catch {}
-  try { msgsEl.innerHTML = ""; } catch {}
-
 // --- validate session: آیا این دستگاه هنوز داخل اکانت است؟ ---
 try {
   const me = getAuth();
@@ -1915,14 +1714,15 @@ msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
 
   // 3) حالا که username/token داری → وضعیت بن را چک کن
   await checkBanOrBlock();
+// ↓↓↓ همگام‌سازی اولیه از سرور به کلاینت
+await syncDown();
 
-  // ⚡️ Fast-start: بدون معطلی شبکه، همین حالا یک گفت‌وگوی تازه بساز
-  await createNewActiveChat();
-  renderChatList(chatSearch?.value || "");
-
-  // سپس همگام‌سازی‌ها در پس‌زمینه انجام شوند تا UI تأخیر نداشته باشد
-  syncDown().catch(()=>{});
-  syncUp().catch(()=>{});
+  // 4) ادامه‌ی کد: createNewActiveChat() و ...
+// بعد از syncDown:
+// همیشه پس از رفرش یک گفت‌وگوی تازه بساز و کاربر را همان‌جا ببر
+await createNewActiveChat();
+renderChatList(chatSearch?.value || "");
+try { await syncUp(); } catch {}
 
 
 
@@ -2539,8 +2339,6 @@ async function typewriter(container, text, onTick){
     normalizeLinks(container);
     try{ hljs.highlightAll(); }catch{}
     if (typeof onTick === "function") onTick(acc);   // ⬅️ هر کاراکتر، متن ذخیره شود
-    if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
-
     await new Promise(r=>setTimeout(r,8));
   }
   try{ hljs.highlightAll(); }catch{}
@@ -2954,8 +2752,8 @@ async function addUser(text){
   b.textContent = text;
   row.appendChild(b);
   msgsEl.appendChild(row);
-if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
-
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  scrollChatToBottom();
 
   const id = pushMsg("user", text);
   row.dataset.id = id;
@@ -2977,17 +2775,8 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   ensureCodeCopyButtons(r);
 
   if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
-  if (justOpened) {
-    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
-  } else if (shouldFollowBottom()) {
-    if (shouldFollowBottom() || justOpened) {
-    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
-  }
-
-  }
-
-
-
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+  scrollChatToBottom();
 
   let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
   const msg = safeMsgs().find(m => m.id === id);
@@ -3135,7 +2924,50 @@ if (btnLogout){
     </div>
   </div>
 </div>
+<!-- ==== AUTH MODAL ==== -->
+<div id="authModal" class="auth-modal" aria-hidden="true">
+  <div class="auth-card">
+    <h3 style="margin:0 0 10px 0">ورود / ثبت‌نام</h3>
+    <div class="auth-tabs">
+      <div id="authTabRegister" class="auth-tab active">ثبت‌نام</div>
+      <div id="authTabLogin" class="auth-tab">ورود</div>
+    </div>
 
+    <!-- ثبت‌نام -->
+    <div id="authBoxRegister">
+      <div class="auth-row">
+        <label>نام کاربری پیشنهادی (منحصر‌به‌فرد):</label>
+        <input id="regUsername" readonly>
+        <button id="regenUsername" class="link ghost" style="width:100%">تولید مجدد نام کاربری</button>
+        <div class="auth-note">این نام کاربری به‌صورت رندوم ساخته می‌شود. می‌توانید با تولید مجدد، نام دیگری بسازید.</div>
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="regPassword" type="password" placeholder="رمز عبور را وارد کنید">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel" class="link ghost">بستن</button>
+        <button id="authDoRegister" class="link">ثبت‌نام</button>
+      </div>
+    </div>
+
+    <!-- ورود -->
+    <div id="authBoxLogin" style="display:none">
+      <div class="auth-row">
+        <label>نام کاربری:</label>
+        <input id="logUsername" placeholder="نام کاربری">
+      </div>
+      <div class="auth-row">
+        <label>رمز عبور:</label>
+        <input id="logPassword" type="password" placeholder="رمز عبور">
+      </div>
+      <div class="auth-actions">
+        <button id="authCancel2" class="link ghost">بستن</button>
+        <button id="authDoLogin" class="link">ورود</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
