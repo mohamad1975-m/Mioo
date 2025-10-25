@@ -10,6 +10,34 @@
       src: url("./IRANYekanX-Light.woff2") format("woff2");
       font-weight: 300; font-style: normal; font-display: swap;
     }
+/* اطمینان از فونت در پیام‌های وضعیت/توست/پردازش */
+.toast,
+#status,
+.processing {
+  font-family: IRANYekanX, Tahoma, Arial, sans-serif;
+}
+#processingOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999999;
+}
+#processingOverlay .box{
+  background:#fff;
+  color:#111;
+  padding:16px 18px;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  font-size: 15px;
+  font-family: IRANYekanX, Tahoma, Arial, sans-serif !important;
+}
+.dark #processingOverlay .box{
+  background:#0b1220;
+  color:#e5e7eb;
+}
 
     :root{
       --bg:#f8f9fb; --card:#fff; --ink:#111; --muted:#6b7280; --radius:18px; --fz: clamp(15px, 1.1vw + 10px, 16px);
@@ -36,14 +64,15 @@
       --chip:#334155; --chip-ink:#e5e7eb;
     }
     html, body { height: 100%; }
-body{
+    body{
   margin:0;
   min-height: 100dvh;            /* احترام به نوارهای موبایل */
-  background:var(--bg);
+  background: #0b1020 url('https://s34.picofile.com/file/8487624900/10_11zon_2_.jpg') center/cover fixed no-repeat;
   font-family:IRANYekanX, Tahoma, Arial, sans-serif;
   color:var(--ink);
   font-size:var(--fz);
 }
+
 .wrap{
   max-width:1000px;
   margin:24px auto;
@@ -104,7 +133,8 @@ body{
 
 
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
+    body{margin:0;font-family:IRANYekanX, Tahoma, Arial, sans-serif;color:var(--ink);font-size:var(--fz)}
+
     .wrap{max-width:1000px;margin:24px auto;padding:0 14px}
     .head{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -129,6 +159,25 @@ body{
   min-height: 2.2em;        /* خط پایه */
   max-height: 8.2em;        /* حدوداً ۳ خط + پدینگ */
   font-size: inherit;   /* ✅ فونتِ textarea از :root/body بگیرد */
+}
+
+/* === Fly-send animation helper === */
+.fly-ghost{
+  position: fixed;
+  inset: auto auto auto auto; /* فقط با transform جابه‌جا می‌شود */
+  z-index: 9999;
+  background: var(--bubble-user);
+  color: var(--bubble-user-ink);
+  border-radius: 14px;
+  padding: 10px 12px;
+  line-height: 1.9;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  white-space: pre-wrap;
+  max-width: 68vw;
+  direction: rtl; unicode-bidi: plaintext;
+  transform-origin: top right;
+  will-change: transform, opacity;
 }
 
     .btn{border:0;background:#111;color:#fff;border-radius:12px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:6px}
@@ -567,10 +616,6 @@ body{
       </select>
     </div>
     <div class="modal-row">
-      <label style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="animToggle" checked>
-        انیمیشن‌های رابط فعال باشد
-      </label>
     </div>
     <div class="modal-row">
       <label style="display:flex;align-items:center;gap:8px">
@@ -705,15 +750,22 @@ body{
     <!-- ثبت‌نام -->
     <div id="authBoxRegister" class="auth-box">
       <div class="auth-row">
-        <label>نام کاربری (تصادفی):</label>
-        <div style="display:flex; gap:8px">
-          <input id="regUsername" placeholder="user_xxxx" style="flex:1">
+
+          <label>نام کاربری:</label>
+          <div style="display:flex; gap:8px">
+            <input id="regUsername" placeholder="user_xxxx" style="flex:1"
+            autocapitalize="none" autocorrect="off" inputmode="latin"
+            pattern="[a-z0-9_]+" title="فقط حروف کوچک، عدد و آندرلاین (a-z 0-9 _)">
+     
+          
           <button id="regenUsername" class="link ghost">تولید دوباره</button>
         </div>
       </div>
       <div class="auth-row">
         <label>رمز عبور:</label>
-        <input id="regPassword" type="password" placeholder="رمز عبور">
+        <input id="regPassword" type="password" placeholder="رمز عبور"
+               inputmode="numeric" pattern="\d{4,}" title="حداقل ۴ رقم (فقط عدد)">
+        
       </div>
       <div class="auth-actions">
         <button id="authCancel" class="link ghost">انصراف</button>
@@ -726,11 +778,17 @@ body{
     <div id="authBoxLogin" class="auth-box" style="display:none">
       <div class="auth-row">
         <label>نام کاربری:</label>
-        <input id="logUsername" placeholder="نام کاربری">
+        <input id="logUsername" placeholder="نام کاربری"
+        autocapitalize="none" autocorrect="off" inputmode="latin"
+        pattern="[a-z0-9_]+" title="فقط حروف کوچک، عدد و آندرلاین (a-z 0-9 _)">
+ 
+        
       </div>
       <div class="auth-row">
         <label>رمز عبور:</label>
-        <input id="logPassword" type="password" placeholder="رمز عبور">
+        <input id="logPassword" type="password" placeholder="رمز عبور"
+               inputmode="numeric" pattern="\d{4,}" title="حداقل ۴ رقم (فقط عدد)">
+        
       </div>
       <div class="auth-actions">
         <button id="authCancel2" class="link ghost">انصراف</button>
@@ -762,6 +820,9 @@ body{
 </div>
 <!-- Toasts container -->
 <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+<div id="processingOverlay" aria-hidden="true">
+  <div class="box">در حال پردازش…</div>
+</div>
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api/chat";
@@ -790,6 +851,24 @@ function showToast(message="", type="ok", {timeout=5000} = {}){
     }
     return kill;
   }catch{ /* no-op */ }
+}
+function showProcessing(text){
+  try{
+    const ov = document.getElementById("processingOverlay");
+    if (!ov) return;
+    const bx = ov.querySelector(".box");
+    if (bx) bx.textContent = text || "در حال پردازش…";
+    ov.style.display = "flex";
+    ov.setAttribute("aria-hidden","false");
+  }catch{}
+}
+function hideProcessing(){
+  try{
+    const ov = document.getElementById("processingOverlay");
+    if (!ov) return;
+    ov.style.display = "none";
+    ov.setAttribute("aria-hidden","true");
+  }catch{}
 }
 
 // تشخیص خودکار خطا از متن
@@ -867,6 +946,10 @@ btnChangePass.addEventListener("click", async () => {
      const old_password = (document.getElementById("accOldPass")?.value || "").trim();
 const new_password = (document.getElementById("accNewPass")?.value || "").trim();
 
+if (!/^\d{4,}$/.test(new_password)) {
+  alert("رمز جدید باید حداقل ۴ رقم (فقط عدد) باشد.");
+  return;
+}
 
   if (!u || !old_password || !new_password) {
     alert("همه فیلدها را پر کنید.");
@@ -918,8 +1001,17 @@ function getAuth(){
 }
 
 function setAuth(username, token){
+  // اگر کاربر عوض شد، همه‌ی داده‌های وابسته به کاربر قبلی را پاک کن
+  const prev = (getAuth()?.username || "").trim();
+  if (prev && username && prev !== username) {
+    try {
+      localStorage.removeItem("chats_v2");                 // لیست چت‌ها
+      localStorage.removeItem("active_chat_v1");           // چت فعال
+      localStorage.removeItem("chat_seq_counter__" + prev);// شمارنده‌ی عناوین
+    } catch {}
+  }
+
   if (username) {
-    // ✅ کلید درست
     localStorage.setItem(KEY_AUTH_NAME, username);
     // نگه داشتن نسخهٔ قدیمی برای سازگاری
     localStorage.setItem("auth", JSON.stringify({ username }));
@@ -994,6 +1086,146 @@ const $ = id => document.getElementById(id);
 const msgsEl = $("msgs");
 const inp = $("inp");
 const btn = $("sendBtn");
+// بعد از خط: const btn = $("sendBtn");
+btn.onclick = () => {
+  if (busy) {
+    shouldStopStreaming = true;
+    stoppedByUser = true;
+    return;
+  }
+  try { send(); } catch (e) { console.error(e); }
+};
+
+let justOpened = false; // وقتی به یک چت وارد می‌شویم، فقط همان بار اول برو پایین
+
+// --- دنبال کردن پایین فقط وقتی کاربر نزدیک پایین است
+let followBottom = true;
+function isNearBottom(){
+  const gap = 64; // px
+  return (msgsEl.scrollHeight - (msgsEl.scrollTop + msgsEl.clientHeight)) <= gap;
+}
+function shouldFollowBottom(){
+  return followBottom && isNearBottom();
+}
+// وقتی کاربر اسکرول می‌کند، اگر از پایین فاصله بگیرد، دنبال‌کردن را قطع کن
+msgsEl.addEventListener('scroll', ()=>{
+  followBottom = isNearBottom();
+});
+
+// === Fly animation from input to the last user bubble ===
+function rectCenter(r){
+  return { x: r.left + r.width, y: r.top + r.height/2 };
+}
+function makeGhost(text){
+  const g = document.createElement('div');
+  g.className = 'fly-ghost';
+  g.textContent = text;
+  document.body.appendChild(g);
+  return g;
+}
+function placeGhostAt(g, x, y, scale = 1){
+  g.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+
+async function flyFromInputToBubble(text, bubbleEl){
+    // اگر کاربر انیمیشن‌های رابط را خاموش کرده، افکت را اجرا نکن
+
+
+  try{
+    const t = (text || "").trim();
+    if (!t || !bubbleEl) return;
+
+    // مبدا: انتهای textarea (سمت راست در RTL)
+    const inpRect = inp.getBoundingClientRect();
+    // مقصد: مرکز حباب کاربر
+    const bubRect = bubbleEl.getBoundingClientRect();
+
+    const g = makeGhost(t);
+
+    // اندازه‌گیری مقیاس تقریبی متن
+    // (مقیاس اولیه=1 کافیست؛ حباب مقصد خودش متن را دارد)
+    const startX = inpRect.right - 10;                   // کمی از راست داخل‌تر
+    const startY = inpRect.top + inpRect.height/2 - 12;  // میانه‌ی عمودی
+    const endX   = bubRect.right - 12;
+    const endY   = bubRect.top + 14;
+
+    placeGhostAt(g, startX, startY, 0.98);
+
+    // انیمیشن
+    const anim = g.animate(
+      [
+        { transform: `translate(${startX}px, ${startY}px) scale(.98)`, opacity: 1 },
+        { transform: `translate(${endX}px, ${endY}px) scale(.88)`, opacity: .92 },
+        { transform: `translate(${endX}px, ${endY}px) scale(.82)`, opacity: 0 }
+      ],
+      { duration: 420, easing: 'cubic-bezier(.22,.61,.36,1)' }
+    );
+
+    await anim.finished.catch(()=>{});
+    g.remove();
+  }catch{}
+}
+
+// --- پچِ send: بعد از اجرای send اصلی، روی آخرین حباب کاربر افکت اجرا کن
+/* --- پچِ send با MutationObserver: افکت دقیقاً وقتی حباب کاربر به DOM اضافه شد اجرا می‌شود --- */
+(function patchSendForFlyObserver(){
+  function attach(){
+    if (window.__flyPatched) return true;
+    if (typeof window.send !== "function") return false;
+
+    const __origSend = window.send;
+    window.send = async function(){
+      const textSnapshot = (inp?.value || "").trim();
+      const p = __origSend.apply(this, arguments);
+
+      const container = document.getElementById('msgs') || msgsEl;
+      if (!container) return p;
+
+      let done = false;
+      const obs = new MutationObserver((mutations)=>{
+        if (done) return;
+        for (const m of mutations){
+          for (const node of m.addedNodes){
+            if (!(node instanceof HTMLElement)) continue;
+            const target = node.matches?.('.bubble.user')
+              ? node
+              : (node.querySelector?.('.bubble.user') || null);
+            if (target){
+              done = true;
+              requestAnimationFrame(async ()=>{
+                try{ container.scrollTop = container.scrollHeight; }catch{}
+                await flyFromInputToBubble(textSnapshot, target);
+              });
+              obs.disconnect();
+              break;
+            }
+          }
+        }
+      });
+
+      try { obs.observe(container, { childList:true, subtree:true }); } catch {}
+
+      // فالبک: اگر ظرف ۳ ثانیه حبابی دیده نشد، ناظر را جمع کن تا لیک نشود
+      setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
+
+      return p;
+    };
+
+    window.__flyPatched = true;
+    return true;
+  }
+
+  // تلاش فوری + تلاش‌های دوره‌ای تا وقتی send آماده شود
+  if (!attach()){
+    let tries = 0;
+    const t = setInterval(()=>{
+      if (attach() || ++tries > 50) clearInterval(t);
+    }, 150);
+    document.addEventListener('readystatechange', attach);
+  }
+})();
+
+
 // اتوگِرو برای textarea تا ۳ خط
 (function(){
   const MAX_LINES = 3;
@@ -1011,13 +1243,17 @@ const btn = $("sendBtn");
   // بار اول هم تنظیم کن
   setTimeout(autoGrow, 0);
 
-  // بعد از هر ارسال که ورودی را خالی می‌کنیم، دوباره جمعش کن
-  const _send = send;
-  window.send = async function(){
-    await _send.apply(this, arguments);
-    // اگر در send مقدار inp را خالی می‌کنی، اینجا هم جمع کن
-    autoGrow();
-  };
+  // بعد از هر ارسال، ارتفاع را نُرم کن (با حفظ لایه‌های دیگرِ send)
+  (function augmentSendToAutoGrow(){
+    const __prev = window.send;
+    if (typeof __prev !== "function") return;
+    window.send = async function(){
+      const r = await __prev.apply(this, arguments);
+      try { autoGrow(); } catch {}
+      return r;
+    };
+  })();
+
 })();
 
 const sendIcon = $("sendIcon");
@@ -1036,7 +1272,6 @@ const fzRange = $("fzRange");
 const fzVal = $("fzVal");
 const typewriterToggle = $("typewriterToggle");
 const sendShortcutSel = $("sendShortcut");
-const animToggle = $("animToggle");
 const autoTheme = $("autoTheme");
 const forceLight = $("forceLight");
 const forceDark  = $("forceDark");
@@ -1090,6 +1325,41 @@ if (!authModal || !tabReg || !tabLog || !boxReg || !boxLog ||
     !logUsername || !logPassword || !authCancel || !authCancel2 ||
     !authDoRegister || !authDoLogin) {
   console.warn("Auth modal elements not found — check HTML placement.");
+  // --- محدودسازی نام‌کاربری به حروف کوچک و اعتبارسنجی پسورد (فرانت) ---
+(function(){
+  const onlyLower = s => (s||"").toLowerCase().replace(/[^a-z0-9_]/g, "");
+
+  const passOk    = p => /^\d{4,}$/.test(p||""); // حداقل ۴ رقم
+
+  if (regUsername) {
+    ["input","change","blur"].forEach(ev=>{
+      regUsername.addEventListener(ev, ()=> regUsername.value = onlyLower(regUsername.value));
+    });
+  }
+  if (logUsername) {
+    ["input","change","blur"].forEach(ev=>{
+      logUsername.addEventListener(ev, ()=> logUsername.value = onlyLower(logUsername.value));
+    });
+  }
+
+  // ولیدیشن هنگام کلیک ثبت‌نام
+  if (authDoRegister) {
+  authDoRegister.addEventListener("click", (e)=>{
+    const u = (regUsername?.value||"").trim();
+    const p = (regPassword?.value||"");
+    if (!/^[a-z0-9_]+$/.test(u)) { showToast("نام کاربری فقط حروف کوچک، عدد و آندرلاین (a-z 0-9 _) باشد.", "err"); e.preventDefault(); return; }
+    if (!/^\d{4,}$/.test(p))     { showToast("رمز عبور باید حداقل ۴ رقم (فقط عدد) باشد.", "err"); e.preventDefault(); return; }
+  });
+}
+
+
+  // قبل از ورود، یوزرنیم را حتماً lowercase کن
+  if (authDoLogin) {
+    authDoLogin.addEventListener("click", ()=>{
+      if (logUsername) logUsername.value = onlyLower(logUsername.value);
+    });
+  }
+})();
 }
 
 // ساخت نام کاربری رندوم
@@ -1183,29 +1453,54 @@ authDoRegister.onclick = async ()=>{
   const u = (regUsername.value || "").trim();
   const p = (regPassword.value || "").trim();
   if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
-  const res = await doRegister(u,p);
-  
-  if (res?.ok){
-  setAuth(res.username, res.token);
-  await syncDown();                 // ← اضافه شود
-  const had = loadChats().length > 0;
-  if (!had) await createNewActiveChat();
-  renderChatList("");
-  try{ await syncUp(); }catch{}
-  alert("ثبت‌نام موفق. خوش آمدید!");
-  closeAuthModal();
 
-}else{
-  alert(
-  res?.error === "user_exists"
-    ? "این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید."
-    : res?.error === "server"
-      ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
-      : (res?.error || "خطا در ثبت‌نام")
-);
+  showProcessing("در حال پردازش…");
 
-}
+  try {
+    const res = await doRegister(u,p);
+    if (res?.ok){
+      const oldUser = (getAuth()?.username || "").trim();
+      if (oldUser && oldUser !== res.username) {
+        try {
+          localStorage.removeItem("chats_v2");
+          localStorage.removeItem("active_chat_v1");
+          localStorage.removeItem("chat_seq_counter__" + oldUser);
+        } catch {}
+      }
+      setAuth(res.username, res.token);
+
+      closeAuthModal();
+      alert("ثبت‌نام موفق. خوش آمدید!");
+
+      (async () => {
+        try {
+          const before = JSON.stringify(loadChats());
+          await syncDown();
+          let had = loadChats().length > 0;
+          if (!had) await createNewActiveChat();
+          const after = JSON.stringify(loadChats());
+          if (before !== after) {
+            renderChatList(chatSearch?.value || "");
+            renderActiveChat?.();
+          }
+          try { await syncUp(); } catch {}
+        } catch {}
+      })();
+
+    } else {
+      alert(
+        res?.error === "user_exists"
+          ? "این نام کاربری قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید."
+          : res?.error === "server"
+            ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
+            : (res?.error || "خطا در ثبت‌نام")
+      );
+    }
+  } finally {
+    hideProcessing();
+  }
 };
+
 
 // ورود
 authDoLogin.onclick = async () => {
@@ -1213,31 +1508,51 @@ authDoLogin.onclick = async () => {
   const p = (logPassword.value || "").trim();
   if (!u || !p) return alert("نام کاربری و رمز عبور را وارد کنید.");
 
-  const res = await doLogin(u, p);
-  if (res?.ok) {
-    setAuth(res.username, res.token);
+  showProcessing("در حال پردازش…");
 
-    // 1) اول از سرور بکش پایین تا چت‌های دستگاه‌های دیگر بیاید
-    await syncDown();
+  try {
+    const res = await doLogin(u, p);
+    if (res?.ok) {
+      const oldUser = (getAuth()?.username || "").trim();
+      if (oldUser && oldUser !== res.username) {
+        try {
+          localStorage.removeItem("chats_v2");
+          localStorage.removeItem("active_chat_v1");
+          localStorage.removeItem("chat_seq_counter__" + oldUser);
+        } catch {}
+      }
+      setAuth(res.username, res.token);
 
-    // 2) اگر هیچ چتی نبود، فقط آن‌وقت یکی بساز
-    const had = loadChats().length > 0;
-    if (!had) await createNewActiveChat();
+      closeAuthModal();
+      alert("ورود موفق.");
 
-    // 3) رندر لیست و همگام‌سازی بالا
-    renderChatList(chatSearch?.value || "");
-    try { await syncUp(); } catch {}
+      (async () => {
+        try {
+          const before = JSON.stringify(loadChats());
+          await syncDown();
+          let had = loadChats().length > 0;
+          if (!had) await createNewActiveChat();
+          const after = JSON.stringify(loadChats());
+          if (before !== after) {
+            renderChatList(document.getElementById("chatSearch")?.value || "");
+            renderActiveChat?.();
+          }
+          try { await syncUp(); } catch {}
+        } catch {}
+      })();
 
-    alert("ورود موفق.");
-    closeAuthModal();
-  } else {
-    alert(
-      res?.error === "bad_credentials" ? "نام کاربری یا رمز عبور نادرست است."
-      : res?.error === "server" ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
-      : (res?.error || "خطا در ورود")
-    );
+    } else {
+      alert(
+        res?.error === "bad_credentials" ? "نام کاربری یا رمز عبور نادرست است."
+        : res?.error === "server" ? "خطای سرور پیش آمد. لطفاً دوباره تلاش کنید."
+        : (res?.error || "خطا در ورود")
+      );
+    }
+  } finally {
+    hideProcessing();
   }
 };
+
 
 
 // اطمینان از احراز هویت پیش از شروع
@@ -1346,7 +1661,6 @@ if (savedFz) {
 const storedTW = localStorage.getItem(KEY_TW);
 if (storedTW!==null) typewriterToggle.checked = storedTW==="1";
 sendShortcutSel.value = localStorage.getItem(KEY_SHORTCUT) || "enter";
-animToggle.checked = localStorage.getItem(KEY_ANIM)!=="0";
 fzRange.oninput=()=>{ 
   const v=parseInt(fzRange.value,10)||16; 
   fzVal.textContent=String(v);
@@ -1408,7 +1722,6 @@ saveSettings.onclick=async ()=>{
   localStorage.setItem(KEY_FZ, String(v));
   localStorage.setItem(KEY_TW, typewriterToggle.checked ? "1":"0");
   localStorage.setItem(KEY_SHORTCUT, sendShortcutSel.value);
-  localStorage.setItem(KEY_ANIM, animToggle.checked ? "1":"0");
   localStorage.setItem(KEY_THEME_AUTO, autoTheme.checked ? "1":"0");
   if (autoTheme.checked) localStorage.setItem(KEY_THEME_FORCE,"");
 
@@ -1433,10 +1746,11 @@ async function saveChats(chs){
   // ✅ با هدر صحیح و صبر برای اطمینان از آپلود
   try{
     await fetch(API.replace("/api/chat","/api/user/chats"),{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({chats: chs})
-    });
+  method:"POST",
+  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
+  body: JSON.stringify({chats: chs})
+});
+
   }catch{}
 }
 
@@ -1444,39 +1758,91 @@ async function syncUp(){
   try{
     const chs = loadChats();
     await fetch(API.replace("/api/chat","/api/user/chats"),{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({chats: chs})
-    });
+  method:"POST",
+  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
+  body: JSON.stringify({chats: chs})
+});
+
     // قوانین اختصاصی
     const rules = (localStorage.getItem(KEY_RULES)||"").trim();
     await fetch(API.replace("/api/chat","/api/user/rules"),{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({rules})
-    });
+  method:"POST",
+  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
+  body: JSON.stringify({rules})
+});
+
   }catch{}
 }
 
 async function syncDown(){
+  if (busy) return;  // وقتی بات مشغول استریم است، همگام‌سازی پایین دستی را رد کن
+
   try{
     // --- چت‌ها از سرور
-    const r = await fetch(API.replace("/api/chat","/api/user/chats"));
+    const r = await fetch(API.replace("/api/chat","/api/user/chats"), {
+  headers: authHeaders()
+});
+
     const j = await r.json().catch(()=> ({}));
     if (Array.isArray(j?.chats)) {
-  // فقطِ سرور = منبع حقیقت
-  const remote = j.chats.map(c => ({
-    ...c,
-    updatedAt: Number(c.updatedAt || c.createdAt || Date.now())
-  }));
-  const sorted = remote.sort((a,b)=> (b.updatedAt||0)-(a.updatedAt||0));
+  // ۱) آماده‌سازی داده‌های سرور:
+  //    - اگر chatId داشت، به id تبدیل کن
+  //    - updatedAt را عددی کن
+  //    - messages اگر رشته JSON بود، به آرایه تبدیل کن
+  const remote = j.chats.map(c => {
+    let id = c.id || c.chatId;
+    let msgs = c.messages;
+    if (typeof msgs === "string") {
+      try { msgs = JSON.parse(msgs); } catch { msgs = []; }
+    }
+    if (!Array.isArray(msgs)) msgs = [];
+    return {
+      id,
+      title: c.title || "",
+      messages: msgs,
+      createdAt: Number(c.createdAt || Date.now()),
+      updatedAt: Number(c.updatedAt || c.createdAt || Date.now()),
+    };
+  });
 
-  await saveChats(sorted);
+  // ۲) چت‌های لوکال فعلی (نرمال‌سازی مشابه)
+  const local = loadChats().map(c => ({
+    id: c.id,
+    title: c.title || "",
+    messages: Array.isArray(c.messages) ? c.messages : [],
+    createdAt: Number(c.createdAt || Date.now()),
+    updatedAt: Number(c.updatedAt || c.createdAt || Date.now()),
+  }));
+
+  // ۳) نگاشت بر اساس id برای مقایسه نسخه‌ها
+  const byIdLocal  = new Map(local.map(c => [c.id, c]));
+  const byIdRemote = new Map(remote.map(c => [c.id, c]));
+
+  // ۴) ادغام: نسخه‌ی جدیدتر را نگه دار
+  const merged = new Map();
+  const allIds = new Set([...byIdLocal.keys(), ...byIdRemote.keys()]);
+  for (const id of allIds) {
+    const L = byIdLocal.get(id);
+    const R = byIdRemote.get(id);
+    if (L && R) {
+      merged.set(id, (R.updatedAt >= L.updatedAt) ? R : L);
+    } else if (R) {
+      merged.set(id, R);
+    } else if (L) {
+      merged.set(id, L);
+    }
+  }
+
+  // ۵) مرتب‌سازی نزولی بر اساس updatedAt
+  const list = [...merged.values()].sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
+
+  // ۶) ذخیره و رندر
+  await saveChats(list);
 
   // اگر چت فعالی نداریم، اولی را فعال کن
   const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
-  if (!activeId && sorted[0]) {
-    localStorage.setItem(KEY_ACTIVE_CHAT, sorted[0].id);
+  if (!activeId && list[0]) {
+    localStorage.setItem(KEY_ACTIVE_CHAT, list[0].id);
   }
 
   // رندرها
@@ -1484,12 +1850,15 @@ async function syncDown(){
     renderChatList(chatSearch?.value || "");
   }
   if (!busy) renderActiveChat?.();
-
 }
 
 
+
     // --- قوانین اختصاصی
-    const r2 = await fetch(API.replace("/api/chat","/api/user/rules"));
+    const r2 = await fetch(API.replace("/api/chat","/api/user/rules"), {
+  headers: authHeaders()
+});
+
     const j2 = await r2.json().catch(()=> ({}));
     if (typeof j2?.rules === "string") {
       localStorage.setItem(KEY_RULES, j2.rules);
@@ -1521,28 +1890,15 @@ function persistCurrentChat(){
 }
 
 // شمارنده‌ی مستقل برای عنوان گفتگوها
-// شمارنده‌ی سراسری عنوان گفتگو (ابتدا از سرور، در صورت خطا: fallback محلی)
-async function nextChatSeq(){
-  // 1) تلاش برای گرفتن شماره از سرور (سراسری برای همین کاربر)
-  try{
-    const r = await fetch(API.replace("/api/chat","/api/user/nextChatSeq"), { method:"POST" });
-    const j = await r.json().catch(()=> ({}));
-    const n = Number(j?.n || 0);
-    if (n > 0) {
-      // همچنین localStorage را هم هم‌راستا کن تا در حالت آفلاین عقب نماند
-      localStorage.setItem(seqKey(), String(n));
-      return n;
-    }
-  }catch{}
-
-  // 2) Fallback محلی (وقتی سرور در دسترس نیست)
+// شمارنده‌ی سراسری عنوان گفتگو (با هدرهای احراز هویت)
+function nextChatSeq(){
   const k = seqKey();
   let seq = Number(localStorage.getItem(k) || "0");
   if (!seq) {
     const chs = loadChats();
     let maxSeen = 0;
     for (const c of chs) {
-      const m = /گفتگوی جدید\s*\((\d+)\)/.exec(c.title || "");
+      const m = /\((\d+)\)/.exec(c.title || "");
       if (m) maxSeen = Math.max(maxSeen, Number(m[1] || 0));
     }
     seq = maxSeen;
@@ -1557,35 +1913,61 @@ async function nextChatSeq(){
 async function createNewActiveChat(){
   const id = uid();
 
-  // شمارندهٔ مستقل عنوان
-  const seq = await nextChatSeq();
+  // 1) عنوان موقت محلی (فوری)
+  const seqLocal = nextChatSeq();
+  let title = `گفتگوی (${seqLocal})`;
 
-  const title = `گفتگوی  (${seq})`;
-
-  // ✅ این خط باعث می‌شود آرایهٔ چت‌های فعلی را داشته باشیم
+  // 2) درج فوری در UI و لوکال‌استوریج (بدون await شبکه)
   const chs = loadChats();
-
-  chs.unshift({ id, title, messages: [], updatedAt: Date.now() });
-  saveChats(chs);
-  await syncUp();
-
-
+  chs.unshift({ id, title, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
+  // ذخیرهٔ محلی + آپلود، اما منتظر نمی‌مانیم
+  saveChats(chs).catch(()=>{});
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  justOpened = true;
   msgsEl.innerHTML = "";
-
-  // ثبت آغاز گفتگو در سرور (اختیاری)
-  try {
-    await fetch(API.replace("/api/chat","/api/track/chat_open"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: id, title })
-    });
-  } catch {}
-
   renderActiveChat();
 
-  // خوشامدگویی داخل گفت‌وگوی تازه
-  addBot("سلام! چه کمکی میتونم بهت بکنم؟😺");
+  // 3) پیام خوشامد فوری (قبل از هر درخواست شبکه)
+  try { addBot("سلام! چه کمکی میتونم بهت بکنم؟😺"); } catch {}
+
+  // 4) درخواست‌های پس‌زمینه (اثر بر UI ندارد)
+  (async () => {
+    // ثبت آغاز گفتگو (غیربلاک‌کننده)
+    fetch(API.replace("/api/chat","/api/track/chat_open"), {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ chat_id:id, title })
+    }).catch(()=>{});
+
+    // گرفتن شمارهٔ قطعی از سرور و به‌روزرسانی عنوان در صورت تفاوت
+    try{
+      const r = await fetch(API.replace("/api/chat","/api/user/nextChatSeq"),{
+        method:"POST",
+        headers: Object.assign({ "Content-Type":"application/json" }, authHeaders()),
+        body: JSON.stringify({})
+      });
+      const j = await r.json().catch(()=> ({}));
+      const n = Number(j?.n || 0);
+      if (n && `گفتگوی (${n})` !== title){
+        title = `گفتگوی (${n})`;
+        const list = loadChats();
+        const i = list.findIndex(c => c.id === id);
+        if (i >= 0){
+          list[i].title = title;
+          list[i].updatedAt = Date.now();
+          await saveChats(list);
+          if (localStorage.getItem(KEY_ACTIVE_CHAT) === id) {
+            renderChatList(document.getElementById("chatSearch")?.value || "");
+          }
+        }
+      }
+    }catch{}
+
+    // سینک کامل بالا (پس‌زمینه)
+    try { await syncUp(); } catch {}
+  })();
+
+  return id;
 }
 
 
@@ -1593,7 +1975,9 @@ function currentChat(){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); return l
 function updateCurrentChat(up){ const id=localStorage.getItem(KEY_ACTIVE_CHAT); const chs=loadChats(); const i=chs.findIndex(c=>c.id===id); if(i>=0){ up(chs[i]); chs[i].updatedAt=Date.now(); saveChats(chs);} }
 function setActiveChat(id){
   localStorage.setItem(KEY_ACTIVE_CHAT, id);
+  justOpened = true;
   renderActiveChat();
+
   // اگر پنل فهرست باز است، های‌لایت را به‌روزرسانی کن
   if (document.getElementById("chatList")?.classList.contains("show")) {
     renderChatList(document.getElementById("chatSearch")?.value || "");
@@ -1621,8 +2005,17 @@ function renderActiveChat(){
 
     }
   });
-  msgsEl.scrollTop=msgsEl.scrollHeight;
-  scrollChatToBottom();
+  if (justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
+  } else if (shouldFollowBottom()) {
+    if (shouldFollowBottom() || justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
+  }
+
+  }
+
+
+
 
   try{ hljs.highlightAll(); }catch{}
 }
@@ -1677,53 +2070,51 @@ function renderActiveChat(){
 // 3) شروع چت
 // 2.5) احراز هویت
 (async function initStart(){
-  // 1) ثبت لاگین + مدل دستگاه ...
-  //   (همان کدهای فعلی‌ات اینجا می‌ماند)
-  await trackLogin();
 
   // 2) احراز هویت (ثبت‌نام/ورود)
   await ensureAuth();
-// --- validate session: آیا این دستگاه هنوز داخل اکانت است؟ ---
-try {
+    // نمایش قبلی را فوراً پاک کن تا چشم کاربر چت قدیمی را نبیند
+
+      // 1) ثبت لاگین + مدل دستگاه ...
+  //   (همان کدهای فعلی‌ات اینجا می‌ماند)
+  await trackLogin();
+
+  try { msgsEl.innerHTML = ""; } catch {}
+// --- validate session (soft) ---
+try{
   const me = getAuth();
-  // لیست دستگاه‌های همین کاربر را از سرور بگیر
-  const r = await fetch(API_BASE + "/admin/devices?uid=" + encodeURIComponent(me.username));
-  const j = await r.json();
-  const list = Array.isArray(j?.devices) ? j.devices : [];
-  // آیا توکن فعلی ما هنوز بین دستگاه‌های فعال هست؟
-  const stillIn = list.some(d => d.token === me.token);
-
-  if (!stillIn) {
-    // این دستگاه توسط ادمین از اکانت بیرون افتاده → کاربر را لاگ‌اوت کن و پنجرهٔ لاگین را نشان بده
-    clearAuth();
-    // اگر دوست داری چت‌های محلی را هم پاک کنی که بعد از خروج دیده نشوند، این دو خط را هم فعال کن:
-    // localStorage.removeItem("chats_v2");
-    // localStorage.removeItem("active_chat_v1");
-    clearAuth();
-localStorage.removeItem("chats_v2");
-localStorage.removeItem("active_chat_v1");
-msgsEl.innerHTML = ""; // خالی‌کردن لیست پیام‌ها
-
-    openAuthModal("login");
-    throw new Error("session_revoked");
+  if (me.username && me.token){
+    const r = await fetch(API_BASE + "/auth/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: me.username, token: me.token })
+    });
+    const j = await r.json().catch(()=> ({}));
+    if (j?.ok === false && (j.error === "revoked" || j.error === "bad_token")){
+      clearAuth();
+      localStorage.removeItem("chats_v2");
+      localStorage.removeItem("active_chat_v1");
+      msgsEl.innerHTML = "";
+      openAuthModal("login");
+      throw new Error("session_revoked");
+    }
   }
-} catch (e) {
-  // خطای شبکه را نادیده بگیر تا تجربه خراب نشود
-  console.warn("device validate error:", e);
+}catch(e){
+  console.warn("session validate soft error:", e);
 }
+
 
   // 3) حالا که username/token داری → وضعیت بن را چک کن
   await checkBanOrBlock();
-// ↓↓↓ همگام‌سازی اولیه از سرور به کلاینت
-await syncDown();
+  // ⚡️ ابتدا بکِش پایین تا اگر دستگاه دیگری ساخته بود، همین‌ها بیاد
+  await syncDown();
 
-  // 4) ادامه‌ی کد: createNewActiveChat() و ...
-// بعد از syncDown:
-// همیشه پس از رفرش یک گفت‌وگوی تازه بساز و کاربر را همان‌جا ببر
-await createNewActiveChat();
-renderChatList(chatSearch?.value || "");
-try { await syncUp(); } catch {}
+  // همیشه یک گفت‌وگوی تازه بساز و همان را فعال کن
+  await createNewActiveChat();   // خودش پیام خوشامد را هم می‌گذارد
+  try { renderChatList(chatSearch?.value || ""); } catch {}
 
+  // همگام‌سازی بالا در پس‌زمینه
+  syncUp().catch(()=>{});
 
 
 
@@ -1732,7 +2123,25 @@ try { await syncUp(); } catch {}
 
 
 // chat list modal
-openChatList.onclick=()=>{ renderChatList(); chatList.classList.add("show"); chatList.setAttribute("aria-hidden","false"); };
+openChatList.onclick = () => {
+  // 1) فوری از لوکال رندر کن (بدون معطلی)
+  renderChatList();
+  chatList.classList.add("show");
+  chatList.setAttribute("aria-hidden","false");
+
+  // 2) همزمان در پس‌زمینه از سرور بکش و اگر چیزی عوض شد، دوباره رندر کن
+  (async () => {
+    try {
+      const before = JSON.stringify(loadChats());
+      await syncDown();
+      const after  = JSON.stringify(loadChats());
+      if (before !== after) {
+        renderChatList(document.getElementById("chatSearch")?.value || "");
+      }
+    } catch {}
+  })();
+};
+
 closeChatList.onclick=()=>{ chatList.classList.remove("show"); chatList.setAttribute("aria-hidden","true"); };
 chatList.addEventListener("click",(e)=>{ if(e.target===chatList){ closeChatList.onclick(); } });
 
@@ -1806,43 +2215,41 @@ function showSnack(text, onUndo){
   clearTimeout(undoTimer);
   undoTimer=setTimeout(()=>{ snack.style.display="none"; },5000);
 }
-function deleteChatWithUndo(id, title){
+async function deleteChatWithUndo(id, title){
   const chs = loadChats();
   const idx = chs.findIndex(c => c.id === id);
   if (idx < 0) return;
 
-  // نگه‌دار برای Undo
   const removed = chs.splice(idx, 1)[0];
 
-  // 1) حذف لوکال + رندر
-  saveChats(chs);
+  await saveChats(chs);                 // ⬅️ منتظر ذخیره و آپلود
   if (localStorage.getItem(KEY_ACTIVE_CHAT) === id) {
     if (!chs.length) {
-      createNewActiveChat();
+      await createNewActiveChat();
     } else {
       localStorage.setItem(KEY_ACTIVE_CHAT, chs[0].id);
       renderActiveChat();
     }
   }
 
-  // 2) حذف سمت سرور (تا syncDown برش نگردونه)
-  (async () => {
-    try {
-      await fetch(API.replace("/api/chat","/api/user/deleteChat"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: id })
-      });
-      // بعد از حذفِ سرور، یک syncDown سبک تا لیست تازه شود
-      try { await syncDown(); } catch {}
-    } catch {}
-  })();
+  try {
+    await fetch(API.replace("/api/chat","/api/user/deleteChat"), {
+  method: "POST",
+  headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+  body: JSON.stringify({ chat_id: id })
+});
+// کمی صبر کوتاه تا حذف روی D1 نهایی شود (از برگشت لحظه‌ای جلوگیری می‌کند)
+await new Promise(r => setTimeout(r, 150));
+try { await syncDown(); } catch {}
 
-  // 3) واگرد: اگر کاربر Undo زد، همان چت را دوباره بالا/پایین همسان‌سازی کن
+
+    try { await syncDown(); } catch {}
+  } catch {}
+
   showSnack(`شما گفتگوی «${title}» را حذف نمودید |`, async () => {
     const list = loadChats();
     list.unshift(removed);
-    await saveChats(list);
+    await saveChats(list);              // ⬅️ واگرد هم آپلود شود
     localStorage.setItem(KEY_ACTIVE_CHAT, removed.id);
     renderActiveChat();
     renderChatList(chatSearch?.value || "");
@@ -1871,8 +2278,10 @@ function renameChatWithPrompt(id, oldTitle){
     const i = chs.findIndex(c => c.id === id);
     if (i >= 0){
       chs[i].title = title;
-      chs[i].updatedAt = Date.now();
-      saveChats(chs);
+chs[i].updatedAt = Date.now();
+await saveChats(chs);          // ⬅️ اطمینان از آپلود
+await syncUp().catch(()=>{});  // ⬅️ اختیاری: همگام‌سازی تضمینی
+
     }
     if ((currentChat()?.id) === id){
       updateCurrentChat(c => { c.title = title; });
@@ -2339,6 +2748,8 @@ async function typewriter(container, text, onTick){
     normalizeLinks(container);
     try{ hljs.highlightAll(); }catch{}
     if (typeof onTick === "function") onTick(acc);   // ⬅️ هر کاراکتر، متن ذخیره شود
+    if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
+
     await new Promise(r=>setTimeout(r,8));
   }
   try{ hljs.highlightAll(); }catch{}
@@ -2752,8 +3163,8 @@ async function addUser(text){
   b.textContent = text;
   row.appendChild(b);
   msgsEl.appendChild(row);
-  msgsEl.scrollTop = msgsEl.scrollHeight;
-  scrollChatToBottom();
+if (shouldFollowBottom()) msgsEl.scrollTop = msgsEl.scrollHeight;
+
 
   const id = pushMsg("user", text);
   row.dataset.id = id;
@@ -2775,8 +3186,17 @@ function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=n
   ensureCodeCopyButtons(r);
 
   if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
-  msgsEl.scrollTop=msgsEl.scrollHeight;
-  scrollChatToBottom();
+  if (justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
+  } else if (shouldFollowBottom()) {
+    if (shouldFollowBottom() || justOpened) {
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
+  }
+
+  }
+
+
+
 
   let id=existingId; if(!id){ id=pushMsg("assistant", markdown, meta); row.dataset.id=id; }
   const msg = safeMsgs().find(m => m.id === id);
@@ -2924,50 +3344,102 @@ if (btnLogout){
     </div>
   </div>
 </div>
-<!-- ==== AUTH MODAL ==== -->
-<div id="authModal" class="auth-modal" aria-hidden="true">
-  <div class="auth-card">
-    <h3 style="margin:0 0 10px 0">ورود / ثبت‌نام</h3>
-    <div class="auth-tabs">
-      <div id="authTabRegister" class="auth-tab active">ثبت‌نام</div>
-      <div id="authTabLogin" class="auth-tab">ورود</div>
-    </div>
+<!-- ⬇⬇⬇ این بلوک را درست قبل از </body> بگذار ⬇⬇⬇ -->
+<style>
+  /* اوورلی تمام‌صفحه برای حالت پردازش ثبت‌نام/ورود */
+  #authOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55); /* تیره نیمه‌شفاف */
+    display: none;                      /* پیش‌فرض مخفی */
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    backdrop-filter: blur(2px);
+  }
+  #authOverlay .box {
+    background: #fff;
+    color: #111;
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-family: Tahoma, IRANSans, Arial, sans-serif;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    min-width: 220px;
+    text-align: center;
+  }
+  #authOverlay .spin {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid #e5e7eb; border-top-color: #0f172a;
+    margin: 0 auto 10px; animation: sp 0.9s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg) } }
+</style>
 
-    <!-- ثبت‌نام -->
-    <div id="authBoxRegister">
-      <div class="auth-row">
-        <label>نام کاربری پیشنهادی (منحصر‌به‌فرد):</label>
-        <input id="regUsername" readonly>
-        <button id="regenUsername" class="link ghost" style="width:100%">تولید مجدد نام کاربری</button>
-        <div class="auth-note">این نام کاربری به‌صورت رندوم ساخته می‌شود. می‌توانید با تولید مجدد، نام دیگری بسازید.</div>
-      </div>
-      <div class="auth-row">
-        <label>رمز عبور:</label>
-        <input id="regPassword" type="password" placeholder="رمز عبور را وارد کنید">
-      </div>
-      <div class="auth-actions">
-        <button id="authCancel" class="link ghost">بستن</button>
-        <button id="authDoRegister" class="link">ثبت‌نام</button>
-      </div>
-    </div>
-
-    <!-- ورود -->
-    <div id="authBoxLogin" style="display:none">
-      <div class="auth-row">
-        <label>نام کاربری:</label>
-        <input id="logUsername" placeholder="نام کاربری">
-      </div>
-      <div class="auth-row">
-        <label>رمز عبور:</label>
-        <input id="logPassword" type="password" placeholder="رمز عبور">
-      </div>
-      <div class="auth-actions">
-        <button id="authCancel2" class="link ghost">بستن</button>
-        <button id="authDoLogin" class="link">ورود</button>
-      </div>
-    </div>
+<div id="authOverlay" aria-hidden="true">
+  <div class="box" role="status" aria-live="polite">
+    <div class="spin"></div>
+    <div>در حال پردازش…</div>
   </div>
 </div>
+
+<script>
+  // هِلپر نشان/مخفی کردن اوورلی
+  function showAuthBusy(on){
+    try{
+      const el = document.getElementById('authOverlay');
+      if (!el) return;
+      el.style.display = on ? 'flex' : 'none';
+    }catch{}
+  }
+
+  // برای اینکه مجبور نشیم کدهای فعلی ثبت‌نام/ورود رو دست‌کاری کنیم،
+  // یک "پچ" سبک روی fetch می‌زنیم تا هر درخواست به /api/auth/* اوورلی را روشن کند.
+  (function(){
+    const origFetch = window.fetch;
+    window.fetch = async function(input, init){
+      const url = (typeof input === 'string') ? input : (input && input.url) || '';
+      const isAuth = /\/api\/auth\//.test(url);
+
+      // حداقل 600ms نمایش تا چشمک نزند
+      let timer = null, shown = false;
+      if (isAuth) {
+        timer = setTimeout(()=>{ showAuthBusy(true); shown = true; }, 120); // کمی تأخیر برای حس بهتر
+      }
+      try{
+        const res = await origFetch.apply(this, arguments);
+        return res;
+      } finally {
+        if (timer) clearTimeout(timer);
+        if (isAuth) {
+          if (!shown) { showAuthBusy(true); } // اگر سریع جواب آمد، برای یک لحظه هم که شده نشان بده
+          setTimeout(()=> showAuthBusy(false), 600); // مینیمم نمایش
+        }
+      }
+    };
+  })();
+</script>
+<!-- ⬆⬆⬆ تا اینجا را اضافه کن؛ خط بعدی همان </body> فعلی توست ⬆⬆⬆ -->
+<script>
+  // اگر دکمه‌ها شناسه داشته باشند، این قطعه اختیاری آنها را هنگام پردازش غیرفعال/فعال می‌کند.
+  function setAuthButtonsBusy(disabled){
+    ['btnLogin','btnRegister'].forEach(id=>{
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.disabled = !!disabled;
+      if (disabled) b.dataset._label = b.innerText, b.innerText = 'در حال پردازش…';
+      else if (b.dataset._label) b.innerText = b.dataset._label;
+    });
+  }
+
+  // این دو رویداد سفارشی را اگر جایی لازم شد دستی هم می‌توانی dispatch کنی:
+  window.addEventListener('auth:busy',  ()=> setAuthButtonsBusy(true));
+  window.addEventListener('auth:idle',  ()=> setAuthButtonsBusy(false));
+
+  // اتصال به اوورلی بالا (در همان پچ fetch):
+  // اگر خواستی دقیقاً هماهنگ شود، می‌شود اینجا شنود URL را هم گذاشت؛
+  // اما چون fetch پچ شده، همین کافی است.
+</script>
+
 
 </body>
 </html>
