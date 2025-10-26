@@ -188,6 +188,10 @@
       <button class="link ghost" id="btnLogins">تاریخچه ورود</button>
       <button class="link ghost" id="btnNotes" title="نوت خصوصی (آیکون نوت پد)">🗒️ نوت</button>
       <button class="link" id="btnBan">بن کردن</button>
+      <button class="link ghost" id="btnUnban">خروج از بن</button>
+
+
+
       <button class="link ghost" id="btnDevices">دستگاه‌ها</button>
 
       <button id="btnUserAuth" class="link ghost">حساب</button>
@@ -296,11 +300,49 @@ const profileBox = document.getElementById("profileBox");
 const profMeta   = document.getElementById("profMeta");
 const btnLogins  = document.getElementById("btnLogins");
 const btnNotes   = document.getElementById("btnNotes");
-const btnBan = document.getElementById("btnBan");
+const btnBan   = document.getElementById("btnBan");
+const btnUnban = document.getElementById("btnUnban");
+
+// ... بعد از:
+// const btnBan    = document.getElementById("btnBan");
+// const btnUnban  = document.getElementById("btnUnban");
+
+function __currentUid(){
+  // اگر در پروفایل، uid در dataset یا جایی که خودت گذاشتی ذخیره می‌کنی، از همان بگیر.
+  // این fallback معمولاً جواب می‌دهد:
+  return (window.__currentUser || document.getElementById("userName")?.textContent || "").trim();
+}
+
+if (btnUnban){
+  btnUnban.style.display = "inline-flex";
+  btnUnban.onclick = async () => {
+    const uid = __currentUid();
+    if (!uid){ alert("شناسه کاربر پیدا نشد."); return; }
+    try{
+      const r = await fetch(API.replace("/api/chat","/api/admin/ban"), {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ uid, on:false })
+      });
+      const j = await r.json().catch(()=> ({}));
+      if (j?.ok){
+        alert("کاربر از بن خارج شد.");
+        // اگر تابع رفرش پروفایل داری، صداش بزن تا وضعیت به‌روز شود:
+        try{ await loadUserProfile(uid); }catch{}
+      } else {
+        alert(j?.error || "خطا در خروج از بن.");
+      }
+    }catch(e){
+      alert("خطای سرور/شبکه در خروج از بن.");
+    }
+  };
+}
+
+
 const btnDevices = document.getElementById("btnDevices");
 btnDevices.onclick = async () => {
   const activeUid = window.activeUid;
-if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
+  if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
 
   try {
     const r = await fetch(API + "/admin/devices?uid=" + encodeURIComponent(activeUid));
@@ -325,7 +367,6 @@ if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخ�
 
     openModal("دستگاه‌های کاربر", html);
 
-    // هندلر خروج از دستگاه
     document.querySelectorAll("[data-revoke]").forEach(b => {
       b.onclick = async () => {
         const token = b.getAttribute("data-revoke");
@@ -341,7 +382,7 @@ if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخ�
     });
   } catch (e) {
     console.error(e);
-    openModal("دستگاه‌های کاربر", "<div class='error'>خطا در دریافت لیست دستگاه‌ها</div>");
+    openModal("دستگاه‌های کاربر", "<div class='muted'>خطا در دریافت لیست دستگاه‌ها</div>");
   }
 };
 
@@ -403,66 +444,151 @@ async function loadUserProfile(uid){
     profMeta.textContent =
       `دستگاه: ${j.device||"-"} | اولین گفتگو: ${fmtDT(j.firstChat)} | آخرین ورود: ${fmtDT(j.lastLogin)} | وضعیت: ${j.banned?"بن‌شده":"عادی"}`;
     profileBox.style.display = "block";
-
     // دکمه لاگین‌ها
     btnLogins.onclick = ()=>{
-      loginsBody.innerHTML = (j.logins||[]).map(ts=>`- ${fmtDT(ts)}`).join("<br>") || "— لاگی ثبت نشده —";
+      loginsBody.innerHTML = (j.logins||[]).map(ts=>`- ${new Date(ts).toLocaleString("fa-IR")}`).join("<br>") || "— لاگی ثبت نشده —";
       loginsModal.classList.add("show"); loginsModal.setAttribute("aria-hidden","false");
     };
     loginsClose.onclick = ()=>{ loginsModal.classList.remove("show"); loginsModal.setAttribute("aria-hidden","true"); };
 
-    // نوت
-    btnNotes.onclick = ()=>{
-      notesText.value = j.notes||"";
-      notesModal.classList.add("show"); notesModal.setAttribute("aria-hidden","false");
-    };
-    notesCancel.onclick = ()=>{ notesModal.classList.remove("show"); notesModal.setAttribute("aria-hidden","true"); };
-    notesSave.onclick = async ()=>{
-      await fetch(API + "/admin/notes", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ uid, notes: notesText.value||"" })
+    // نوت خصوصی ادمین
+    btnNotes.onclick = async ()=>{
+  try{
+    const r  = await fetch(API + "/admin/notes?uid=" + encodeURIComponent(uid));
+    const jj = await r.json().catch(()=>({}));
+    notesText.value = (jj && typeof jj.note === "string") ? jj.note : (j.notes || "");
+  }catch{ notesText.value = j.notes || ""; }
+  notesModal.classList.add("show"); notesModal.setAttribute("aria-hidden","false");
+};
+
+notesSave.onclick = async ()=>{
+  await fetch(API + "/admin/notes", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ uid, note: notesText.value || "" })
+  });
+  notesModal.classList.remove("show"); notesModal.setAttribute("aria-hidden","true");
+  alert("نوت ذخیره شد");
+  await loadUserProfile(uid);
+};
+
+    // بن/آنبن — جایگزین کل بلاک قبلی
+    btnBan.textContent = j.banned ? "خروج از بن" : "بن کردن";
+// نمایش/پنهان‌سازی دکمهٔ «خروج از بن»
+if (btnUnban) {
+  btnUnban.style.display = "inline-flex";
+
+
+  btnUnban.onclick = async () => {
+    // اگر کاربر بن نیست، پیام بده و کاری نکن
+    if (!j.banned) {
+      if (typeof showSnack === "function") showSnack("این کاربر بن نیست.");
+      else alert("این کاربر بن نیست.");
+      return;
+    }
+
+    try {
+      const rr = await fetch(API + "/admin/ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, on: false }) // آن‌بن
       });
-      notesModal.classList.remove("show"); notesModal.setAttribute("aria-hidden","true");
-      alert("نوت ذخیره شد");
-      await loadUserProfile(uid); // دوباره پروفایل رو بگیر تا نوت به‌روز بشه
+      const jk = await rr.json();
+      if (!jk?.ok) {
+        if (typeof showSnack === "function") showSnack("خطا در خارج کردن از بن");
+        else alert("خطا در خارج کردن از بن");
+        return;
+      }
 
+      // موفق: وضعیت لوکال و UI را به‌روز کن
+      j.banned = false;
+      btnBan.textContent = "بن کردن";
+      btnUnban.style.display = "none";
+
+      // برای همگام‌سازی قطعی، پروفایل را دوباره بگیر
+      await loadUserProfile(uid);
+
+      if (typeof showSnack === "function") showSnack("کاربر از بن خارج شد");
+      else alert("کاربر از بن خارج شد");
+    } catch (e) {
+      console.error(e);
+      if (typeof showSnack === "function") showSnack("خطای شبکه/سرور در خروج از بن");
+      else alert("خطای شبکه/سرور در خروج از بن");
+    }
+  };
+}
+
+
+    btnBan.onclick = async () => {
+      // اگر الان بن است، on باید false شود؛ اگر بن نیست، on باید true شود
+      const on = !j.banned;
+
+      try {
+        const rr = await fetch(API + "/admin/ban", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid, on })
+        });
+        const jk = await rr.json();
+
+        if (!jk?.ok) {
+          // پیام خطا
+          if (typeof showSnack === "function") showSnack("خطا در تغییر وضعیت بن: " + (jk?.error || "نامشخص"));
+          else alert("خطا در تغییر وضعیت بن");
+          return;
+        }
+
+        // موفق: وضعیت لوکال را به‌روز کن تا بلافاصله متن دکمه عوض شود
+        j.banned = on;
+        btnBan.textContent = on ? "خروج از بن" : "بن کردن";
+
+        // اگر جایی در UI نشانِ وضعیت دارید، اینجا هم آپدیت کنید (اختیاری)
+        // مثال: badgeBanned?.classList.toggle("show", j.banned);
+
+        // برای همگام‌سازی کامل با سرور، پروفایل را دوباره بگیر
+        await loadUserProfile(uid);
+
+        if (typeof showSnack === "function") {
+          showSnack(on ? "کاربر بن شد" : "کاربر از بن خارج شد");
+        } else {
+          alert(on ? "کاربر بن شد" : "کاربر از بن خارج شد");
+        }
+      } catch (e) {
+        console.error(e);
+        if (typeof showSnack === "function") showSnack("خطای شبکه/سرور در تغییر وضعیت بن");
+        else alert("خطای شبکه/سرور در تغییر وضعیت بن");
+      }
     };
 
-    // بن/آنبن
-    // — بن/آنبن — (جایگزین بلوک قدیمی btnBan.onclick)
-btnBan.textContent = j.banned ? "خروج از بن" : "بن کردن";
-
-btnBan.onclick = async () => {
-  const on = !j.banned;
+    btnUnban.onclick = async () => {
   try {
     const rr = await fetch(API + "/admin/ban", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, on })
+      body: JSON.stringify({ uid, on: false })
     });
-    const jk = await rr.json();
+    const jk = await rr.json().catch(() => ({}));
+
     if (!jk?.ok) {
-      // نمایش پیام خطا (ویجت اسنک اگر دارید، بهتر است؛ در غیر این صورت alert)
-      if (typeof showSnack === "function") showSnack("خطا در تغییر وضعیت بن: " + (jk?.error || "نامشخص"));
-      else alert("خطا در تغییر وضعیت بن");
+      if (jk?.error === "not_banned") {
+        if (typeof showSnack === "function") showSnack("این کاربر در بن نیست.", "err");
+        else alert("این کاربر در بن نیست.");
+      } else {
+        if (typeof showSnack === "function") showSnack("خطا در خروج از بن", "err");
+        else alert("خطا در خروج از بن");
+      }
       return;
     }
 
-    // اگر موفقیت‌آمیز بود، ویجت/اسنک نشان بده و پروفایل را رفرش کن
-    if (typeof showSnack === "function") {
-      showSnack(on ? "کاربر بن شد" : "کاربر از بن خارج شد");
-    } else {
-      alert(on ? "کاربر بن شد" : "کاربر از بن خارج شد");
-    }
+    if (typeof showSnack === "function") showSnack("کاربر از بن خارج شد");
+    else alert("کاربر از بن خارج شد");
 
-    // refresh profile — این‌کار متن دکمه را به "خروج از بن" یا "بن کردن" آپدیت می‌کند
     await loadUserProfile(uid);
-  } catch (err) {
-    console.error(err);
-    if (typeof showSnack === "function") showSnack("خطای شبکه هنگام بن/آنبن");
-    else alert("خطای شبکه");
+  } catch (e) {
+    if (typeof showSnack === "function") showSnack("خطای شبکه/سرور در خروج از بن", "err");
+    else alert("خطای شبکه/سرور");
   }
 };
+
 
 
 
@@ -470,10 +596,9 @@ btnBan.onclick = async () => {
 }
 btnDevices.onclick = async () => {
   const activeUid = window.activeUid;
-if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
+  if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخاب کنید."); return; }
 
   try {
-    // مسیر صحیح API با uid
     const r = await fetch(API + "/admin/devices?uid=" + encodeURIComponent(activeUid));
     const j = await r.json();
 
@@ -496,7 +621,6 @@ if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخ�
 
     openModal("دستگاه‌های کاربر", html);
 
-    // هندلر خروج از دستگاه
     document.querySelectorAll("[data-revoke]").forEach(b => {
       b.onclick = async () => {
         const token = b.getAttribute("data-revoke");
@@ -515,6 +639,7 @@ if (!activeUid) { alert("ابتدا یک کاربر را از لیست انتخ�
     openModal("دستگاه‌های کاربر", "<div class='muted'>خطا در دریافت لیست دستگاه‌ها</div>");
   }
 };
+
 
 // Chats table
 let currentChats = [];
