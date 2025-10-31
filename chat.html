@@ -7,7 +7,8 @@
   <style>
     @font-face{
       font-family: "IRANYekanX";
-      src: url("https://s34.picofile.com/d/8486538992/3cb84d2c-b50e-4f3c-b8d9-071a57c8efed/IRANYekanX_Light_woff2") format("woff2");
+  src: url("https://s34.picofile.com/d/8486538992/3cb84d2c-b50e-4f3c-b8d9-071a57c8efed/IRANYekanX_Light_woff2") format("woff2");
+
       font-weight: 300; font-style: normal; font-display: swap;
     }
 /* اطمینان از فونت در پیام‌های وضعیت/توست/پردازش */
@@ -1282,6 +1283,125 @@ document.addEventListener("DOMContentLoaded", ()=>{ verifySession(); });
 document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) verifySession(); });
 window.addEventListener("focus", ()=> verifySession());
 
+// --- sync helpers ---
+// همگام‌سازی پایین‌کش: سرور ← لوکال (سرور مرجع است، اما تازه‌تر برنده)
+window.syncDown = async function(){
+  try{
+    // 1) گرفتن فهرست گفتگوها از سرور
+    const r = await fetch(API_BASE + "/user/chats", {
+      headers: (typeof authHeaders === "function" ? authHeaders() : {})
+    });
+    if (!r.ok) throw new Error("bad response");
+    const j = await r.json().catch(()=> ({}));
+    const serverChatsRaw = Array.isArray(j?.chats) ? j.chats : [];
+
+    // 2) نرمال‌سازی سروری‌ها به فرم لوکال
+    const serverChats = serverChatsRaw.map(s => {
+      const id = s.id || s.chatId;
+      let messages = s.messages;
+      if (typeof messages === "string") {
+        try { messages = JSON.parse(messages); } catch { messages = []; }
+      }
+      if (!Array.isArray(messages)) messages = [];
+      return {
+        id,
+        title: s.title || "",
+        messages,
+        createdAt: Number(s.createdAt || Date.now()),
+        updatedAt: Number(s.updatedAt || s.createdAt || Date.now())
+      };
+    });
+
+    // 3) بارگذاری لوکال و ادغامِ نسخهٔ تازه‌تر
+    const local = (typeof loadChats === "function") ? loadChats() : [];
+    const map = new Map();
+    for (const c of local) {
+      if (c && c.id) map.set(c.id, c);
+    }
+    for (const s of serverChats) {
+      if (!s || !s.id) continue;
+      const prev = map.get(s.id);
+      if (!prev) { map.set(s.id, s); continue; }
+      const pu = Number(prev.updatedAt || prev.createdAt || 0);
+      const su = Number(s.updatedAt   || s.createdAt   || 0);
+      // تازه‌تر برنده
+      if (su >= pu) {
+        // اگر عنوان خالی بود، از نسخهٔ دیگر عنوان را نگه داریم
+        map.set(s.id, { ...s, title: (s.title || prev.title || "") });
+      } else {
+        map.set(s.id, { ...prev, title: (prev.title || s.title || "") });
+      }
+    }
+
+    const merged = Array.from(map.values())
+      .sort((a,b)=> Number(b.updatedAt||b.createdAt||0) - Number(a.updatedAt||a.createdAt||0));
+
+    // 4) ذخیره و فعال‌کردن چت پیش‌فرض در صورت نیاز
+    if (typeof saveChats === "function") await saveChats(merged);
+    const active = localStorage.getItem("active_chat_v1");
+    if (!active && merged[0]?.id) {
+      localStorage.setItem("active_chat_v1", merged[0].id);
+    }
+
+    // 5) تازه‌سازی UI (توابع داخل همین فایل موجودند)
+    try { renderChatList(document.getElementById("chatSearch")?.value || ""); } catch {}
+    try { if (typeof renderActiveChat === "function") renderActiveChat(); } catch {}
+
+    // 6) قوانینِ اختصاصی را هم پایین بکش
+    try{
+      const r2 = await fetch(API_BASE + "/user/rules", {
+        headers: (typeof authHeaders === "function" ? authHeaders() : {})
+      });
+      const j2 = await r2.json().catch(()=> ({}));
+      if (typeof j2?.rules === "string") {
+        localStorage.setItem("custom_rules_v1", j2.rules);
+      }
+    }catch{}
+  }catch(e){
+    // بی‌سروصدا رد کن تا تجربهٔ کاربر خراب نشود
+    // console.warn("syncDown failed", e);
+  }
+};
+
+// همگام‌سازی بالا‌کش: لوکال → سرور (ارسال چت‌ها + قوانین)
+window.syncUp = async function(){
+  try{
+    const chs = (typeof loadChats === "function") ? loadChats() : [];
+    await fetch(API_BASE + "/user/chats", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, (typeof authHeaders==="function" ? authHeaders() : {})),
+      body: JSON.stringify({ chats: chs })
+    }).catch(()=>{});
+
+    const rules = (localStorage.getItem("custom_rules_v1") || "").trim();
+    await fetch(API_BASE + "/user/rules", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, (typeof authHeaders==="function" ? authHeaders() : {})),
+      body: JSON.stringify({ rules })
+    }).catch(()=>{});
+  }catch{}
+};
+
+async function safeSync(dir="down"){
+  try{
+    if (dir==="down") {
+      if (typeof window.syncDown === "function") await window.syncDown();
+    } else {
+      if (typeof window.syncUp === "function") await window.syncUp();
+    }
+  }catch(_){}
+}
+
+// همگام‌سازی هنگام بازگشت به تب/فوکِس/آنلاین شدن/تغییر localStorage (برای تب یا دستگاه دیگر)
+/* document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) safeSync("down"); });
+window.addEventListener("focus", ()=> safeSync("down"));
+window.addEventListener("online", ()=> safeSync("down"));
+window.addEventListener("storage", (e)=>{
+  const keys = new Set(["auth_username_v1","auth_token_v1","chats_v2","active_chat_v1"]);
+  if (keys.has(e.key)) safeSync("down");
+}); */
+
+
 // Monkey-patch روی fetch: فقط برای دامنه API ما، هدرها را تزریق کن
 (function patchFetchForApi(){
   const _origFetch = window.fetch;
@@ -1473,7 +1593,7 @@ async function flyFromInputToBubble(text, bubbleEl){
 }
 
 // --- پچِ send: بعد از اجرای send اصلی، روی آخرین حباب کاربر افکت اجرا کن
-/* --- پچِ send با MutationObserver: افکت دقیقاً وقتی حباب کاربر به DOM اضافه شد اجرا می‌شود --- */
+// --- پچِ send: هم افکت پرواز، هم همگام‌سازی بعد از ارسال ---
 (function patchSendForFlyObserver(){
   function attach(){
     if (window.__flyPatched) return true;
@@ -1482,51 +1602,50 @@ async function flyFromInputToBubble(text, bubbleEl){
     const __origSend = window.send;
     window.send = async function(){
       const textSnapshot = (inp?.value || "").trim();
+
+      // اجرای send اصلی
       const p = __origSend.apply(this, arguments);
 
+      // افکت پرواز به محض ایجاد حباب کاربر
       const container = document.getElementById('msgs') || msgsEl;
-      if (!container) return p;
-
-      let done = false;
-      const obs = new MutationObserver((mutations)=>{
-        if (done) return;
-        for (const m of mutations){
-          for (const node of m.addedNodes){
-            if (!(node instanceof HTMLElement)) continue;
-            const target = node.matches?.('.bubble.user')
-              ? node
-              : (node.querySelector?.('.bubble.user') || null);
-            if (target){
-              done = true;
-              requestAnimationFrame(async ()=>{
-                try{ container.scrollTop = container.scrollHeight; }catch{}
-                await flyFromInputToBubble(textSnapshot, target);
-              });
-              obs.disconnect();
-              break;
+      if (container){
+        let done = false;
+        const obs = new MutationObserver((mutations)=>{
+          if (done) return;
+          for (const m of mutations){
+            for (const node of m.addedNodes){
+              if (!(node instanceof HTMLElement)) continue;
+              const target = node.matches?.('.bubble.user') ? node : (node.querySelector?.('.bubble.user') || null);
+              if (target){
+                done = true;
+                requestAnimationFrame(async ()=>{
+                  try{ container.scrollTop = container.scrollHeight; }catch{}
+                  try{ await flyFromInputToBubble(textSnapshot, target); }catch{}
+                });
+                obs.disconnect();
+                break;
+              }
             }
           }
-        }
-      });
+        });
+        try { obs.observe(container, { childList:true, subtree:true }); } catch {}
+        setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
+      }
 
-      try { obs.observe(container, { childList:true, subtree:true }); } catch {}
+// همگام‌سازی خودکار غیرفعال شد (فقط روی رفرش صفحه)
+try { await Promise.resolve(p); } catch {}
+return p;
 
-      // فالبک: اگر ظرف ۳ ثانیه حبابی دیده نشد، ناظر را جمع کن تا لیک نشود
-      setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
-
-      return p;
     };
 
     window.__flyPatched = true;
     return true;
   }
 
-  // تلاش فوری + تلاش‌های دوره‌ای تا وقتی send آماده شود
+  // تلاش برای پچ، حتی اگر send کمی دیرتر آماده شود
   if (!attach()){
     let tries = 0;
-    const t = setInterval(()=>{
-      if (attach() || ++tries > 50) clearInterval(t);
-    }, 150);
+    const t = setInterval(()=>{ if (attach() || ++tries > 50) clearInterval(t); }, 150);
     document.addEventListener('readystatechange', attach);
   }
 })();
@@ -1589,6 +1708,13 @@ const closeChatList = $("closeChatList");
 const chatItems = $("chatItems");
 const chatSearch = $("chatSearch");
 const newChatBtn = $("newChat");
+openChatList?.addEventListener("click", ()=> { /* sync disabled */ });
+
+newChatBtn?.addEventListener("click", async ()=>{ /* sync disabled */ });
+
+
+// اگر جایی دکمه‌ی «بازسازی/نوسازی فهرست گفتگوها» داری، همان‌جا هم این را بگذار:
+document.getElementById("openChatList")?.addEventListener("click", ()=>{ /* sync disabled */ });
 
 // snackbar
 const snack = $("snack");
@@ -2104,124 +2230,8 @@ async function saveChats(chs){
   }catch{}
 }
 
-async function syncUp(){
-  try{
-    const chs = loadChats();
-    await fetch(API.replace("/api/chat","/api/user/chats"),{
-  method:"POST",
-  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
-  body: JSON.stringify({chats: chs})
-});
-
-    // قوانین اختصاصی
-    const rules = (localStorage.getItem(KEY_RULES)||"").trim();
-    await fetch(API.replace("/api/chat","/api/user/rules"),{
-  method:"POST",
-  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
-  body: JSON.stringify({rules})
-});
-
-  }catch{}
-}
 
 
-async function syncDown(){
-  if (busy) return;  // وقتی بات مشغول استریم است، همگام‌سازی پایین دستی را رد کن
-
-  try{
-
-
-    const j = await r.json().catch(()=> ({}));
-    if (Array.isArray(j?.chats)) {
-  // ۱) آماده‌سازی داده‌های سرور:
-  //    - اگر chatId داشت، به id تبدیل کن
-  //    - updatedAt را عددی کن
-  //    - messages اگر رشته JSON بود، به آرایه تبدیل کن
-  const remote = j.chats.map(c => {
-    let id = c.id || c.chatId;
-    let msgs = c.messages;
-    if (typeof msgs === "string") {
-      try { msgs = JSON.parse(msgs); } catch { msgs = []; }
-    }
-    if (!Array.isArray(msgs)) msgs = [];
-    return {
-      id,
-      title: c.title || "",
-      messages: msgs,
-      createdAt: Number(c.createdAt || Date.now()),
-      updatedAt: Number(c.updatedAt || c.createdAt || Date.now()),
-    };
-  });
-
-  // ۲) چت‌های لوکال فعلی (نرمال‌سازی مشابه)
-  const local = loadChats().map(c => ({
-    id: c.id,
-    title: c.title || "",
-    messages: Array.isArray(c.messages) ? c.messages : [],
-    createdAt: Number(c.createdAt || Date.now()),
-    updatedAt: Number(c.updatedAt || c.createdAt || Date.now()),
-  }));
-
-  // ۳) نگاشت بر اساس id برای مقایسه نسخه‌ها
-  const byIdLocal  = new Map(local.map(c => [c.id, c]));
-  const byIdRemote = new Map(remote.map(c => [c.id, c]));
-
-  // ۴) ادغام: نسخه‌ی جدیدتر را نگه دار
-  const merged = new Map();
-  const allIds = new Set([...byIdLocal.keys(), ...byIdRemote.keys()]);
-  for (const id of allIds) {
-    const L = byIdLocal.get(id);
-    const R = byIdRemote.get(id);
-    let pick = null;
-
-    if (L && R) {
-      pick = (R.updatedAt >= L.updatedAt) ? { ...R } : { ...L };
-      const other = (R.updatedAt >= L.updatedAt) ? L : R;
-      // ✅ اگر عنوان خالی/کوتاه بود، از نسخهٔ دیگر عنوان را بیار
-      if (!pick.title || !String(pick.title).trim()) {
-        pick.title = (other && other.title) ? String(other.title) : "";
-      }
-    } else if (R) {
-      pick = { ...R };
-    } else if (L) {
-      pick = { ...L };
-    }
-
-    if (pick) merged.set(id, pick);
-  }
-
-  // ۵) مرتب‌سازی نزولی بر اساس updatedAt
-  const list = [...merged.values()].sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0));
-
-  // ۶) ذخیره و رندر
-  await saveChats(list);
-
-  // اگر چت فعالی نداریم، اولی را فعال کن
-  const activeId = localStorage.getItem(KEY_ACTIVE_CHAT);
-  if (!activeId && list[0]) {
-    localStorage.setItem(KEY_ACTIVE_CHAT, list[0].id);
-  }
-
-  // رندرها
-  if (typeof renderChatList === "function") {
-    renderChatList(chatSearch?.value || "");
-  }
-  if (!busy) renderActiveChat?.();
-}
-
-
-
-    // --- قوانین اختصاصی
-    const r2 = await fetch(API.replace("/api/chat","/api/user/rules"), {
-  headers: authHeaders()
-});
-
-    const j2 = await r2.json().catch(()=> ({}));
-    if (typeof j2?.rules === "string") {
-      localStorage.setItem(KEY_RULES, j2.rules);
-    }
-  }catch{}
-}
 
 // --- Auto sync hooks (بعد از تعریف syncDown) ---
 document.addEventListener('visibilitychange', () => {
