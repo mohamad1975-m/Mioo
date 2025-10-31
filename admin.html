@@ -7,7 +7,8 @@
   <style>
     @font-face{
       font-family: "IRANYekanX";
-      src: url("./IRANYekanX-Light.woff2") format("woff2");
+  src: url("https://s34.picofile.com/d/8486538992/3cb84d2c-b50e-4f3c-b8d9-071a57c8efed/IRANYekanX_Light_woff2") format("woff2");
+
       font-weight: 300; font-style: normal; font-display: swap;
     }
     :root{
@@ -149,7 +150,19 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
-  
+  <!-- MathJax config -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[','\\]']]
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<!-- MathJax loader -->
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
 </head>
 <body>
 <div class="wrap">
@@ -227,6 +240,27 @@
   <div class="tag">امروز - گفتگو: <b id="todayChats">-</b></div>
   <div class="tag">امروز - پیام: <b id="todayMsgs">-</b></div>
   <div class="tag">امروز - کاربران فعال: <b id="todayUsers">-</b></div>
+  <!-- today (جدید) -->
+<div class="tag">امروز - کاربران جدید: <b id="newUsersToday">-</b></div>
+
+<!-- week (جدید) -->
+<div class="tag">این هفته - گفتگو: <b id="weekChats">-</b></div>
+<div class="tag">این هفته - پیام: <b id="weekMsgs">-</b></div>
+<div class="tag">این هفته - کاربران جدید: <b id="newUsersWeek">-</b></div>
+<div class="tag">این هفته - کاربران فعال: <b id="activeWeek">-</b></div>
+
+<!-- month (جدید) -->
+<div class="tag">این ماه - گفتگو: <b id="monthChats">-</b></div>
+<div class="tag">این ماه - پیام: <b id="monthMsgs">-</b></div>
+<div class="tag">این ماه - کاربران جدید: <b id="newUsersMonth">-</b></div>
+<div class="tag">این ماه - کاربران فعال: <b id="activeMonth">-</b></div>
+
+<!-- year (جدید) -->
+<div class="tag">امسال - گفتگو: <b id="yearChats">-</b></div>
+<div class="tag">امسال - پیام: <b id="yearMsgs">-</b></div>
+<div class="tag">امسال - کاربران جدید: <b id="newUsersYear">-</b></div>
+<div class="tag">امسال - کاربران فعال: <b id="activeYear">-</b></div>
+
 </div>
 
 <h3 class="section-title" style="margin-top:12px">توزیع هفتگی گفتگوها (شنبه→جمعه)</h3>
@@ -234,6 +268,24 @@
 
 <h3 class="section-title" style="margin-top:12px">استفادهٔ مدل‌ها</h3>
 <div id="modelsBox" class="mono" style="white-space:pre-wrap"></div>
+<!-- ===== آمارِ بازه دلخواه (جدا از آمار کلی) ===== -->
+<div class="hr" style="margin:16px 0"></div>
+<h3 class="section-title">آمار بازهٔ دلخواه</h3>
+<div class="row" style="margin-bottom:8px">
+  <button class="btn" id="btnPickRange">انتخاب بازه (تقویم شمسی)</button>
+  <label style="display:flex;align-items:center;gap:6px;">
+    <input type="checkbox" id="jSingleDay">
+    انتخاب یک روز خاص
+  </label>
+  <span class="muted" id="rangeLabel">— بازه‌ای انتخاب نشده —</span>
+</div>
+
+<div class="row" id="rangeStats" style="flex-wrap:wrap; gap:8px">
+  <div class="tag">گفتگوهای بازه: <b id="rChats" style="margin-inline-start:6px">-</b></div>
+  <div class="tag">پیام‌های بازه: <b id="rMsgs" style="margin-inline-start:6px">-</b></div>
+  <div class="tag">کاربران جدید: <b id="rNewUsers" style="margin-inline-start:6px">-</b></div>
+  <div class="tag">کاربران فعال: <b id="rActive" style="margin-inline-start:6px">-</b></div>
+</div>
 
     </div>
 
@@ -248,9 +300,333 @@
     <div id="exportBox" class="code mono"></div>
   </div>
 </div>
+<!-- سبکِ خیلی سبک برای گریدِ تقویم -->
+<style>
+  .jalali-modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1400 }
+  .jalali-modal.show{ display:flex }
+  .jalali-card { background:#fff; border-radius:16px; width:min(640px,96vw); padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.2) }
+  .dark .jalali-card{ background:#0b1220; color:#e5e7eb }
+  .j-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px }
+  .j-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px }
+  .j-cell{ border:1px solid #e5e7eb; border-radius:10px; padding:8px 0; text-align:center; cursor:pointer; user-select:none; background:#fff }
+  .dark .j-cell{ background:#0f172a; border-color:#1f2937 }
+  .j-cell.dim{ opacity:.45 }
+  .j-cell.h{ background:#eef2ff }
+  .j-cell.sel{ background:#10b981; color:#fff; border-color:#10b981 }
+  .j-days{ color:#64748b; font-size:12px; margin-bottom:6px }
+  .j-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px }
+</style>
+
+<!-- مودال انتخاب بازهٔ شمسی -->
+<div id="jalaliRangeModal" class="jalali-modal" aria-hidden="true">
+  <div class="jalali-card">
+    <div class="j-head">
+      <b>انتخاب بازهٔ تاریخ (شمسی)</b>
+      <div class="row">
+        <button id="jPrev" class="link ghost">قبلی</button>
+        <span id="jTitle" class="pill"></span>
+        <button id="jNext" class="link ghost">بعدی</button>
+      </div>
+    </div>
+
+    <div class="j-days j-grid">
+      <div>ش</div><div>ی</div><div>د</div><div>س</div><div>چ</div><div>پ</div><div>ج</div>
+    </div>
+    <div id="jGrid" class="j-grid"></div>
+
+    <div class="j-actions">
+      <button id="jCancel" class="link ghost">انصراف</button>
+      <button id="jOk" class="link">تأیید</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ==== Jalali Range Picker + Range Stats (self-contained) ==== */
+(function(){
+  // اگر عناصر لازم موجود نبودند، خارج شو تا چیزی نشکند
+  const btnPickRange = document.getElementById("btnPickRange");
+  const rangeModal   = document.getElementById("jalaliRangeModal");
+  const jGrid        = document.getElementById("jGrid");
+  const jTitle       = document.getElementById("jTitle");
+  const jPrev        = document.getElementById("jPrev");
+  const jNext        = document.getElementById("jNext");
+  const jCancel      = document.getElementById("jCancel");
+  const jOk          = document.getElementById("jOk");
+  const rangeLabel   = document.getElementById("rangeLabel");
+  const rChatsEl     = document.getElementById("rChats");
+  const rMsgsEl      = document.getElementById("rMsgs");
+  const rNewUsersEl  = document.getElementById("rNewUsers");
+  const rActiveEl    = document.getElementById("rActive");
+
+  if (!btnPickRange || !rangeModal || !jGrid || !jTitle) return;
+
+  // === Jalali <-> Gregorian helpers (کلاسیک و سبک) ===
+  const div = (a,b)=>Math.floor(a/b);
+  function g2d(y,m,d){
+    const a = div(14-m,12), y2 = y+4800-a, m2 = m+12*a-3;
+    return d + div(153*m2+2,5) + 365*y2 + div(y2,4) - div(y2,100) + div(y2,400) - 32045;
+  }
+  function d2g(j){
+    let j2 = j, f = j2 + 1401 + div(div(4*j2 + 274277,146097)*3,4) - 38;
+    let e = 4*f + 3, g = div(e % 1461, 4), h = 5*g + 2;
+    let D = div(h%153,5)+1, M = (div(h,153)+2)%12+1, Y = div(e,1461)-4716 + div(12+2-M,12);
+    return [Y,M,D];
+  }
+  function j2d(y,m,d){
+    const epbase = y - (y>=0 ? 474 : 473);
+    const epyear = 474 + epbase;
+    return d + (m<=7 ? (m-1)*31 : (m-1)*30+6) + div((epyear*682-110),2816) + (epyear-1)*365 + (1948320 - 1);
+  }
+  function d2j(jdn){
+    const depoch = jdn - j2d(475,1,1);
+    const cycle  = div(depoch,1029983);
+    const cyear  = depoch % 1029983;
+    let ycycle;
+    if (cyear === 1029983) ycycle = 2820;
+    else {
+      const aux1 = div(cyear,366);
+      const aux2 = cyear % 366;
+      ycycle = div(2134*aux1 + 2816*aux2 + 2815,1028522) + aux1 + 1;
+    }
+    const y = ycycle + 2820*cycle + 474;
+    const yadj = (y<=0) ? y-1 : y;
+    const yday = jdn - j2d(yadj,1,1) + 1;
+    const m = (yday<=186) ? Math.ceil(yday/31) : Math.ceil((yday-186)/30)+6;
+    const d = jdn - j2d(yadj,m,1) + 1;
+    return [yadj,m,d];
+  }
+  function j2g(y,m,d){ return d2g(j2d(y,m,d)); }
+
+  // === وضعیت انتخاب ===
+  let showing = null; // {jy, jm} ماهی که در تقویم نمایش می‌دهیم
+  let selFrom = null; // {jy, jm, jd}
+  let selTo   = null; // {jy, jm, jd}
+
+  // امروز بر اساس گرجی → جلالی
+  (function initMonthToToday(){
+    const now = new Date();
+    const [jy,jm,jd] = d2j(g2d(now.getFullYear(), now.getMonth()+1, now.getDate()));
+    showing = { jy, jm };
+  })();
+
+  function fmtJalali(y,m){
+    const names = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+    return names[m-1] + " " + y;
+  }
+
+  function compareJ(a,b){
+    if (a.jy!==b.jy) return a.jy-b.jy;
+    if (a.jm!==b.jm) return a.jm-b.jm;
+    return a.jd-b.jd;
+  }
+  function inRangeJ(x, a, b){
+    if (!a || !b) return false;
+    const lo = compareJ(a,b)<=0 ? a : b;
+    const hi = compareJ(a,b)<=0 ? b : a;
+    return compareJ(x,lo)>=0 && compareJ(x,hi)<=0;
+  }
+
+  function daysInJMonth(y,m){
+    if (m<=6) return 31;
+    if (m<=11) return 30;
+    // اسفند: کبیسه؟
+    // الگوریتم: سال‌های جلالی با چرخه 33تایی — ساده: اختلاف JDN بین 1 فروردین سال بعد و امسال
+    const nextNow = j2d(y+1,1,1), thisNow = j2d(y,1,1);
+    const daysYear = nextNow - thisNow;
+    return (daysYear===366) ? 30 : 29;
+  }
+
+  function renderGrid(){
+    if (!showing) return;
+    const {jy, jm} = showing;
+    jTitle.textContent = fmtJalali(jy,jm);
+    jGrid.innerHTML = "";
+
+    // اولین روز ماه جلالی را به گرجی ببر تا روز هفته را پیدا کنیم
+    const [gy,gm,gd] = j2g(jy,jm,1);
+    const dow = new Date(gy, gm-1, gd).getDay(); // 0=Sunday … 6=Saturday
+    // ما می‌خواهیم ستون اول «شنبه» باشد؛ نگاشت:
+    const gregToSatIndex = (dow+1)%7; // شنبه=0 … جمعه=6
+
+    const lead = gregToSatIndex;  // سلول‌های کم‌رنگ ابتدای ماه
+    const dim = daysInJMonth(jy,jm);
+    const total = lead + dim;
+    const tail = (total%7) ? (7 - total%7) : 0;
+
+    // سلول‌های قبل (dimmed)
+    for (let i=0;i<lead;i++){
+      const el = document.createElement("div");
+      el.className = "j-cell dim";
+      el.textContent = " ";
+      jGrid.appendChild(el);
+    }
+
+    // روزهای خودِ ماه
+    for (let d=1; d<=dim; d++){
+      const el = document.createElement("div");
+      el.className = "j-cell";
+      el.textContent = String(d);
+
+      const cur = {jy, jm, jd:d};
+      // هایلایت «بینِ بازه»
+      if (selFrom && selTo && inRangeJ(cur, selFrom, selTo)) el.classList.add("sel");
+      // هایلایت «انتخاب‌شده‌ها»
+      if (selFrom && selFrom.jy===jy && selFrom.jm===jm && selFrom.jd===d) el.classList.add("h");
+      if (selTo   && selTo.jy===jy   && selTo.jm===jm   && selTo.jd===d)   el.classList.add("h");
+
+      el.onclick = ()=>{
+  const single = !!document.getElementById("jSingleDay")?.checked;
+
+  if (single){
+    // تک‌روزه: هر کلیک همان روز را از/تا می‌کند
+    selFrom = cur;
+    selTo   = cur;
+    renderGrid();
+    return;
+  }
+
+  // بازه‌ای:
+  if (!selFrom) { selFrom = cur; selTo=null; renderGrid(); return; }
+  if (selFrom && selTo) { selFrom = cur; selTo=null; renderGrid(); return; }
+  selTo = cur; renderGrid();
+};
+
+
+      jGrid.appendChild(el);
+    }
+
+    // سلول‌های بعد (dimmed)
+    for (let i=0;i<tail;i++){
+      const el = document.createElement("div");
+      el.className = "j-cell dim";
+      el.textContent = " ";
+      jGrid.appendChild(el);
+    }
+  }
+
+  // نویگیشن ماه‌ها
+  jPrev && (jPrev.onclick = ()=>{
+    if (!showing) return;
+    if (--showing.jm === 0){ showing.jm=12; showing.jy--; }
+    renderGrid();
+  });
+  jNext && (jNext.onclick = ()=>{
+    if (!showing) return;
+    if (++showing.jm === 13){ showing.jm=1; showing.jy++; }
+    renderGrid();
+  });
+
+  // باز کردن مودال
+  btnPickRange.onclick = ()=>{
+    // پیش‌فرض: امروز به‌عنوان «از»
+    selFrom = null; selTo = null;
+    rangeModal.classList.add("show");
+    rangeModal.setAttribute("aria-hidden","false");
+    renderGrid();
+  };
+  // بستن
+  function closeRangeModal(){
+    rangeModal.classList.remove("show");
+    rangeModal.setAttribute("aria-hidden","true");
+  }
+  jCancel && (jCancel.onclick = closeRangeModal);
+  rangeModal.addEventListener("click", (e)=>{ if (e.target===rangeModal) closeRangeModal(); });
+
+  // محاسبه آمار بازه (کلاینت‌ساید از /admin/export)
+  async function computeRangeStats(fromJ, toJ){
+    try{
+      // تضمین ترتیب
+      const a = compareJ(fromJ,toJ)<=0 ? fromJ : toJ;
+      const b = compareJ(fromJ,toJ)<=0 ? toJ   : fromJ;
+
+      // به گرجی (میلادی) تبدیل و تایم‌استمپ بگیر
+      const [aGy,aGm,aGd] = j2g(a.jy,a.jm,a.jd);
+      const [bGy,bGm,bGd] = j2g(b.jy,b.jm,b.jd);
+      const fromTs = new Date(aGy, aGm-1, aGd, 0,0,0,0).getTime();
+      const toTs   = new Date(bGy, bGm-1, bGd, 23,59,59,999).getTime();
+
+      // لیبل بازه
+// لیبل بازه
+rangeLabel.textContent = `از ${a.jy}/${a.jm}/${a.jd} تا ${b.jy}/${b.jm}/${b.jd}`;
+
+// دیتا را از اکسپورت بگیر (اتکا به window.API که پایین‌تر در همین فایل تعریف شده)
+const API_BASE = (window.API || "").trim();
+if (!API_BASE) throw new Error("API base not found");
+const resp = await fetch(API_BASE + "/admin/export");
+
+      const data = await resp.json().catch(()=> ({}));
+
+      // شمارش‌ها
+      let chats=0, msgs=0, newUsers=0, active=0;
+// چت‌ها و پیام‌ها (گاردهای بیشتر)
+const chArr = Array.isArray(data?.chats) ? data.chats
+            : Array.isArray(data?.all?.chats) ? data.all.chats
+            : [];
+
+for (const c of chArr){
+  const ct = Number(c?.createdAt ?? c?.ts ?? 0);
+  if (Number.isFinite(ct) && ct>=fromTs && ct<=toTs) chats++;
+
+  const list = Array.isArray(c?.messages) ? c.messages : [];
+  for (const m of list){
+    const mt = Number(m?.ts ?? m?.time ?? 0);
+    if (Number.isFinite(mt) && mt>=fromTs && mt<=toTs) msgs++;
+  }
+}
+
+// کاربران
+const uArr = Array.isArray(data?.users) ? data.users
+            : Array.isArray(data?.all?.users) ? data.all.users
+            : [];
+const uniqActive = new Set();
+for (const u of uArr){
+  const created = Number(u?.createdAt ?? u?.firstSeen ?? 0);
+  const seen    = Number(u?.lastSeen ?? 0);
+
+  if (Number.isFinite(created) && created>=fromTs && created<=toTs) newUsers++;
+  if (Number.isFinite(seen) && seen>=fromTs && seen<=toTs) {
+    uniqActive.add(u?.uid || u?.username || u?.ip || JSON.stringify(u));
+  }
+}
+active = uniqActive.size;
+
+
+      // خروجی به UI
+      rChatsEl && (rChatsEl.textContent = String(chats));
+      rMsgsEl  && (rMsgsEl.textContent  = String(msgs));
+      rNewUsersEl && (rNewUsersEl.textContent = String(newUsers));
+      rActiveEl   && (rActiveEl.textContent   = String(active));
+    }catch(e){
+      console.error(e);
+      alert("خطا در محاسبهٔ آمار بازه.");
+    }
+  }
+
+  // تأیید انتخاب
+jOk && (jOk.onclick = async ()=>{
+  const single = !!document.getElementById("jSingleDay")?.checked;
+  if (!selFrom){
+    alert(single ? "ابتدا یک روز را انتخاب کنید." : "ابتدا یک بازه انتخاب کنید: یک تاریخ برای «از» و یکی برای «تا».");
+    return;
+  }
+  // اگر تک‌روزه است و selTo هنوز نیست، selTo = selFrom
+  if (single && !selTo) selTo = selFrom;
+  if (!selTo){
+    alert("تاریخ «تا» را هم انتخاب کنید.");
+    return;
+  }
+  await computeRangeStats(selFrom, selTo);
+  closeRangeModal();
+});
+
+
+})(); 
+</script>
 
 <script>
 const API = "https://mioo-chat.mohamadgpt19.workers.dev/api";
+window.API = API;
+
 const $  = (id)=>document.getElementById(id);
 
 // Tabs
@@ -440,15 +816,20 @@ async function loadUserProfile(uid){
   try{
     const r = await fetch(API + "/admin/userProfile?uid=" + encodeURIComponent(uid));
     const j = await r.json();
-    const fmtDT = (ts)=> ts? new Date(ts).toLocaleString("fa-IR"): "-";
+    const fmtDT = (ts)=> ts? new Date(ts).toLocaleString("fa-IR",{dateStyle:"short",timeStyle:"medium"}): "-";
+
     profMeta.textContent =
       `دستگاه: ${j.device||"-"} | اولین گفتگو: ${fmtDT(j.firstChat)} | آخرین ورود: ${fmtDT(j.lastLogin)} | وضعیت: ${j.banned?"بن‌شده":"عادی"}`;
     profileBox.style.display = "block";
     // دکمه لاگین‌ها
     btnLogins.onclick = ()=>{
-      loginsBody.innerHTML = (j.logins||[]).map(ts=>`- ${new Date(ts).toLocaleString("fa-IR")}`).join("<br>") || "— لاگی ثبت نشده —";
+      loginsBody.innerHTML = (j.logins||[]).map(ts=>{
+        const t = Number(ts);
+        return `- ${new Date(t).toLocaleString("fa-IR", { dateStyle: "medium", timeStyle: "medium", hour12: false })}`;
+      }).join("<br>") || "— لاگی ثبت نشده —";
       loginsModal.classList.add("show"); loginsModal.setAttribute("aria-hidden","false");
     };
+
     loginsClose.onclick = ()=>{ loginsModal.classList.remove("show"); loginsModal.setAttribute("aria-hidden","true"); };
 
     // نوت خصوصی ادمین
@@ -645,9 +1026,32 @@ btnDevices.onclick = async () => {
 let currentChats = [];
 async function loadChatsFor(uid){
   const data = await jget("/admin/chats?uid="+encodeURIComponent(uid));
-  currentChats = data.chats||[];
+  const chats = Array.isArray(data?.chats) ? data.chats : [];
+
+  // هلپر برای تشخیص اینکه «رأیی» وجود دارد یا نه (چه آرایه، چه آبجکت)
+  const hasAnyRating = (r) => {
+    if (!r) return false;
+    if (Array.isArray(r)) return r.length > 0;
+    if (typeof r === "object") return Object.keys(r).length > 0;
+    return false;
+  };
+
+  // برای هر چت، رأی‌ها را می‌گیریم تا hasRatings پر شود
+  // (این کار فقط برای تب «کاربران» است که قبلاً مقدار نداشت)
+  const enriched = await Promise.all(chats.map(async (c) => {
+    try{
+      const rr = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId));
+      const has = hasAnyRating(rr?.ratings);
+      return Object.assign({}, c, { hasRatings: !!has });
+    }catch{
+      return Object.assign({}, c, { hasRatings:false });
+    }
+  }));
+
+  currentChats = enriched;
   renderChatsTable(currentChats);
 }
+
 function renderChatsTable(list){
   const q=(searchChat.value||"").trim().toLowerCase();
   const filtered = list.filter(c=>{
@@ -719,27 +1123,96 @@ function renderAdminContent(s = "") {
 
 
 async function showChat(chatId){
+
   // 1) دیتا از سرور
   const data = await jget("/admin/chat?chatId=" + encodeURIComponent(chatId));
   const chat = data.chat || {};
-  const ratings = data.ratings || {};
+  let ratings = data.ratings || null;
+
+  // اگر همراه پاسخ نیامد، جداگانه بگیر
+  if (!ratings) {
+    try{
+      const r2 = await jget("/admin/ratings?chatId=" + encodeURIComponent(chatId));
+      ratings = (r2 && r2.ratings) ? r2.ratings : {};
+    }catch{ ratings = {}; }
+  }
+    ratings = normalizeRatings(ratings);
+
+      // --- یکسان‌سازی ساختار رأی‌ها به { [key]: "up"|"down" } ---
+  function normalizeRatings(raw){
+  const out = {};
+  if (!raw) return out;
+
+  if (Array.isArray(raw)){
+    for (const it of raw){
+      const k = it?.key || it?.id || it?.message_id || it?.msg_id;
+      const v = it?.value ?? it?.val ?? it?.vote ?? it?.rating ?? it?.r;
+      const norm =
+        (v===true || v===1 || v==="1" || v==="up" || v==="👍") ? "up" :
+        (v===false|| v===-1|| v==="-1"|| v==="down"|| v==="👎") ? "down" : null;
+      if (k && norm) out[String(k)] = norm;
+    }
+    return out;
+  }
+
+  for (const [k,v] of Object.entries(raw)){
+    let norm = null;
+    if (v && typeof v === "object"){
+      const vv = v.value ?? v.val ?? v.vote ?? v.rating ?? (v.up? "up" : (v.down? "down": null));
+      if (vv===true || vv===1 || vv==="1" || vv==="up") norm="up";
+      else if (vv===false || vv===-1 || vv==="-1" || vv==="down") norm="down";
+    } else {
+      if (v===true || v===1 || v==="1" || v==="up") norm="up";
+      else if (v===false || v===-1 || v==="-1" || v==="down") norm="down";
+    }
+    if (k && norm) out[String(k)] = norm;
+  }
+  return out;
+}
+ratings = normalizeRatings(ratings);
+
+
+
 
   // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id یا server_id نسخه‌ها)
-  function findRatingForMessage(m, ratings){
-    if (!ratings) return null;
-    const candidates = [];
-    if (m.id) candidates.push(m.id);
-    if (m.meta && m.meta.server_id) candidates.push(m.meta.server_id);
-    if (Array.isArray(m.versions)) {
-      for (const v of m.versions) {
-        if (v && v.meta && v.meta.server_id) candidates.push(v.meta.server_id);
-      }
+    // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id | client_id | server_id نسخه‌ها)
+  // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id | client_id | clientId | server_id | serverId + نسخه‌ها)
+function findRatingForMessage(m, ratings){
+  if (!ratings) return null;
+  const candidates = [];
+
+  // خود پیام
+  if (m.id) candidates.push(m.id);
+
+  // متادیتا
+  const mm = m.meta || {};
+  if (mm.client_id) candidates.push(mm.client_id);
+  if (mm.clientId)  candidates.push(mm.clientId);
+  if (mm.server_id) candidates.push(mm.server_id);
+  if (mm.serverId)  candidates.push(mm.serverId);
+
+  // نسخه‌ها
+  if (Array.isArray(m.versions)) {
+    for (const v of m.versions) {
+      const vm = v?.meta || {};
+      if (vm.client_id) candidates.push(vm.client_id);
+      if (vm.clientId)  candidates.push(vm.clientId);
+      if (vm.server_id) candidates.push(vm.server_id);
+      if (vm.serverId)  candidates.push(vm.serverId);
+      if (v?.id)        candidates.push(v.id);
     }
-    for (const k of candidates){
-      if (k && ratings[k]) return ratings[k]; // "up" | "down"
-    }
-    return null;
   }
+
+  for (const k of candidates){
+    const key = (k || "").toString();
+    if (!key) continue;
+    const val = ratings[key];
+    if (val === "up" || val === "down") return val;
+  }
+  return null;
+}
+
+
 
 // هِلپر: متن/تصویر را از پیام استخراج می‌کند
 function textOf(m){
@@ -932,6 +1405,17 @@ async function loadUserChats(uid){
     const r = await fetch(API + `/admin/chats?uid=${encodeURIComponent(uid)}`);
     const j = await r.json();
     const chats = Array.isArray(j?.chats) ? j.chats : [];
+// 🔎 پر کردن پرچم رأی‌ها برای هر گفتگو
+const enriched = await Promise.all(chats.map(async (c) => {
+  try{
+    const rrate = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId));
+    const rr = rrate && rrate.ratings;
+    const has = rr && (Array.isArray(rr) ? rr.length > 0 : Object.keys(rr).length > 0);
+    return Object.assign({}, c, { hasRatings: !!has });
+  }catch{
+    return Object.assign({}, c, { hasRatings: false });
+  }
+}));
 
     if (!chats.length){
       host.textContent = "گفتگویی برای این کاربر یافت نشد.";
@@ -945,13 +1429,18 @@ async function loadUserChats(uid){
       <tbody></tbody>
     `;
     const tbody = table.querySelector("tbody");
-    chats.forEach(c=>{
+enriched.forEach(c=>{
+
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="mono">${c.chatId}</td>
         <td>${c.title || "-"}</td>
         <td>${c.updatedAt ? new Date(c.updatedAt).toLocaleString('fa-IR') : "-"}</td>
-        <td><button class="btn ghost" onclick="showChat('${c.chatId}')">نمایش</button></td>
+<td>
+  <button class="btn ghost" onclick="showChat('${c.chatId}')">نمایش</button>
+  ${c.hasRatings ? '<span title="این گفتگو حداقل یک رأی دارد">★</span>' : ''}
+</td>
+
       `;
       tbody.appendChild(tr);
     });
@@ -972,74 +1461,6 @@ const todayMsgs   = document.getElementById("todayMsgs");
 const todayUsers  = document.getElementById("todayUsers");
 const weekChart   = document.getElementById("weekChart");
 const modelsBox   = document.getElementById("modelsBox");
-
-// بارگذاری آمار پیشرفته
-async function adminAnalyticsPlus(env){
-  const now = Date.now();
-  const day = 24*60*60*1000;
-  const start30 = now - 30*day;
-  const startDay = now - day;
-  const startWeek = now - 7*day;
-  const startMonth = now - 30*day;
-
-  const chats30 = await zcountRange(env, "events:chats", start30, now);
-  const msgs30  = await zcountRange(env, "events:msgs",  start30, now);
-
-  const todayChats = await zcountRange(env, "events:chats", startDay, now);
-  const todayMsgs  = await zcountRange(env, "events:msgs",  startDay, now);
-
-  const weekChats = await zcountRange(env, "events:chats", startWeek, now);
-  const weekMsgs  = await zcountRange(env, "events:msgs",  startWeek, now);
-
-  const monthChats = await zcountRange(env, "events:chats", startMonth, now);
-  const monthMsgs  = await zcountRange(env, "events:msgs",  startMonth, now);
-
-  // کاربران فعال امروز (براساس lastSeen)
-  const users = await smembers(env, "users:set");
-  let activeToday = 0;
-  for (const u of users){
-    const zs = await zrevrange(env, `u:${u}:chats`, 0, 0, true);
-    const last = Number(zs?.[1]||0);
-    if (last >= startDay) activeToday++;
-  }
-
-  const modelMap = await hgetall(env, "models:counts") || {};
-
-  // هفته (bucket)
-  const weekBuckets = Array(7).fill(0);
-  const rng = await zrevrange(env, "events:chats", 0, -1, true);
-  for (let i=0;i<rng.length;i+=2){
-    const ts = Number(rng[i+1]||0);
-    if (ts < startWeek) break;
-    const wd = (new Date(ts).getDay() + 6) % 7;
-    weekBuckets[wd] += 1;
-  }
-
-  return json({
-    last30: { chats: chats30, msgs: msgs30 },
-    today:  { chats: todayChats, msgs: todayMsgs, users: activeToday },
-    week:   { chats: weekChats,  msgs: weekMsgs,  buckets: weekBuckets },
-    month:  { chats: monthChats, msgs: monthMsgs },
-    models: modelMap
-  });
-}
-
-    // محور
-    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
-    // میله‌ها
-    ctx.fillStyle = "#0f172a";
-    for (let i=0;i<buckets.length;i++){
-      const x = pad + i*space + (space-bw)/2;
-      const val = buckets[i];
-      const bh = Math.round((h - pad*2) * (val/max));
-      ctx.fillRect(x, h-pad-bh, bw, bh);
-      // برچسب‌ها
-      ctx.fillStyle="#64748b"; ctx.font="12px IRANYekanX, Tahoma";
-      const lbl = ["ش","ی","د","س","چ","پ","ج"][i];
-      ctx.fillText(lbl, x+bw/2-6, h-pad+16);
-      ctx.fillStyle="#0f172a";
-    }
 
 
 
@@ -1105,6 +1526,30 @@ async function adminAnalyticsPlus(env){
       last30Msgs.textContent  = j.last30?.msgs  ?? "—";
       todayChats.textContent  = j.today?.chats  ?? "—";
       todayMsgs.textContent   = j.today?.msgs   ?? "—";
+      // helper کوتاه برای انتخاب
+function qs(sel){ return document.querySelector(sel); }
+
+// today
+qs("#newUsersToday") && (qs("#newUsersToday").innerText = j.today?.new_users ?? "—");
+
+// week
+qs("#weekChats")  && (qs("#weekChats").innerText  = j.week?.chats ?? "—");
+qs("#weekMsgs")   && (qs("#weekMsgs").innerText   = j.week?.msgs  ?? "—");
+qs("#newUsersWeek") && (qs("#newUsersWeek").innerText = j.week?.new_users ?? "—");
+qs("#activeWeek") && (qs("#activeWeek").innerText = j.week?.active_users ?? "—");
+
+// month
+qs("#monthChats") && (qs("#monthChats").innerText = j.month?.chats ?? "—");
+qs("#monthMsgs")  && (qs("#monthMsgs").innerText  = j.month?.msgs  ?? "—");
+qs("#newUsersMonth") && (qs("#newUsersMonth").innerText = j.month?.new_users ?? "—");
+qs("#activeMonth") && (qs("#activeMonth").innerText = j.month?.active_users ?? "—");
+
+// year
+qs("#yearChats")  && (qs("#yearChats").innerText  = j.year?.chats ?? "—");
+qs("#yearMsgs")   && (qs("#yearMsgs").innerText   = j.year?.msgs  ?? "—");
+qs("#newUsersYear") && (qs("#newUsersYear").innerText = j.year?.new_users ?? "—");
+qs("#activeYear") && (qs("#activeYear").innerText = j.year?.active_users ?? "—");
+
       todayUsers.textContent  = j.today?.users  ?? "—";
 
       // مدل‌ها
@@ -1323,7 +1768,8 @@ item.appendChild(right);
   // 2) برای هر کاربر، لیست چت‌ها
   for (const u of (ju.users||[])){
     try{
-      const rc = await fetch(API.replace("/api/chat","/api/admin/allChats"))
+const rc = await fetch(API + "/admin/chats?uid=" + encodeURIComponent(u.uid))
+
 
       const jc = await rc.json();
       for (const c of (jc.chats||[])){
@@ -1379,18 +1825,35 @@ const ratings = j.ratings || {};
 function findRatingForMessage(m, ratings){
   if (!ratings) return null;
   const candidates = [];
-  if (m && m.id) candidates.push(m.id);
-  if (m && m.meta && m.meta.server_id) candidates.push(m.meta.server_id);
-  if (m && Array.isArray(m.versions)) {
+
+  if (m.id) candidates.push(m.id);
+
+  const mm = m.meta || {};
+  if (mm.client_id) candidates.push(mm.client_id);
+  if (mm.clientId)  candidates.push(mm.clientId);
+  if (mm.server_id) candidates.push(mm.server_id);
+  if (mm.serverId)  candidates.push(mm.serverId);
+
+  if (Array.isArray(m.versions)) {
     for (const v of m.versions) {
-      if (v && v.meta && v.meta.server_id) candidates.push(v.meta.server_id);
+      const vm = v?.meta || {};
+      if (vm.client_id) candidates.push(vm.client_id);
+      if (vm.clientId)  candidates.push(vm.clientId);
+      if (vm.server_id) candidates.push(vm.server_id);
+      if (vm.serverId)  candidates.push(vm.serverId);
+      if (v?.id)        candidates.push(v.id);
     }
   }
-  for (const k of candidates) {
-    if (k && ratings[k]) return ratings[k];  // "up" | "down"
+
+  for (const k of candidates){
+    const key = (k || "").toString();
+    if (!key) continue;
+    const val = ratings[key];
+    if (val === "up" || val === "down") return val;
   }
   return null;
 }
+
 
 
 
@@ -1689,6 +2152,148 @@ authAdmSave.onclick = async ()=>{
     <div id="chatModalBody" style="padding:16px"></div>
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.1.1/dist/jalaali.min.js"></script>
+<script>
+(function(){
+  // عناصر UI (از قبل در HTML ساخته‌ایم)
+  const jModal   = document.getElementById("jalaliRangeModal");
+  const jTitle   = document.getElementById("jTitle");
+  const jGrid    = document.getElementById("jGrid");
+  const jPrev    = document.getElementById("jPrev");
+  const jNext    = document.getElementById("jNext");
+  const jCancel  = document.getElementById("jCancel");
+  const jOk      = document.getElementById("jOk");
+  const btnPick  = document.getElementById("btnPickRange");
+  const rangeLbl = document.getElementById("rangeLabel");
+
+  // کمکی‌های تاریخ (بدون تداخل با بقیه)
+  function toGregorianTs(jy,jm,jd){
+    const g = jalaali.toGregorian(jy,jm,jd);
+    return new Date(g.gy, g.gm-1, g.gd).getTime();
+  }
+  function fromDateToJalali(d){
+    const j = jalaali.toJalaali(d.getFullYear(), d.getMonth()+1, d.getDate());
+    return {jy:j.jy, jm:j.jm, jd:j.jd};
+  }
+  const pad = n => (n<10?"0":"")+n;
+
+  // وضعیت انتخاب
+  let base = fromDateToJalali(new Date()); // ماه جاریِ دستگاه
+  let selA = null, selB = null;
+
+  function openModal(){ jModal.classList.add("show"); jModal.setAttribute("aria-hidden","false"); }
+  function closeModal(){ jModal.classList.remove("show"); jModal.setAttribute("aria-hidden","true"); }
+
+  function renderMonth(jy, jm){
+    jTitle.textContent = `${jy}/${pad(jm)}`;
+    jGrid.innerHTML = "";
+
+    // روز اول ماه
+    const g1 = jalaali.toGregorian(jy,jm,1);
+    const d1 = new Date(g1.gy, g1.gm-1, g1.gd);
+    const wd = (d1.getDay() + 6) % 7; // شنبه=0 … جمعه=6
+    const days = jalaali.jalaaliMonthLength(jy, jm);
+
+    // سلول‌های خالی قبل از ۱م
+    for (let i=0;i<wd;i++){
+      const c = document.createElement("div");
+      c.className = "j-cell dim"; c.textContent = "";
+      jGrid.appendChild(c);
+    }
+    // روزها
+    for (let d=1; d<=days; d++){
+      const c = document.createElement("div");
+      c.className = "j-cell"; c.textContent = d;
+      const ts = toGregorianTs(jy,jm,d);
+      const inRange = (selA && selB) && (ts>=Math.min(selA,selB) && ts<=Math.max(selA,selB));
+      const isEdge  = (selA && ts===selA) || (selB && ts===selB);
+      if (inRange) c.classList.add("h");
+      if (isEdge)  c.classList.add("sel");
+      c.onclick = ()=>{
+        if (!selA || (selA && selB)){ selA = ts; selB = null; }
+        else { selB = ts; }
+        renderMonth(base.jy, base.jm);
+      };
+      jGrid.appendChild(c);
+    }
+  }
+
+  // ناوبری ماه
+  jPrev && (jPrev.onclick = ()=>{
+    let {jy,jm} = base; jm--; if (jm<1){ jm=12; jy--; }
+    base = {jy,jm, jd:1}; renderMonth(jy,jm);
+  });
+  jNext && (jNext.onclick = ()=>{
+    let {jy,jm} = base; jm++; if (jm>12){ jm=1; jy++; }
+    base = {jy,jm, jd:1}; renderMonth(jy,jm);
+  });
+
+  jCancel && (jCancel.onclick = ()=> closeModal());
+  jOk && (jOk.onclick = async ()=>{
+    if (!selA || !selB){ alert("ابتدا دو تاریخ (از/تا) را انتخاب کنید."); return; }
+    const a = Math.min(selA, selB);
+    const b = Math.max(selA, selB) + (24*60*60*1000 - 1); // تا انتهای روز دوم
+    const aj = fromDateToJalali(new Date(a));
+    const bj = fromDateToJalali(new Date(b));
+    rangeLbl && (rangeLbl.textContent = `از ${aj.jy}/${pad(aj.jm)}/${pad(aj.jd)} تا ${bj.jy}/${pad(bj.jm)}/${pad(bj.jd)}`);
+    closeModal();
+    try{ await loadRangeStats(a,b); }catch{}
+  });
+
+  // باز کردن تقویم
+  btnPick && (btnPick.onclick = ()=>{
+    base = fromDateToJalali(new Date());
+    selA = selB = null;
+    renderMonth(base.jy, base.jm);
+    openModal();
+  });
+
+  // محاسبه‌ی آمار بازه با داده‌ی /admin/export (سمت کلاینت)
+  async function loadRangeStats(tsFrom, tsTo){
+    const elChats = document.getElementById("rChats");
+    const elMsgs  = document.getElementById("rMsgs");
+    const elNew   = document.getElementById("rNewUsers");
+    const elAct   = document.getElementById("rActive");
+    if (elChats) elChats.textContent = "…";
+    if (elMsgs)  elMsgs.textContent  = "…";
+    if (elNew)   elNew.textContent   = "…";
+    if (elAct)   elAct.textContent   = "…";
+
+    let raw;
+    try{
+      const r = await fetch(API + "/admin/export");
+      raw = await r.json();
+    }catch{
+      alert("خطا در دریافت دادهٔ خام برای آمار بازه.");
+      ["rChats","rMsgs","rNewUsers","rActive"].forEach(id=>{
+        const el = document.getElementById(id); if (el) el.textContent = "—";
+      });
+      return;
+    }
+
+    const users = Array.isArray(raw?.users)    ? raw.users    : (Array.isArray(raw?.allUsers)    ? raw.allUsers    : []);
+    const chats = Array.isArray(raw?.chats)    ? raw.chats    : (Array.isArray(raw?.allChats)    ? raw.allChats    : []);
+    const msgs  = Array.isArray(raw?.messages) ? raw.messages : (Array.isArray(raw?.allMessages) ? raw.allMessages : []);
+
+    const inRange = v => { const t = Number(v||0); return !isNaN(t) && t>=tsFrom && t<=tsTo; };
+
+    const cntChats = chats.filter(c => inRange(c.createdAt || c.updatedAt || c.ts)).length;
+    const cntMsgs  = msgs.filter(m  => inRange(m.ts || m.createdAt)).length;
+    const cntNew   = users.filter(u => inRange(u.createdAt || u.joinedAt || u.firstSeen || u.firstChat)).length;
+
+    const activeByUser = new Set();
+    const userOf = x => (x?.username || x?.uid || x?.userId || x?.owner || x?.by || "").toString();
+    users.forEach(u => { const last = Number(u.lastSeen || 0); if (inRange(last)) activeByUser.add(u.uid || u.username || u.id); });
+    chats.forEach(c => { if (inRange(c.updatedAt || c.createdAt)) activeByUser.add(userOf(c)); });
+    msgs.forEach(m  => { if (inRange(m.ts || m.createdAt)) activeByUser.add(userOf(m)); });
+
+    if (elChats) elChats.textContent = String(cntChats);
+    if (elMsgs)  elMsgs.textContent  = String(cntMsgs);
+    if (elNew)   elNew.textContent   = String(cntNew);
+    if (elAct)   elAct.textContent   = String(activeByUser.size);
+  }
+})();
+</script>
 
 </body>
 </html>
