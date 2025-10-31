@@ -62,7 +62,8 @@
     .snack button{ background:#fff; color:#111; border:0; border-radius:8px; padding:6px 10px; cursor:pointer; font-family:IRANYekanX }
     .modal{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1200 }
     .modal.show{ display:flex }
-    .modal-card{ background:#fff; border-radius:16px; width:min(600px,96vw); padding:16px }
+.modal-card{ background:#fff; border-radius:16px; width:min(600px,96vw); padding:16px; max-height:90vh; overflow:auto }
+
     .modal-card h3{ margin:0 0 10px 0; font-size:18px }
     .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
     .search { display:flex; gap:8px; align-items:center; margin:10px 0 }
@@ -1597,12 +1598,14 @@ refreshStats.addEventListener("click", ()=>{
 </div>
 <!-- مودال عمومی برای نمایش جزئیات (chatModal) -->
 <div id="chatModal" class="modal" aria-hidden="true" style="display:none">
-  <div class="modal-card">
+  <div class="modal-card" style="max-height:90vh; overflow:auto">
+
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
       <h3 id="chatModalTitle" style="margin:0">جزئیات</h3>
       <button id="chatModalClose" class="link ghost">بستن</button>
     </div>
-    <div id="chatModalBody"></div>
+    <div id="chatModalBody" style="max-height:70vh; overflow:auto"></div>
+
   </div>
 </div>
 
