@@ -1248,18 +1248,28 @@ function authHeaders(){
   if (username) h["x-username"]    = username;  // جهت مصرف روی سرور
   return h;
 }
+// ===== verifySession (فقط اگر توکن داریم) =====
 async function verifySession(){
   try{
-    // یک درخواست سبک به اندپوینت کاربری که همین الان دارید
+    const a = (typeof getAuth === "function" ? getAuth() : null) || {};
+    const token = (a && a.token) ? String(a.token).trim() : "";
+    if (!token){
+      // کاربر هنوز وارد نشده؛ هیچ هشداری نده
+      return true;
+    }
+
+    // فقط اگر توکن داریم، اعتبار نشست را چک کن
     const url = API.replace("/api/chat","/api/user/chats") + "?limit=1";
     const r = await fetch(url, { headers: authHeaders() });
+
     if (r.status === 401 || r.status === 403){
+      // اینجا یعنی قبلاً وارد بوده و الان نشست باطل شده
       clearAuth();
       openAuthModal("login");
       alert("نشست این دستگاه منقضی/باطل شده است.");
       return false;
     }
-    // اگر پاسخ JSON با error نامعتبر بود
+
     const ct = r.headers.get("content-type") || "";
     if (ct.includes("application/json")){
       const j = await r.clone().json().catch(()=>null);
@@ -1272,10 +1282,10 @@ async function verifySession(){
     }
     return true;
   }catch{
-    // خطای شبکه را نادیده بگیر؛ بعداً دوباره تلاش می‌کنیم
-    return true;
+    return true; // خطای شبکه = سکوت
   }
 }
+
 
 // اجرا در شروع
 document.addEventListener("DOMContentLoaded", ()=>{ verifySession(); });
@@ -1406,16 +1416,22 @@ window.addEventListener("storage", (e)=>{
 (function patchFetchForApi(){
   const _origFetch = window.fetch;
 
-  async function autoLogoutIfInvalid(resp){
-    try{
-      if (!resp || typeof resp.status !== "number") return resp;
-      if (resp.status === 401 || resp.status === 403){
-        try { clearAuth(); } catch {}
-        try { openAuthModal("login"); } catch {}
-        alert("نشست شما نامعتبر است. لطفاً دوباره وارد شوید.");
-        return resp;
-      }
-      // اگر بدنه، JSON خطای invalid_token داد
+async function autoLogoutIfInvalid(resp){
+  try{
+    if (!resp || typeof resp.status !== "number") return resp;
+
+    // فقط اگر لاگین هستیم (توکن داریم) به خطاهای 401/403 واکنش نشان بده
+    const hasToken = !!((typeof getAuth==="function" ? getAuth() : null)?.token);
+
+    if ((resp.status === 401 || resp.status === 403) && hasToken){
+      try { clearAuth(); } catch {}
+      try { openAuthModal("login"); } catch {}
+      alert("نشست شما نامعتبر است. لطفاً دوباره وارد شوید.");
+      return resp;
+    }
+
+    // اگر بدنه JSONِ invalid_token برگرداند، باز هم فقط در صورت داشتن توکن
+    if (hasToken){
       const ct = resp.headers.get("content-type") || "";
       if (ct.includes("application/json")){
         const clone = resp.clone();
@@ -1426,9 +1442,11 @@ window.addEventListener("storage", (e)=>{
           alert("نشست این دستگاه باطل شده است. لطفاً دوباره وارد شوید.");
         }
       }
-    }catch{}
-    return resp;
-  }
+    }
+  }catch{}
+  return resp;
+}
+
 
   window.fetch = (input, init={})=>{
     try{
