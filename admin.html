@@ -169,14 +169,14 @@
 <div class="wrap">
   <div class="head">
     <h2 style="margin:0">داشبورد مدیریت</h2>
-    <div class="tabs">
-      
+<div class="tabs">
       <button class="tab active" id="tabChats">کاربران</button>
       <button class="tab" id="tabAnalytics">آنالیز</button>
+      <button class="tab" id="tabGlobal">مدیریت عمومی</button>
       <button class="btn ghost" id="btnAll">مشاهدهٔ همهٔ گفتگوها</button>
       <button class="btn ghost" id="btnLive">صفحهٔ زنده</button>
+</div>
 
-    </div>
   </div>
   
 
@@ -227,80 +227,85 @@
     <div id="chatDetail"></div>
   </div>
 
-  <div class="card" id="viewAnalytics" style="display:none">
-    <h3 class="section-title">آمار کلی</h3>
-    <div class="row">
-      <div class="tag">گفتگوهای ایجادشده: <b id="statChats" style="margin-inline-start:6px">-</b></div>
-      <div class="tag">پیام‌ها: <b id="statMsgs" style="margin-inline-start:6px">-</b></div>
-      <div class="tag">کلیک لینک‌ها: <b id="statClicks" style="margin-inline-start:6px">-</b></div>
-      <div class="tag">کاربران یکتا (بر اساس IP): <b id="statUsers" style="margin-inline-start:6px">-</b></div>
-      <div class="hr"></div>
-<div class="row">
-  <div class="tag">۳۰‌روز اخیر - گفتگو: <b id="last30Chats">-</b></div>
-  <div class="tag">۳۰‌روز اخیر - پیام: <b id="last30Msgs">-</b></div>
-  <div class="tag">امروز - گفتگو: <b id="todayChats">-</b></div>
-  <div class="tag">امروز - پیام: <b id="todayMsgs">-</b></div>
-  <div class="tag">امروز - کاربران فعال: <b id="todayUsers">-</b></div>
-  <!-- today (جدید) -->
-<div class="tag">امروز - کاربران جدید: <b id="newUsersToday">-</b></div>
-
-<!-- week (جدید) -->
-<div class="tag">این هفته - گفتگو: <b id="weekChats">-</b></div>
-<div class="tag">این هفته - پیام: <b id="weekMsgs">-</b></div>
-<div class="tag">این هفته - کاربران جدید: <b id="newUsersWeek">-</b></div>
-<div class="tag">این هفته - کاربران فعال: <b id="activeWeek">-</b></div>
-
-<!-- month (جدید) -->
-<div class="tag">این ماه - گفتگو: <b id="monthChats">-</b></div>
-<div class="tag">این ماه - پیام: <b id="monthMsgs">-</b></div>
-<div class="tag">این ماه - کاربران جدید: <b id="newUsersMonth">-</b></div>
-<div class="tag">این ماه - کاربران فعال: <b id="activeMonth">-</b></div>
-
-<!-- year (جدید) -->
-<div class="tag">امسال - گفتگو: <b id="yearChats">-</b></div>
-<div class="tag">امسال - پیام: <b id="yearMsgs">-</b></div>
-<div class="tag">امسال - کاربران جدید: <b id="newUsersYear">-</b></div>
-<div class="tag">امسال - کاربران فعال: <b id="activeYear">-</b></div>
-
-</div>
-
-<h3 class="section-title" style="margin-top:12px">توزیع هفتگی گفتگوها (شنبه→جمعه)</h3>
-<canvas id="weekChart" width="900" height="240" style="max-width:100%"></canvas>
-
-<h3 class="section-title" style="margin-top:12px">استفادهٔ مدل‌ها</h3>
-<div id="modelsBox" class="mono" style="white-space:pre-wrap"></div>
-<!-- ===== آمارِ بازه دلخواه (جدا از آمار کلی) ===== -->
-<div class="hr" style="margin:16px 0"></div>
-<h3 class="section-title">آمار بازهٔ دلخواه</h3>
-<div class="row" style="margin-bottom:8px">
-  <button class="btn" id="btnPickRange">انتخاب بازه (تقویم شمسی)</button>
-  <label style="display:flex;align-items:center;gap:6px;">
-    <input type="checkbox" id="jSingleDay">
-    انتخاب یک روز خاص
-  </label>
-  <span class="muted" id="rangeLabel">— بازه‌ای انتخاب نشده —</span>
-</div>
-
-<div class="row" id="rangeStats" style="flex-wrap:wrap; gap:8px">
-  <div class="tag">گفتگوهای بازه: <b id="rChats" style="margin-inline-start:6px">-</b></div>
-  <div class="tag">پیام‌های بازه: <b id="rMsgs" style="margin-inline-start:6px">-</b></div>
-  <div class="tag">کاربران جدید: <b id="rNewUsers" style="margin-inline-start:6px">-</b></div>
-  <div class="tag">کاربران فعال: <b id="rActive" style="margin-inline-start:6px">-</b></div>
-</div>
-
-    </div>
-
-    <div class="hr"></div>
-    <div class="row right">
-      <button class="btn ghost" id="refreshStats">به‌روزرسانی</button>
-      <button class="btn" id="resetAll">ریست کامل آمار و داده‌ها</button>
-      <button class="btn" id="exportAll">اکسپورت همه‌چیز (JSON)</button>
-    </div>
-
-    <h3 class="section-title" style="margin-top:16px">خروجی</h3>
-    <div id="exportBox" class="code mono"></div>
+ <!-- === Analytics (جدا و مستقل) === -->
+<div class="card" id="viewAnalytics" style="display:none">
+  <h3 class="section-title">آمار کلی</h3>
+  <div class="row">
+    <div class="tag">گفتگوهای ایجادشده: <b id="statChats" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">پیام‌ها: <b id="statMsgs" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">کلیک لینک‌ها: <b id="statClicks" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">کاربران یکتا (بر اساس IP): <b id="statUsers" style="margin-inline-start:6px">-</b></div>
   </div>
+
+  <div class="hr"></div>
+  <div class="row">
+    <div class="tag">۳۰‌روز اخیر - گفتگو: <b id="last30Chats">-</b></div>
+    <div class="tag">۳۰‌روز اخیر - پیام: <b id="last30Msgs">-</b></div>
+    <div class="tag">امروز - گفتگو: <b id="todayChats">-</b></div>
+    <div class="tag">امروز - پیام: <b id="todayMsgs">-</b></div>
+    <div class="tag">امروز - کاربران فعال: <b id="todayUsers">-</b></div>
+    <div class="tag">امروز - کاربران جدید: <b id="newUsersToday">-</b></div>
+    <div class="tag">این هفته - گفتگو: <b id="weekChats">-</b></div>
+    <div class="tag">این هفته - پیام: <b id="weekMsgs">-</b></div>
+    <div class="tag">این هفته - کاربران جدید: <b id="newUsersWeek">-</b></div>
+    <div class="tag">این هفته - کاربران فعال: <b id="activeWeek">-</b></div>
+    <div class="tag">این ماه - گفتگو: <b id="monthChats">-</b></div>
+    <div class="tag">این ماه - پیام: <b id="monthMsgs">-</b></div>
+    <div class="tag">این ماه - کاربران جدید: <b id="newUsersMonth">-</b></div>
+    <div class="tag">این ماه - کاربران فعال: <b id="activeMonth">-</b></div>
+    <div class="tag">امسال - گفتگو: <b id="yearChats">-</b></div>
+    <div class="tag">امسال - پیام: <b id="yearMsgs">-</b></div>
+    <div class="tag">امسال - کاربران جدید: <b id="newUsersYear">-</b></div>
+    <div class="tag">امسال - کاربران فعال: <b id="activeYear">-</b></div>
+  </div>
+
+  <h3 class="section-title" style="margin-top:12px">توزیع هفتگی گفتگوها (شنبه→جمعه)</h3>
+  <canvas id="weekChart" width="900" height="240" style="max-width:100%"></canvas>
+
+  <h3 class="section-title" style="margin-top:12px">استفادهٔ مدل‌ها</h3>
+  <div id="modelsBox" class="mono" style="white-space:pre-wrap"></div>
+
+  <!-- آمار بازه دلخواه (تقویم شمسی) -->
+  <div class="hr" style="margin:16px 0"></div>
+  <h3 class="section-title">آمار بازهٔ دلخواه</h3>
+  <div class="row" style="margin-bottom:8px">
+    <button class="btn" id="btnPickRange">انتخاب بازه (تقویم شمسی)</button>
+    <label style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="jSingleDay"> انتخاب یک روز خاص
+    </label>
+    <span class="muted" id="rangeLabel">— بازه‌ای انتخاب نشده —</span>
+  </div>
+  <div class="row" id="rangeStats" style="flex-wrap:wrap; gap:8px">
+    <div class="tag">گفتگوهای بازه: <b id="rChats" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">پیام‌های بازه: <b id="rMsgs" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">کاربران جدید: <b id="rNewUsers" style="margin-inline-start:6px">-</b></div>
+    <div class="tag">کاربران فعال: <b id="rActive" style="margin-inline-start:6px">-</b></div>
+  </div>
+
+  <div class="hr"></div>
+  <div class="row right">
+    <button class="btn ghost" id="refreshStats">به‌روزرسانی</button>
+    <button class="btn" id="resetAll">ریست کامل آمار و داده‌ها</button>
+    <button class="btn" id="resetUsersChats">ریست کاربران و گفتگوها</button>
+    <button class="btn" id="exportAll">اکسپورت همه‌چیز (JSON)</button>
+  </div>
+
+  <h3 class="section-title" style="margin-top:16px">خروجی</h3>
+  <div id="exportBox" class="code mono"></div>
 </div>
+
+<!-- === Global (جدا و مستقل) === -->
+<div class="card" id="viewGlobal" style="display:none">
+  <h3 class="section-title">مدیریت قوانین عمومی</h3>
+  <div class="row" style="margin-bottom:8px">
+    <button class="btn ghost" id="refreshGlobalRules">بارگذاری قوانین فعلی</button>
+    <button class="btn" id="saveGlobalRules">ذخیرهٔ قوانین</button>
+  </div>
+  <textarea id="globalRulesText" rows="14" style="width:100%;font-family:IRANYekanX, Tahoma, Arial, sans-serif"></textarea>
+  <div class="hr"></div>
+  <div class="muted">توضیح: قوانین عمومی بالاتر از قوانین خصوصی هر کاربر اعمال می‌شوند.</div>
+</div>
+
 <!-- سبکِ خیلی سبک برای گریدِ تقویم -->
 <style>
   .jalali-modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:1400 }
@@ -632,6 +637,7 @@ const $  = (id)=>document.getElementById(id);
 
 // Tabs
 
+
 const tabChats = $("tabChats");
 const tabAnalytics = $("tabAnalytics");
 const viewChats = $("viewChats");
@@ -646,21 +652,7 @@ function hideAllPanel(){
   p.innerHTML = "";
 }
 
-// قبلی‌ها را به این شکل به‌روزرسانی کنید:
-tabChats.onclick = ()=>{
-  tabChats.classList.add("active");
-  tabAnalytics.classList.remove("active");
-  viewChats.style.display="block";
-  viewAnalytics.style.display="none";
-  hideAllPanel();         // ← مهم
-};
-tabAnalytics.onclick = ()=>{
-  tabAnalytics.classList.add("active");
-  tabChats.classList.remove("active");
-  viewAnalytics.style.display="block";
-  viewChats.style.display="none";
-  hideAllPanel();         // ← مهم
-};
+
 
 // UI nodes
 const userList = $("userList");
@@ -669,6 +661,79 @@ const userInfo = $("userInfo");
 const searchChat = $("searchChat");
 const refreshChats = $("refreshChats");
 const exportUser = $("exportUser");
+// === Users list (from /admin/export) ===
+async function loadUsers(){
+  try{
+    userList.innerHTML = `<div class="muted">درحال بارگذاری…</div>`;
+    // ➊ اول سعی کن کاربران را از /admin/users بگیری؛
+    // ➋ اگر نشد/خالی بود، فالبک به /admin/export
+    let j = {};
+    try {
+const r1 = await fetch(API + "/admin/users");
+j = await r1.json();
+// اگر اصلاً آرایه نبود یا آرایه خالی بود، برو فالبک
+if (!Array.isArray(j?.users) || j.users.length === 0) throw new Error("no users");
+
+    } catch {
+      const r2 = await fetch(API + "/admin/export");
+      j = await r2.json().catch(()=> ({}));
+    }
+
+    // منبع سازگار: data.users یا data.all.users
+    const arr = Array.isArray(j?.users) ? j.users
+              : Array.isArray(j?.all?.users) ? j.all.users
+              : [];
+
+    if (!arr.length){
+      userList.innerHTML = `<div class="muted">کاربری یافت نشد.</div>`;
+      return;
+    }
+
+    // مرتب‌سازی: آخرین فعالیت بالاتر
+    arr.sort((a,b)=> Number(b?.lastSeen||0) - Number(a?.lastSeen||0));
+
+    // رندر کارت‌ها
+    userList.innerHTML = arr.map(u=>{
+      const uid  = (u?.uid || u?.username || "").trim();
+      const last = u?.lastSeen ? new Date(u.lastSeen).toLocaleString("fa-IR") : "—";
+      const first= u?.createdAt ? new Date(u.createdAt).toLocaleString("fa-IR") : (u?.firstSeen ? new Date(u.firstSeen).toLocaleString("fa-IR") : "—");
+      return `
+        <div class="user-item" data-uid="${uid}">
+          <div class="user-meta">
+            <b class="mono" style="direction:ltr">${uid || "—"}</b>
+            <small>اولین‌بار: ${first}</small>
+            <small>آخرین‌فعالیت: ${last}</small>
+          </div>
+          <div class="row">
+            <span class="badge">${u?.banned ? "بن‌شده" : "عادی"}</span>
+          </div>
+        </div>`;
+    }).join("");
+
+    // انتخاب کاربر و لود چت‌ها + پروفایل
+    document.querySelectorAll(".user-item").forEach(it=>{
+      it.onclick = async ()=>{
+        document.querySelectorAll(".user-item").forEach(n=> n.classList.remove("active"));
+        it.classList.add("active");
+        window.activeUid = it.getAttribute("data-uid") || "";
+        // لود جدول چت‌ها و پروفایل
+        try{ await loadChatsFor(window.activeUid); }catch{}
+        try{ await loadUserProfile(window.activeUid); }catch{}
+      };
+    });
+
+  }catch(e){
+    console.error(e);
+    userList.innerHTML = `<div class="muted">خطا در دریافت کاربران</div>`;
+  }
+}
+
+// دکمهٔ «به‌روزرسانی»
+refreshUsers.onclick = loadUsers;
+
+// اجرای اولیه
+loadUsers();
+
 const chatsTableWrap = $("chatsTableWrap");
 const chatDetail = $("chatDetail");
 
@@ -774,7 +839,57 @@ const statUsers = $("statUsers");
 const refreshStats = $("refreshStats");
 const resetAll = $("resetAll");
 const exportAll = $("exportAll");
+const resetUsersChats = $("resetUsersChats");
+if (resetUsersChats) {
+  resetUsersChats.onclick = async () => {
+    if (!confirm("آیا مطمئن هستید؟ این کار تمام کاربران و گفتگوها را پاک می‌کند.")) return;
+    try{
+      const r = await jpost("/admin/nukeUsersChats", {}); // بدنه لازم نیست؛ فقط مسیر
+      if (r?.ok){
+        alert("کاربران و گفتگوها با موفقیت پاک شدند.");
+        // اگر لازم است UI را تازه کنیم:
+        try{ document.getElementById("refreshUsers")?.click(); }catch{}
+        try{ document.getElementById("refreshChats")?.click(); }catch{}
+      }else{
+        alert(r?.error || "خطا در ریست کاربران و گفتگوها");
+      }
+    }catch(e){
+      alert("خطای شبکه/سرور در ریست کاربران و گفتگوها");
+    }
+  };
+}
+
 const exportBox = $("exportBox");
+const tabGlobal = document.getElementById("tabGlobal");
+const viewGlobal = document.getElementById("viewGlobal");
+const globalRulesText = document.getElementById("globalRulesText");
+const refreshGlobalRules = document.getElementById("refreshGlobalRules");
+const saveGlobalRules = document.getElementById("saveGlobalRules");
+
+// GET قوانین عمومی
+async function loadGlobalRules(){
+  try{
+    const r = await jget("/admin/globalRules");
+    globalRulesText.value = (r && typeof r.rules === "string") ? r.rules : "";
+  }catch{
+    alert("خطا در بارگذاری قوانین عمومی");
+  }
+}
+
+// POST ذخیره قوانین عمومی
+async function saveGlobalRulesNow(){
+  try{
+    const rules = (globalRulesText.value || "").trim();
+    const r = await jpost("/admin/globalRules", { rules });
+    if (r?.ok) alert("قوانین عمومی ذخیره شد.");
+    else alert(r?.error || "خطا در ذخیره قوانین");
+  }catch{
+    alert("خطای شبکه/سرور در ذخیره قوانین");
+  }
+}
+refreshGlobalRules && (refreshGlobalRules.onclick = loadGlobalRules);
+saveGlobalRules && (saveGlobalRules.onclick = saveGlobalRulesNow);
+
 
 // Helpers
 async function jget(path){ const r=await fetch(API+path); return r.json(); }
@@ -1041,7 +1156,8 @@ async function loadChatsFor(uid){
   // (این کار فقط برای تب «کاربران» است که قبلاً مقدار نداشت)
   const enriched = await Promise.all(chats.map(async (c) => {
     try{
-      const rr = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId));
+     const rr = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId || c.id));
+
       const has = hasAnyRating(rr?.ratings);
       return Object.assign({}, c, { hasRatings: !!has });
     }catch{
@@ -1056,20 +1172,22 @@ async function loadChatsFor(uid){
 function renderChatsTable(list){
   const q=(searchChat.value||"").trim().toLowerCase();
   const filtered = list.filter(c=>{
-    const hay = (c.title+" "+(c.preview||"")+" "+(c.chatId||"")).toLowerCase();
+   const hay = (c.title+" "+(c.preview||c.first||c.firstMsg||"")+" "+(c.chatId||c.id||"")).toLowerCase();
+
     return !q || hay.includes(q);
   });
   const rows = filtered.map(c=>`
     <tr>
-      <td class="mono">${escapeHtml(c.chatId)}</td>
-      <td>${escapeHtml(c.title||"-")}</td>
-      <td class="muted">${escapeHtml(c.preview||"")}</td>
-      <td class="mono">${fmt(c.updatedAt||c.createdAt)}</td>
-      <td>
-  <button class="btn ghost" data-view="${c.chatId}">نمایش</button>
+<td class="mono">${escapeHtml(c.chatId || c.id)}</td>
+<td>${escapeHtml(c.title || "-")}</td>
+<td class="muted">${escapeHtml(c.preview || c.first || c.firstMsg || "")}</td>
+<td class="mono">${fmt(c.updatedAt || c.createdAt || c.ts || c.time)}</td>
+<td>
+  <button class="btn ghost" data-view="${c.chatId || c.id}">نمایش</button>
   ${c.hasRatings ? '<span title="این گفتگو حداقل یک رأی دارد">★</span>' : ''}
-  <button class="btn" data-del="${c.chatId}">حذف</button>
+  <button class="btn" data-del="${c.chatId || c.id}">حذف</button>
 </td>
+
 
     </tr>
     
@@ -1085,6 +1203,33 @@ function renderChatsTable(list){
   chatsTableWrap.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=> delChat(b.dataset.del));
 }
 searchChat.oninput = ()=> renderChatsTable(currentChats);
+async function delChat(chatId){
+  if (!activeUid) { alert("ابتدا یک کاربر انتخاب کنید."); return; }
+  if (!confirm("این گفتگو حذف شود؟")) return;
+
+  try{
+    const res = await fetch(API + "/admin/deleteChat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: activeUid, chatId })
+    });
+    const data = await res.json();
+    if (!data?.ok) throw new Error(data?.error || "failed");
+
+    // حذف از آرایه‌ی فعلی و رندر مجدد جدول
+    currentChats = currentChats.filter(c => c.chatId !== chatId);
+    renderChatsTable(currentChats);
+
+    // اگر همین گفتگوی حذف‌شده داخل مودال باز بود، مودال را ببند
+    if (window.__openChatId === chatId && typeof closeModal === "function") {
+      closeModal();
+    }
+  }catch(e){
+    console.error(e);
+    alert("حذف ناموفق بود.");
+  }
+}
+
 function renderAdminContent(s = "") {
   const str = String(s || "");
   const imgRe = /!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g;
@@ -1121,185 +1266,91 @@ function renderAdminContent(s = "") {
 
   return out;
 }
+function escapeHtml(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
 
 
 async function showChat(chatId){
+  try{
+    // 1) پیام‌ها را از summary بگیر (سازگار با ساختار جدید)
+    const r = await fetch(`summary?chatId=${encodeURIComponent(chatId)}`);
+    const data = await r.json();
 
-  // 1) دیتا از سرور
-  const data = await jget("/admin/chat?chatId=" + encodeURIComponent(chatId));
-  const chat = data.chat || {};
-  let ratings = data.ratings || null;
+    // 2) هم با ساختار جدید سازگار شو هم قدیمی
+    const msgs =
+      (Array.isArray(data?.messages) ? data.messages : null) ||
+      (Array.isArray(data?.chat?.messages) ? data.chat.messages : []) ||
+      [];
 
-  // اگر همراه پاسخ نیامد، جداگانه بگیر
-  if (!ratings) {
+    // 3) رأی‌ها (برای ستاره/آیکون کنار پیام‌ها)
+    let ratings = {};
     try{
-      const r2 = await jget("/admin/ratings?chatId=" + encodeURIComponent(chatId));
-      ratings = (r2 && r2.ratings) ? r2.ratings : {};
-    }catch{ ratings = {}; }
-  }
-    ratings = normalizeRatings(ratings);
+      const rr = await fetch(`ratings?chatId=${encodeURIComponent(chatId)}`);
+      const rj = await rr.json();
+      ratings = (rj && rj.ratings) || {};
+    }catch{}
 
-      // --- یکسان‌سازی ساختار رأی‌ها به { [key]: "up"|"down" } ---
-  function normalizeRatings(raw){
-  const out = {};
-  if (!raw) return out;
-
-  if (Array.isArray(raw)){
-    for (const it of raw){
-      const k = it?.key || it?.id || it?.message_id || it?.msg_id;
-      const v = it?.value ?? it?.val ?? it?.vote ?? it?.rating ?? it?.r;
-      const norm =
-        (v===true || v===1 || v==="1" || v==="up" || v==="👍") ? "up" :
-        (v===false|| v===-1|| v==="-1"|| v==="down"|| v==="👎") ? "down" : null;
-      if (k && norm) out[String(k)] = norm;
-    }
-    return out;
-  }
-
-  for (const [k,v] of Object.entries(raw)){
-    let norm = null;
-    if (v && typeof v === "object"){
-      const vv = v.value ?? v.val ?? v.vote ?? v.rating ?? (v.up? "up" : (v.down? "down": null));
-      if (vv===true || vv===1 || vv==="1" || vv==="up") norm="up";
-      else if (vv===false || vv===-1 || vv==="-1" || vv==="down") norm="down";
+    // 4) رندر مودال
+    const rows = [];
+    if (msgs.length === 0){
+      rows.push(`<div class="empty-msg">پیامی نیست</div>`);
     } else {
-      if (v===true || v===1 || v==="1" || v==="up") norm="up";
-      else if (v===false || v===-1 || v==="-1" || v==="down") norm="down";
+      for (const m of msgs){
+        // متن
+        const text =
+          (typeof m?.content === "string" && m.content) ||
+          (Array.isArray(m?.content) ? m.content.map(p => p?.text || "").join("\n") : "") ||
+          "";
+
+        // نقش
+        const role = (m?.role === "assistant" ? "دستیار" : "کاربر");
+
+        // رأی (سعی می‌کنیم بر اساس id / client_id / server_id پیدا کنیم)
+        const keys = [];
+        if (m?.id) keys.push(String(m.id));
+        const mm = m?.meta || {};
+        if (mm.client_id) keys.push(String(mm.client_id));
+        if (mm.clientId)  keys.push(String(mm.clientId));
+        if (mm.server_id) keys.push(String(mm.server_id));
+        if (mm.serverId)  keys.push(String(mm.serverId));
+        let vote = "";
+        for (const k of keys){
+          const v = ratings?.[k];
+          if (v === "up"){ vote = "👍"; break; }
+          if (v === "down"){ vote = "👎"; break; }
+        }
+
+        rows.push(`
+          <div class="chat-row">
+            <div class="chat-row-head">
+              <span class="role">${role}</span>
+              <span class="vote">${vote}</span>
+            </div>
+            <div class="chat-row-body">${escapeHtml(text || "-")}</div>
+          </div>
+        `);
+      }
     }
-    if (k && norm) out[String(k)] = norm;
-  }
-  return out;
-}
-ratings = normalizeRatings(ratings);
 
-
-
-
-  // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id یا server_id نسخه‌ها)
-    // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id | client_id | server_id نسخه‌ها)
-  // 2) هلپر: پیدا کردن رأی دقیق یک پیام (id | client_id | clientId | server_id | serverId + نسخه‌ها)
-function findRatingForMessage(m, ratings){
-  if (!ratings) return null;
-  const candidates = [];
-
-  // خود پیام
-  if (m.id) candidates.push(m.id);
-
-  // متادیتا
-  const mm = m.meta || {};
-  if (mm.client_id) candidates.push(mm.client_id);
-  if (mm.clientId)  candidates.push(mm.clientId);
-  if (mm.server_id) candidates.push(mm.server_id);
-  if (mm.serverId)  candidates.push(mm.serverId);
-
-  // نسخه‌ها
-  if (Array.isArray(m.versions)) {
-    for (const v of m.versions) {
-      const vm = v?.meta || {};
-      if (vm.client_id) candidates.push(vm.client_id);
-      if (vm.clientId)  candidates.push(vm.clientId);
-      if (vm.server_id) candidates.push(vm.server_id);
-      if (vm.serverId)  candidates.push(vm.serverId);
-      if (v?.id)        candidates.push(v.id);
-    }
-  }
-
-  for (const k of candidates){
-    const key = (k || "").toString();
-    if (!key) continue;
-    const val = ratings[key];
-    if (val === "up" || val === "down") return val;
-  }
-  return null;
-}
-
-
-
-// هِلپر: متن/تصویر را از پیام استخراج می‌کند
-function textOf(m){
-  // 1) اگر content هست، همان
-  let t = m?.content ?? m?.versions?.[m.active||0]?.content ?? "";
-  if (t && typeof t === "string" && t.trim()) return t;
-
-  // 2) اگر URL تصویر در متا باشد، آن را به Markdown تصویر تبدیل کن
-  const vm = m?.versions?.[m.active||0]?.meta || m?.meta || {};
-  const img = vm.image || vm.image_url || vm.imageUrl || vm.url;
-  if (img && typeof img === "string") {
-    const alt = vm.title || "image";
-    return `![${alt}](${img})`;
-  }
-
-  // 3) اگر هیچ‌کدام نبود، رشته خالی
-  return "";
-}
-
-// 3) ساخت HTML پیام‌ها
-// همان هِلپر متن
-function textOf(m){
-  let t = m?.content ?? m?.versions?.[m.active||0]?.content ?? "";
-  if (t && typeof t === "string" && t.trim()) return t;
-  const vm = m?.versions?.[m.active||0]?.meta || m?.meta || {};
-  const img = vm.image || vm.image_url || vm.imageUrl || vm.url;
-  if (img && typeof img === "string") {
-    const alt = vm.title || "image";
-    return `![${alt}](${img})`;
-  }
-  return "";
-}
-
-const msgs = (chat.messages || []).map(m => {
-  let rateBadge = "";
-  if (m.role === "assistant") {
-    const val = findRatingForMessage(m, ratings);
-    if (val === "up")   rateBadge = '<span class="tag good">👍</span>';
-    else if (val === "down") rateBadge = '<span class="tag bad">👎</span>';
-  }
-
-  // محاسبه‌ی شناسه‌ها
-  const sid = m.id || (m.meta && m.meta.server_id) ||
-              (m.versions?.[m.active||0]?.meta?.server_id) || "-";
-  const cid = (m.meta && m.meta.client_id) ||
-              (m.versions?.[m.active||0]?.meta?.client_id) || "";
-  const idLine = cid
-    ? `<span class="mono">SID: ${escapeHtml(sid)} | CID: ${escapeHtml(cid)}</span>`
-    : `<span class="mono">SID: ${escapeHtml(sid)}</span>`;
-
-  // متن/عکس پیام را بیرون از template بساز
-  const txt = textOf(m);
-  return `
-  <div class="item ${m.role === "user" ? "user" : ""}">
-    <div>
-      <div><b>${m.role === "assistant" ? "بات" : "کاربر"}</b> ${rateBadge}</div>
-        ${idLine}
-        <div class="muted">${fmt(m.ts)}</div>
-        <div>${renderAdminContent(txt)}</div>
+    openModal("جزئیات گفتگو", `
+      <div class="chat-details">
+        <div class="chat-details-title">گفتگو: <code>${escapeHtml(chatId || "-")}</code></div>
+        ${rows.join("")}
       </div>
-    </div>
-  `;
-}).join("");
+    `);
 
-
-
-
-
-
-
-  // 4) تزریق به پنل جزئیات
-  const html = `
-  <div class="row" style="justify-content:space-between">
-    <div class="flex" style="gap:10px">
-      <b>گفتگو: ${escapeHtml(chatId)}</b>
-    </div>
-    <div class="muted">${fmt(chat.updatedAt||chat.createdAt)}</div>
-  </div>
-  <div class="hr" style="margin:12px 0"></div>
-  <div style="display:flex;flex-direction:column;gap:12px">
-    ${msgs || '<i class="muted">پیامی نیست</i>'}
-  </div>
-`;
-openModal("جزئیات گفتگو", html);
-
+  }catch(e){
+    console.error(e);
+    openModal("جزئیات گفتگو", `<div class="empty-msg">خطا در دریافت پیام‌ها</div>`);
+  }
 }
+
 
 
 async function delChat(chatId, refreshDetail=false){
@@ -1346,22 +1397,26 @@ exportAll.onclick = async()=>{
 
 // Boot
 loadStats();
-
-// ---------------- لیست کاربران جدید ----------------
 async function loadUsersList(){
   const box = document.getElementById("userList");
   if (!box) return;
   box.innerHTML = "درحال بارگذاری…";
 
   try{
-    const r = await fetch(API + "/admin/users");
-    const j = await r.json();
-    const users = Array.isArray(j?.users) ? j.users : [];
+    // دریافت مستقیم از D1 (لیست کاربران مشتق از جدول چت‌ها)
+    const data = await jget("/admin/users");
+    const users = Array.isArray(data?.users) ? data.users : [];
+
+
     if (!users.length){
       box.textContent = "کاربری یافت نشد.";
       return;
     }
 
+    // مرتب‌سازی: آخرین فعالیت بالاتر
+    users.sort((a,b)=> Number(b?.lastSeen||0) - Number(a?.lastSeen||0));
+
+    // رندر
     box.innerHTML = "";
     users.forEach(u=>{
       const div = document.createElement("div");
@@ -1370,24 +1425,25 @@ async function loadUsersList(){
 
       const right = document.createElement("div");
       right.className = "user-meta";
-      right.innerHTML = `
-        <b class="mono" style="direction:ltr">${u.uid}</b>
-        <small>تعداد گفتگو: ${u.chats}</small>
-      `;
+right.innerHTML = `
+  <b class="mono" style="direction:ltr">${u.uid}</b>
+`;
 
-      const left = document.createElement("small");
-      left.textContent = u.lastSeen ? new Date(u.lastSeen).toLocaleString('fa-IR') : "-";
+// ⚠️ این سه خطِ ساختِ badge و append آن را حذف کن:
+/// const left = document.createElement("span");
+/// left.className = "badge";
+/// left.textContent = u.banned ? "بن" : "عادی";
 
-      div.appendChild(right);
-      div.appendChild(left);
+div.appendChild(right);
+// div.appendChild(left);  // این را هم حذف کن
+
 
       div.onclick = ()=>{
         document.querySelectorAll(".user-item.active").forEach(x=>x.classList.remove("active"));
         div.classList.add("active");
-        loadUserChats(u.uid);
-        loadUserProfile(u.uid);
-        window.activeUid = u.uid;   // ✅ کاربر انتخاب‌شده را سراسری نگه دار
-
+        window.activeUid = u.uid;
+        try { loadUserChats(u.uid); } catch {}
+        try { loadUserProfile(u.uid); } catch {}
       };
 
       box.appendChild(div);
@@ -1397,15 +1453,25 @@ async function loadUsersList(){
   }
 }
 
+
 async function loadUserChats(uid){
   const host = document.getElementById("chatsTableWrap");
   if (!host) return;
 
   host.innerHTML = "درحال بارگذاری گفتگوها…";
   try{
-    const r = await fetch(API + `/admin/chats?uid=${encodeURIComponent(uid)}`);
-    const j = await r.json();
-    const chats = Array.isArray(j?.chats) ? j.chats : [];
+    let chats = [];
+    try{
+      const r = await fetch(API + `/admin/chats?uid=${encodeURIComponent(uid)}`);
+      const j = await r.json();
+      chats = Array.isArray(j?.chats) ? j.chats : [];
+    }catch(_){}
+    if (!chats.length){
+      const ex = await jget(`/admin/export?uid=${encodeURIComponent(uid)}`);
+      chats = Array.isArray(ex?.chats) ? ex.chats
+        : (Array.isArray(ex?.all?.chats) ? ex.all.chats : []);
+    }
+
 // 🔎 پر کردن پرچم رأی‌ها برای هر گفتگو
 const enriched = await Promise.all(chats.map(async (c) => {
   try{
@@ -1570,6 +1636,11 @@ qs("#activeYear") && (qs("#activeYear").innerText = j.year?.active_users ?? "—
 loadStatsPlus();
 refreshStats.addEventListener("click", ()=>{
   loadStats();    // قدیمی
+   // Boot
+ loadStats();
+ loadUsersList();
+ document.getElementById("refreshUsers").onclick = loadUsersList;
+
   loadStatsPlus();// جدید
 });
 
@@ -1695,7 +1766,8 @@ refreshStats.addEventListener("click", ()=>{
 left.innerHTML = `
   <div>
     <b>${r.title || "بدون عنوان"}</b>
-    <div class="meta">کاربر: ${r.username} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
+    <div class="meta">کاربر: ${r.uid} | ساخته‌شده: ${fmt(r.createdAt)} | آخرین فعالیت: ${fmt(r.updatedAt)}</div>
+
   </div>
 `;
 
@@ -1762,37 +1834,26 @@ item.appendChild(right);
     draw(list);
   }
   
-  async function loadAll(){
-  // 1) اول لیست کاربران
-  const ru = await fetch(API + "/admin/users");
-  const ju = await ru.json();
+ async function loadAll(){
+  // ✅ یک درخواست به‌جای ده‌ها درخواست
+  const r = await fetch(API + "/admin/allChats");
+  const j = await r.json();
 
-  const rows = [];
-  // 2) برای هر کاربر، لیست چت‌ها
-  for (const u of (ju.users||[])){
-    try{
-const rc = await fetch(API + "/admin/chats?uid=" + encodeURIComponent(u.uid))
+  // ایمن‌سازی و مرتب‌سازی نزولی بر اساس آخرین فعالیت
+  const rows = (Array.isArray(j?.chats) ? j.chats : [])
+    .map(c => ({
+      uid: c.uid || "",
+      chatId: c.chatId,
+      createdAt: Number(c.createdAt || 0),
+      updatedAt: Number(c.updatedAt || 0),
+      title: c.title || "",
+      preview: c.preview || "",
+      _hasRatings: !!c.hasRatings,
+      _allText: ""
+    }))
+    .sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
 
-
-      const jc = await rc.json();
-      for (const c of (jc.chats||[])){
-        // ستاره را بعداً با گرفتن ریتینگ هر چت موقع بازشدن نشان می‌دهیم یا ساده: false
-        rows.push({
-          uid: u.uid,
-          chatId: c.chatId,
-          createdAt: c.createdAt,
-          updatedAt: c.updatedAt,
-          title: c.title,
-          preview: (c.preview||""),
-          _hasRatings: !!c.hasRatings,   // ← مهم: از پاسخ سرور استفاده ک
-          _allText: ""   // در صورت نیاز، موقع openChat تکمیل می‌کنیم
-        });
-      }
-    }catch{}
-  }
-  rows.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
   ALL = rows;
-  
 
   // بستن سایر پنل‌ها
   document.getElementById("viewChats").style.display = "none";
@@ -1819,7 +1880,14 @@ const j = await r.json();
     // helper: نگاشت درست msg.id / meta.server_id / نسخه‌ها
 // بعد از اینکه const data = await jget("/admin/chat?chatId=...") را گرفتی:
 const chat = j.chat || {};
-const ratings = j.ratings || {};
+let msgs = chat.messages || [];
+if (typeof msgs === "string") {
+  try { msgs = JSON.parse(msgs); } catch { msgs = []; }
+}
+msgs = Array.isArray(msgs) ? msgs : [];
+// اگر تضمین ترتیب لازم داری:
+msgs.sort((a,b)=> Number(a?.ts||0) - Number(b?.ts||0));
+
 
 
 // helper: پیدا کردن رای دقیق یک پیام (همان تابع بالا)
@@ -2155,7 +2223,7 @@ authAdmSave.onclick = async ()=>{
     <div id="chatModalBody" style="padding:16px"></div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.1.1/dist/jalaali.min.js"></script>
+
 <script>
 (function(){
   // عناصر UI (از قبل در HTML ساخته‌ایم)
