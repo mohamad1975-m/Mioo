@@ -190,7 +190,7 @@
 </div>
 
     </div>
-    <div class="hr"></div>
+
 <!-- پروفایل کاربر -->
 <div id="profileBox" class="panel" style="margin-top:8px; display:none">
   <div class="row" style="justify-content:space-between">
@@ -223,8 +223,85 @@
     <div id="chatsTableWrap" style="margin-top:10px;overflow:auto"></div>
 
     <div class="hr"></div>
-    <h3 class="section-title">جزئیات گفتگو</h3>
-    <div id="chatDetail"></div>
+
+<!-- === Chat Modal (real overlay) === -->
+<div id="chatModal" class="modal" aria-hidden="true" style="display:none">
+  <div class="modal-card" style="width:min(760px,96vw);max-height:90vh;overflow:auto;padding:0">
+    <div class="modal-header" style="position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div class="title-wrap" style="display:flex;flex-direction:column;gap:4px">
+        <h3 id="chatModalTitle" style="margin:0">جزئیات گفتگو</h3>
+        <div id="chatModalSub" class="muted mono" style="font-size:12px"></div>
+      </div>
+      <button id="chatModalClose" class="link ghost">بستن</button>
+    </div>
+    <div id="chatModalBody" class="panel" style="margin:0;border:0;border-radius:0"></div>
+  </div>
+</div>
+
+      <div class="title-wrap">
+        <h3 id="chatModalTitle" style="margin:0">جزئیات گفتگو</h3>
+        <div id="chatModalSub" class="muted mono" style="font-size:12px"></div>
+      </div>
+      <button id="chatModalClose" class="link ghost">بستن</button>
+    </div>
+
+
+    <style>
+  /* === Chat bubbles inside admin chat modal === */
+
+#chatModal .modal-header{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.dark #chatModal .modal-header{ background:#0b1220; border-color:#1f2937 }
+#chatModal .title-wrap{ display:flex; flex-direction:column; gap:4px }
+
+  #chatModalBody { background:#f8fafc; }
+
+  #chatModalBody .msg-row{
+    display:flex; gap:8px; align-items:flex-end; margin:8px 0;
+  }
+  #chatModalBody .bubble{
+    max-width:68%;
+    padding:12px 14px;
+    border-radius:14px;
+    line-height:1.9;
+    position:relative;
+    direction: rtl; unicode-bidi: plaintext; text-align:start;
+    word-wrap:break-word; white-space:normal;
+  }
+  /* کاربر → بنفش روشن */
+  #chatModalBody .bubble.user{
+    margin-inline-start:auto;            /* بره سمت راست */
+    background:#8b5cf6; color:#fff;
+    border-bottom-right-radius:8px;
+  }
+  /* دستیار → سفید */
+  #chatModalBody .bubble.bot{
+    margin-inline-end:auto;              /* بره سمت چپ */
+    background:#fff; color:#111;
+    border:1px solid #e5e7eb;
+    border-bottom-left-radius:8px;
+  }
+  #chatModalBody .rendered pre{
+    background:#0f172a; color:#e5e7eb; padding:10px; border-radius:10px; overflow:auto; margin-top:8px;
+  }
+  #chatModalBody .rendered code{ background:#f1f5f9; padding:1px 4px; border-radius:6px }
+  #chatModalBody .msg-meta{
+    display:flex; gap:8px; align-items:center;
+    color:#64748b; font:12px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    margin:4px 4px 0 4px;
+  }
+</style>
+
+  </div>
+</div>
+
   </div>
 
  <!-- === Analytics (جدا و مستقل) === -->
@@ -693,22 +770,27 @@ if (!Array.isArray(j?.users) || j.users.length === 0) throw new Error("no users"
     arr.sort((a,b)=> Number(b?.lastSeen||0) - Number(a?.lastSeen||0));
 
     // رندر کارت‌ها
-    userList.innerHTML = arr.map(u=>{
-      const uid  = (u?.uid || u?.username || "").trim();
-      const last = u?.lastSeen ? new Date(u.lastSeen).toLocaleString("fa-IR") : "—";
-      const first= u?.createdAt ? new Date(u.createdAt).toLocaleString("fa-IR") : (u?.firstSeen ? new Date(u.firstSeen).toLocaleString("fa-IR") : "—");
-      return `
-        <div class="user-item" data-uid="${uid}">
-          <div class="user-meta">
-            <b class="mono" style="direction:ltr">${uid || "—"}</b>
-            <small>اولین‌بار: ${first}</small>
-            <small>آخرین‌فعالیت: ${last}</small>
-          </div>
-          <div class="row">
-            <span class="badge">${u?.banned ? "بن‌شده" : "عادی"}</span>
-          </div>
-        </div>`;
-    }).join("");
+userList.innerHTML = arr.map(u=>{
+  const uid   = (u?.uid || u?.username || "").trim();
+  const lastT = Number(u?.lastSeen ?? u?.lastLogin ?? 0);   // ✅ فالبک به lastLogin
+  const firstT= Number(u?.createdAt ?? u?.firstSeen ?? 0);  // همان قبلی + ایمن‌سازی
+
+  const last  = lastT ? new Date(lastT).toLocaleString("fa-IR") : "—";
+  const first = firstT ? new Date(firstT).toLocaleString("fa-IR") : "—";
+
+  return `
+    <div class="user-item" data-uid="${uid}">
+      <div class="user-meta">
+        <b class="mono" style="direction:ltr">${uid || "—"}</b>
+        <small>اولین‌بار: ${first}</small>
+        <small>آخرین‌فعالیت: ${last}</small>
+      </div>
+      <div class="row">
+        <span class="badge">${u?.banned ? "بن‌شده" : "عادی"}</span>
+      </div>
+    </div>`;
+}).join("");
+
 
     // انتخاب کاربر و لود چت‌ها + پروفایل
     document.querySelectorAll(".user-item").forEach(it=>{
@@ -896,6 +978,34 @@ async function jget(path){ const r=await fetch(API+path); return r.json(); }
 async function jpost(path, data){ const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data||{})}); return r.json(); }
 function fmt(ts){ try{ return new Date(ts).toLocaleString("fa-IR") }catch{return "-"} }
 function escapeHtml(s=""){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+  // Markdown → HTML برای پنجرهٔ ادمین (با highlight.js)
+  function renderAdminContent(md){
+    try{
+      // تنظیماتِ مشابهِ صفحهٔ چت
+      if (window.marked && typeof marked.setOptions==="function"){
+        marked.setOptions({ breaks:true, gfm:true });
+      }
+      const raw = String(md||"");
+      const html = (window.marked && typeof marked.parse==="function")
+        ? marked.parse(raw)
+        : raw.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); // فالبکِ ساده
+
+      // های‌لایت کُد
+      const tmp = document.createElement("div");
+      tmp.className = "rendered";
+      tmp.innerHTML = html;
+      if (window.hljs){
+        tmp.querySelectorAll("pre code").forEach(block=>{
+          try{ hljs.highlightElement(block); }catch(_){}
+        });
+      }
+      return tmp.innerHTML;
+    }catch(_){
+      return (md||"");
+    }
+  }
+
 
 // Modal helpers
 function openModal(title, html){
@@ -1141,57 +1251,79 @@ btnDevices.onclick = async () => {
 // Chats table
 let currentChats = [];
 async function loadChatsFor(uid){
-  const data = await jget("/admin/chats?uid="+encodeURIComponent(uid));
-  const chats = Array.isArray(data?.chats) ? data.chats : [];
+  try{
+    chatsTableWrap.innerHTML = `<div class="muted">درحال بارگذاری…</div>`;
 
-  // هلپر برای تشخیص اینکه «رأیی» وجود دارد یا نه (چه آرایه، چه آبجکت)
-  const hasAnyRating = (r) => {
-    if (!r) return false;
-    if (Array.isArray(r)) return r.length > 0;
-    if (typeof r === "object") return Object.keys(r).length > 0;
-    return false;
-  };
+    // 1) تلاش اول: /admin/chats
+    let list = [];
+    try {
+      const r1 = await fetch(API + "/admin/chats?uid=" + encodeURIComponent(uid));
+      const j1 = await r1.json();
+      // j1.chats ممکن است همین حالا تخت باشد
+      if (Array.isArray(j1?.chats)) list = j1.chats;
+    } catch (_) {}
 
-  // برای هر چت، رأی‌ها را می‌گیریم تا hasRatings پر شود
-  // (این کار فقط برای تب «کاربران» است که قبلاً مقدار نداشت)
-  const enriched = await Promise.all(chats.map(async (c) => {
-    try{
-     const rr = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId || c.id));
-
-      const has = hasAnyRating(rr?.ratings);
-      return Object.assign({}, c, { hasRatings: !!has });
-    }catch{
-      return Object.assign({}, c, { hasRatings:false });
+    // 2) اگر خالی بود، از /admin/export نرمال‌سازی کن
+    if (!list.length) {
+      const r2 = await fetch(API + "/admin/export?uid=" + encodeURIComponent(uid));
+      const j2 = await r2.json().catch(()=> ({}));
+      const arr = Array.isArray(j2?.chats) ? j2.chats : [];
+      // نـرمال‌سازی: {chat:{...}, ratings:[...]}  ← به  →  {...chat, hasRatings:true/false}
+      list = arr.map(it => {
+        if (it && it.chat) {
+          const c = it.chat || {};
+          return {
+            ...c,
+            hasRatings: Array.isArray(it.ratings) && it.ratings.length > 0
+          };
+        }
+        return it || {};
+      });
     }
-  }));
 
-  currentChats = enriched;
-  renderChatsTable(currentChats);
+    // ایمن‌سازی: شناسه و تاریخ‌ها
+    list = list.map(c => ({
+      ...c,
+      chatId:   c.chatId || c.id || "",
+      updatedAt: Number(c.updatedAt || c.ts || c.time || 0) || 0,
+      createdAt: Number(c.createdAt || 0) || 0,
+      title:     c.title || "-"
+    }));
+
+   currentChats = list;        // 👈 اضافه شود تا جست‌وجو/فیلتر کار کند
+renderChatsTable(list);
+
+  }catch(e){
+    console.error(e);
+    chatsTableWrap.innerHTML = `<div class="muted">خطا در دریافت گفت‌وگوها</div>`;
+  }
 }
 
 function renderChatsTable(list){
-  const q=(searchChat.value||"").trim().toLowerCase();
-  const filtered = list.filter(c=>{
-   const hay = (c.title+" "+(c.preview||c.first||c.firstMsg||"")+" "+(c.chatId||c.id||"")).toLowerCase();
+  const q = (searchChat.value || "").trim().toLowerCase();
 
+  const filtered = list.filter(c=>{
+    const hay = (c.title+" "+(c.preview||c.first||c.firstMsg||"")+" "+(c.chatId||c.id||""))
+      .toLowerCase();
     return !q || hay.includes(q);
   });
-  const rows = filtered.map(c=>`
+
+  const rows = filtered.map(c => `
     <tr>
-<td class="mono">${escapeHtml(c.chatId || c.id)}</td>
-<td>${escapeHtml(c.title || "-")}</td>
-<td class="muted">${escapeHtml(c.preview || c.first || c.firstMsg || "")}</td>
-<td class="mono">${fmt(c.updatedAt || c.createdAt || c.ts || c.time)}</td>
-<td>
-  <button class="btn ghost" data-view="${c.chatId || c.id}">نمایش</button>
-  ${c.hasRatings ? '<span title="این گفتگو حداقل یک رأی دارد">★</span>' : ''}
-  <button class="btn" data-del="${c.chatId || c.id}">حذف</button>
-</td>
-
-
+      <td class="mono">${escapeHtml(c.chatId || c.id || "-")}</td>       <!-- ✅ دیگر undefined نمی‌بینی -->
+      <td>${escapeHtml(c.title || "-")}</td>
+      <td class="muted">${escapeHtml(c.preview || c.first || c.firstMsg || "")}</td>
+      <td class="mono">${fmt(c.updatedAt || c.createdAt || c.ts || c.time)}</td>
+      <td>
+        <button class="btn ghost" data-view="${c.chatId || c.id || ""}">نمایش</button>
+        ${c.hasRatings ? '<span title="این گفتگو حداقل یک رأی دارد">★</span>' : ''}
+        <button class="btn" data-del="${c.chatId || c.id || ""}">حذف</button>
+      </td>
     </tr>
-    
   `).join("");
+
+
+    
   
   
   chatsTableWrap.innerHTML = `
@@ -1199,10 +1331,145 @@ function renderChatsTable(list){
       <thead><tr><th>شناسه</th><th>عنوان</th><th>اولین پیام</th><th>آخرین‌به‌روزرسانی</th><th>اکشن</th></tr></thead>
       <tbody>${rows || ""}</tbody>
     </table>`;
-  chatsTableWrap.querySelectorAll("[data-view]").forEach(b=> b.onclick=()=> showChat(b.dataset.view));
-  chatsTableWrap.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=> delChat(b.dataset.del));
+chatsTableWrap.querySelectorAll("[data-view]").forEach(b=>{
+  b.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const id = b.getAttribute("data-view") || "";
+    if (id) showChat(id);
+  }, { once:false });
+});
+
+chatsTableWrap.querySelectorAll("[data-del]").forEach(b=>{
+  b.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const id = b.getAttribute("data-del") || "";
+    if (id) delChat(id);
+  }, { once:false });
+});
+
 }
+
+async function showChat(chatId){
+  try{
+    // عنوان/متا از لیستِ چت‌های فعلی
+    const meta = (Array.isArray(window.currentChats) ? window.currentChats : []).find(
+      c => (c?.chatId || c?.id) === chatId
+    ) || {};
+    const title = (meta?.title || `گفتگو ${chatId}`).trim();
+    const updatedTs = Number(meta?.updatedAt || meta?.ts || meta?.time || 0) || 0;
+    const updatedStr = updatedTs ? new Date(updatedTs).toLocaleString("fa-IR") : "—";
+
+    // ➊ تلاش اول: /admin/chat?chatId=...
+    let msgs = [];
+    try{
+      const r1 = await fetch(API + "/admin/chat?chatId=" + encodeURIComponent(chatId));
+      const j1 = await r1.json().catch(()=> ({}));
+      let arr = j1?.messages || j1?.chat?.messages;
+      if (typeof arr === "string"){ try{ arr = JSON.parse(arr); }catch{ arr = []; } }
+      if (Array.isArray(arr)) msgs = arr;
+    }catch{}
+
+    // ➋ اگر چیزی نگرفت، فالبک: از /admin/export?uid=activeUid پیدا کن
+    if (!msgs.length){
+      const uid = (window.activeUid || "").trim();
+      if (uid){
+        try{
+          const r2 = await fetch(API + "/admin/export?uid=" + encodeURIComponent(uid));
+          const j2 = await r2.json().catch(()=> ({}));
+          const list = Array.isArray(j2?.chats) ? j2.chats
+                     : Array.isArray(j2?.all?.chats) ? j2.all.chats
+                     : [];
+          for (const it of list){
+            const c = it?.chat || it || {};
+            const id = c.chatId || c.id || "";
+            if (id === chatId){
+              let m = c.messages;
+              if (typeof m === "string"){ try{ m = JSON.parse(m); }catch{ m = []; } }
+              if (Array.isArray(m)) msgs = m;
+              break;
+            }
+          }
+        }catch{}
+      }
+    }
+
+    // ➌ اگر هنوز چیزی نیست، از userProfile آخرینِ گفتگو را (مثل همانی که در نت‌وُرک دیدی) بخوان
+    if (!msgs.length){
+      const uid = (window.activeUid || "").trim();
+      if (uid){
+        try{
+          const rp = await fetch(API + "/admin/userProfile?uid=" + encodeURIComponent(uid));
+          const jp = await rp.json().catch(()=> ({}));
+          const latest = jp?.latest || {};
+          if (Array.isArray(latest?.messages)) msgs = latest.messages;
+        }catch{}
+      }
+    }
+
+    // تنظیم سربرگ مودال (چسبان)
+    try{
+      document.getElementById("chatModalTitle").textContent = title || "جزئیات گفتگو";
+      const sub = document.getElementById("chatModalSub");
+      if (sub) sub.textContent = `شناسه: ${chatId} — آخرین تغییر: ${updatedStr}`;
+    }catch{}
+
+    // ➍ رندر محتوا
+    const box = document.getElementById("chatModalBody");
+    if (!Array.isArray(msgs) || !msgs.length){
+      box.innerHTML = `<div class="muted">پیامی برای نمایش پیدا نشد.</div>`;
+      openModal("جزئیات گفتگو", box.innerHTML);
+      return;
+    }
+
+    // Helperها از همین فایل:
+    const safe = (s)=> (typeof escapeHtml==="function" ? escapeHtml(String(s||"")) : String(s||""));
+    const renderMd = (s)=> (typeof renderAdminContent==="function" ? renderAdminContent(String(s||"")) : safe(s));
+
+    const html = msgs.map(m=>{
+      const role = String(m?.role||"").toLowerCase();
+      const isUser = (role === "user");
+      const cls = isUser ? "bubble user" : "bubble bot";
+      const ts  = Number(m?.ts || m?.time || m?.createdAt || 0);
+      const when = ts ? new Date(ts).toLocaleString("fa-IR") : "";
+      const body = renderMd(m?.content || "");
+
+      // ✅ client_id برای هر دو نقش (اگر وجود داشته باشد) + مدل برای دستیار
+      const cid = m?.meta?.client_id || m?.meta?.clientId || m?.client_id || m?.clientId || "";
+      const model = !isUser ? (m?.model ? ` | مدل: ${safe(m.model)}` : "") : "";
+
+      return `
+        <div class="msg-row">
+          <div class="${cls} rendered">${body}</div>
+          <div class="msg-actions">
+            <small class="muted mono">${safe(when)}${model}</small>
+            ${cid ? `<small class="muted mono">client: ${safe(cid)}</small>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    box.innerHTML = html;
+
+    // باز کردن مودال (اگر بسته بود)
+    openModal(title || "جزئیات گفتگو", html);
+
+    // (اختیاری) گرفتن رِیتینگ‌ها
+    try{ await fetch(API + "/admin/ratings?chatId=" + encodeURIComponent(chatId)); }catch{}
+  }catch(e){
+    console.error(e);
+    try{
+      document.getElementById("chatModalBody").innerHTML = `<div class="err">خطا در نمایش پیام‌ها</div>`;
+      openModal("جزئیات گفتگو", `<div class="err">خطا در نمایش پیام‌ها</div>`);
+    }catch{}
+  }
+}
+
+
+
 searchChat.oninput = ()=> renderChatsTable(currentChats);
+
 async function delChat(chatId){
   if (!activeUid) { alert("ابتدا یک کاربر انتخاب کنید."); return; }
   if (!confirm("این گفتگو حذف شود؟")) return;
@@ -1275,79 +1542,118 @@ function escapeHtml(s){
     .replace(/'/g,"&#039;");
 }
 
-
 async function showChat(chatId){
   try{
-    // 1) پیام‌ها را از summary بگیر (سازگار با ساختار جدید)
-    const r = await fetch(`summary?chatId=${encodeURIComponent(chatId)}`);
-    const data = await r.json();
+    // عنوان/متا از لیستِ چت‌های فعلی
+    const meta = (Array.isArray(window.currentChats) ? window.currentChats : []).find(
+      c => (c?.chatId || c?.id) === chatId
+    ) || {};
+    const title = (meta?.title || `گفتگو ${chatId}`).trim();
+    const updatedTs = Number(meta?.updatedAt || meta?.ts || meta?.time || 0) || 0;
+    const updatedStr = updatedTs ? new Date(updatedTs).toLocaleString("fa-IR") : "—";
 
-    // 2) هم با ساختار جدید سازگار شو هم قدیمی
-    const msgs =
-      (Array.isArray(data?.messages) ? data.messages : null) ||
-      (Array.isArray(data?.chat?.messages) ? data.chat.messages : []) ||
-      [];
-
-    // 3) رأی‌ها (برای ستاره/آیکون کنار پیام‌ها)
-    let ratings = {};
+    // ➊ تلاش اول: /admin/chat?chatId=...
+    let msgs = [];
     try{
-      const rr = await fetch(`ratings?chatId=${encodeURIComponent(chatId)}`);
-      const rj = await rr.json();
-      ratings = (rj && rj.ratings) || {};
+      const r1 = await fetch(API + "/admin/chat?chatId=" + encodeURIComponent(chatId));
+      const j1 = await r1.json().catch(()=> ({}));
+      let arr = j1?.messages || j1?.chat?.messages;
+      if (typeof arr === "string"){ try{ arr = JSON.parse(arr); }catch{ arr = []; } }
+      if (Array.isArray(arr)) msgs = arr;
     }catch{}
 
-    // 4) رندر مودال
-    const rows = [];
-    if (msgs.length === 0){
-      rows.push(`<div class="empty-msg">پیامی نیست</div>`);
-    } else {
-      for (const m of msgs){
-        // متن
-        const text =
-          (typeof m?.content === "string" && m.content) ||
-          (Array.isArray(m?.content) ? m.content.map(p => p?.text || "").join("\n") : "") ||
-          "";
-
-        // نقش
-        const role = (m?.role === "assistant" ? "دستیار" : "کاربر");
-
-        // رأی (سعی می‌کنیم بر اساس id / client_id / server_id پیدا کنیم)
-        const keys = [];
-        if (m?.id) keys.push(String(m.id));
-        const mm = m?.meta || {};
-        if (mm.client_id) keys.push(String(mm.client_id));
-        if (mm.clientId)  keys.push(String(mm.clientId));
-        if (mm.server_id) keys.push(String(mm.server_id));
-        if (mm.serverId)  keys.push(String(mm.serverId));
-        let vote = "";
-        for (const k of keys){
-          const v = ratings?.[k];
-          if (v === "up"){ vote = "👍"; break; }
-          if (v === "down"){ vote = "👎"; break; }
-        }
-
-        rows.push(`
-          <div class="chat-row">
-            <div class="chat-row-head">
-              <span class="role">${role}</span>
-              <span class="vote">${vote}</span>
-            </div>
-            <div class="chat-row-body">${escapeHtml(text || "-")}</div>
-          </div>
-        `);
+    // ➋ اگر چیزی نگرفت، فالبک: از /admin/export?uid=activeUid پیدا کن
+    if (!msgs.length){
+      const uid = (window.activeUid || "").trim();
+      if (uid){
+        try{
+          const r2 = await fetch(API + "/admin/export?uid=" + encodeURIComponent(uid));
+          const j2 = await r2.json().catch(()=> ({}));
+          const list = Array.isArray(j2?.chats) ? j2.chats
+                     : Array.isArray(j2?.all?.chats) ? j2.all.chats
+                     : [];
+          for (const it of list){
+            const c = it?.chat || it || {};
+            const id = c.chatId || c.id || "";
+            if (id === chatId){
+              let m = c.messages;
+              if (typeof m === "string"){ try{ m = JSON.parse(m); }catch{ m = []; } }
+              if (Array.isArray(m)) msgs = m;
+              break;
+            }
+          }
+        }catch{}
       }
     }
 
-    openModal("جزئیات گفتگو", `
-      <div class="chat-details">
-        <div class="chat-details-title">گفتگو: <code>${escapeHtml(chatId || "-")}</code></div>
-        ${rows.join("")}
-      </div>
-    `);
+    // ➌ اگر هنوز چیزی نیست، از userProfile آخرینِ گفتگو را (مثل همانی که در نت‌وُرک دیدی) بخوان
+    if (!msgs.length){
+      const uid = (window.activeUid || "").trim();
+      if (uid){
+        try{
+          const rp = await fetch(API + "/admin/userProfile?uid=" + encodeURIComponent(uid));
+          const jp = await rp.json().catch(()=> ({}));
+          const latest = jp?.latest || {};
+          if (Array.isArray(latest?.messages)) msgs = latest.messages;
+        }catch{}
+      }
+    }
 
+    // تنظیم سربرگ مودال (چسبان)
+    try{
+      document.getElementById("chatModalTitle").textContent = title || "جزئیات گفتگو";
+      const sub = document.getElementById("chatModalSub");
+      if (sub) sub.textContent = `شناسه: ${chatId} — آخرین تغییر: ${updatedStr}`;
+    }catch{}
+
+    // ➍ رندر محتوا
+    const box = document.getElementById("chatModalBody");
+    if (!Array.isArray(msgs) || !msgs.length){
+      box.innerHTML = `<div class="muted">پیامی برای نمایش پیدا نشد.</div>`;
+      openModal("جزئیات گفتگو", box.innerHTML);
+      return;
+    }
+
+    // Helperها از همین فایل:
+    const safe = (s)=> (typeof escapeHtml==="function" ? escapeHtml(String(s||"")) : String(s||""));
+    const renderMd = (s)=> (typeof renderAdminContent==="function" ? renderAdminContent(String(s||"")) : safe(s));
+
+    const html = msgs.map(m=>{
+      const role = String(m?.role||"").toLowerCase();
+      const isUser = (role === "user");
+      const cls = isUser ? "bubble user" : "bubble bot";
+      const ts  = Number(m?.ts || m?.time || m?.createdAt || 0);
+      const when = ts ? new Date(ts).toLocaleString("fa-IR") : "";
+      const body = renderMd(m?.content || "");
+
+      // ✅ client_id برای هر دو نقش (اگر وجود داشته باشد) + مدل برای دستیار
+      const cid = m?.meta?.client_id || m?.meta?.clientId || m?.client_id || m?.clientId || "";
+      const model = !isUser ? (m?.model ? ` | مدل: ${safe(m.model)}` : "") : "";
+
+      return `
+        <div class="msg-row">
+          <div class="${cls} rendered">${body}</div>
+          <div class="msg-actions">
+            <small class="muted mono">${safe(when)}${model}</small>
+            ${cid ? `<small class="muted mono">client: ${safe(cid)}</small>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    box.innerHTML = html;
+
+    // باز کردن مودال (اگر بسته بود)
+    openModal(title || "جزئیات گفتگو", html);
+
+    // (اختیاری) گرفتن رِیتینگ‌ها
+    try{ await fetch(API + "/admin/ratings?chatId=" + encodeURIComponent(chatId)); }catch{}
   }catch(e){
     console.error(e);
-    openModal("جزئیات گفتگو", `<div class="empty-msg">خطا در دریافت پیام‌ها</div>`);
+    try{
+      document.getElementById("chatModalBody").innerHTML = `<div class="err">خطا در نمایش پیام‌ها</div>`;
+      openModal("جزئیات گفتگو", `<div class="err">خطا در نمایش پیام‌ها</div>`);
+    }catch{}
   }
 }
 
@@ -1455,65 +1761,73 @@ div.appendChild(right);
 
 
 async function loadUserChats(uid){
-  const host = document.getElementById("chatsTableWrap");
-  if (!host) return;
-
-  host.innerHTML = "درحال بارگذاری گفتگوها…";
   try{
-    let chats = [];
-    try{
-      const r = await fetch(API + `/admin/chats?uid=${encodeURIComponent(uid)}`);
-      const j = await r.json();
-      chats = Array.isArray(j?.chats) ? j.chats : [];
-    }catch(_){}
-    if (!chats.length){
-      const ex = await jget(`/admin/export?uid=${encodeURIComponent(uid)}`);
-      chats = Array.isArray(ex?.chats) ? ex.chats
-        : (Array.isArray(ex?.all?.chats) ? ex.all.chats : []);
+    userList.innerHTML = `<div class="muted">درحال بارگذاری…</div>`;
+    // ➊ اول سعی کن کاربران را از /admin/users بگیری؛
+    // ➋ اگر نشد/خالی بود، فالبک به /admin/export
+    let j = {};
+    try {
+const r1 = await fetch(API + "/admin/users");
+j = await r1.json();
+// اگر اصلاً آرایه نبود یا آرایه خالی بود، برو فالبک
+if (!Array.isArray(j?.users) || j.users.length === 0) throw new Error("no users");
+
+    } catch {
+      const r2 = await fetch(API + "/admin/export");
+      j = await r2.json().catch(()=> ({}));
     }
 
-// 🔎 پر کردن پرچم رأی‌ها برای هر گفتگو
-const enriched = await Promise.all(chats.map(async (c) => {
-  try{
-    const rrate = await jget("/admin/ratings?chatId=" + encodeURIComponent(c.chatId));
-    const rr = rrate && rrate.ratings;
-    const has = rr && (Array.isArray(rr) ? rr.length > 0 : Object.keys(rr).length > 0);
-    return Object.assign({}, c, { hasRatings: !!has });
-  }catch{
-    return Object.assign({}, c, { hasRatings: false });
-  }
-}));
+    // منبع سازگار: data.users یا data.all.users
+    const arr = Array.isArray(j?.users) ? j.users
+              : Array.isArray(j?.all?.users) ? j.all.users
+              : [];
 
-    if (!chats.length){
-      host.textContent = "گفتگویی برای این کاربر یافت نشد.";
+    if (!arr.length){
+      userList.innerHTML = `<div class="muted">کاربری یافت نشد.</div>`;
       return;
     }
 
-    host.innerHTML = "";
-    const table = document.createElement("table");
-    table.innerHTML = `
-      <thead><tr><th>شناسه</th><th>عنوان</th><th>آخرین‌به‌روزرسانی</th><th>اکشن</th></tr></thead>
-      <tbody></tbody>
-    `;
-    const tbody = table.querySelector("tbody");
-enriched.forEach(c=>{
+    // مرتب‌سازی: آخرین فعالیت بالاتر
+    arr.sort((a,b)=> Number(b?.lastSeen||0) - Number(a?.lastSeen||0));
 
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="mono">${c.chatId}</td>
-        <td>${c.title || "-"}</td>
-        <td>${c.updatedAt ? new Date(c.updatedAt).toLocaleString('fa-IR') : "-"}</td>
-<td>
-  <button class="btn ghost" onclick="showChat('${c.chatId}')">نمایش</button>
-  ${c.hasRatings ? '<span title="این گفتگو حداقل یک رأی دارد">★</span>' : ''}
-</td>
+    // رندر کارت‌ها
+userList.innerHTML = arr.map(u=>{
+  const uid   = (u?.uid || u?.username || "").trim();
+  const lastT = Number(u?.lastSeen ?? u?.lastLogin ?? 0);   // ✅ فالبک به lastLogin
+  const firstT= Number(u?.createdAt ?? u?.firstSeen ?? 0);  // همان قبلی + ایمن‌سازی
 
-      `;
-      tbody.appendChild(tr);
+  const last  = lastT ? new Date(lastT).toLocaleString("fa-IR") : "—";
+  const first = firstT ? new Date(firstT).toLocaleString("fa-IR") : "—";
+
+  return `
+    <div class="user-item" data-uid="${uid}">
+      <div class="user-meta">
+        <b class="mono" style="direction:ltr">${uid || "—"}</b>
+        <small>اولین‌بار: ${first}</small>
+        <small>آخرین‌فعالیت: ${last}</small>
+      </div>
+      <div class="row">
+        <span class="badge">${u?.banned ? "بن‌شده" : "عادی"}</span>
+      </div>
+    </div>`;
+}).join("");
+
+
+    // انتخاب کاربر و لود چت‌ها + پروفایل
+    document.querySelectorAll(".user-item").forEach(it=>{
+      it.onclick = async ()=>{
+        document.querySelectorAll(".user-item").forEach(n=> n.classList.remove("active"));
+        it.classList.add("active");
+        window.activeUid = it.getAttribute("data-uid") || "";
+        // لود جدول چت‌ها و پروفایل
+        try{ await loadChatsFor(window.activeUid); }catch{}
+        try{ await loadUserProfile(window.activeUid); }catch{}
+      };
     });
-    host.appendChild(table);
+
   }catch(e){
-    host.textContent = "خطا در دریافت گفتگوها";
+    console.error(e);
+    userList.innerHTML = `<div class="muted">خطا در دریافت کاربران</div>`;
   }
 }
 
@@ -1946,6 +2260,35 @@ function escapeHtml(s=""){
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
+
+  // Markdown → HTML برای پنجرهٔ ادمین (با highlight.js)
+  function renderAdminContent(md){
+    try{
+      // تنظیماتِ مشابهِ صفحهٔ چت
+      if (window.marked && typeof marked.setOptions==="function"){
+        marked.setOptions({ breaks:true, gfm:true });
+      }
+      const raw = String(md||"");
+      const html = (window.marked && typeof marked.parse==="function")
+        ? marked.parse(raw)
+        : raw.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); // فالبکِ ساده
+
+      // های‌لایت کُد
+      const tmp = document.createElement("div");
+      tmp.className = "rendered";
+      tmp.innerHTML = html;
+      if (window.hljs){
+        tmp.querySelectorAll("pre code").forEach(block=>{
+          try{ hljs.highlightElement(block); }catch(_){}
+        });
+      }
+      return tmp.innerHTML;
+    }catch(_){
+      return (md||"");
+    }
+  }
+
+
 
 const msgsHtml = (Array.isArray(chat.messages) ? chat.messages : []).map(m => {
   const isBot = (m?.role === "assistant");
