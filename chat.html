@@ -631,20 +631,6 @@ body:not(.dark) #btnChangePass {
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <!-- MathJax 3 (مثل ChatGPT) -->
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['$', '$'], ['\\(', '\\)']],
-      displayMath: [['$$','$$'], ['\\[','\\]']],
-      processEscapes: true
-    },
-    options: {
-      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-    },
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
 </head>
 
@@ -949,7 +935,7 @@ body:not(.dark) #btnChangePass {
         <button id="authCancel" class="link ghost">انصراف</button>
         <button id="authDoRegister" class="link">ثبت‌نام</button>
       </div>
-      <div class="auth-note"> نام کاربری باید با حروف کوچک باشد . رمز عبور حداقل باید 4 رقم باشد .</div>
+      <div class="auth-note"> نام کاربری باید با حروف کوچک باشد . رمز عبور حداقل باید 4 رقم باشد . ورود یا ثبت نام شما به منزله ی پذیرش [پذیرش قوانین](https://mioo.zapier.app/ghanon) است</div>
     </div>
 
     <!-- ورود -->
@@ -1290,8 +1276,6 @@ async function verifySession(){
 // اجرا در شروع
 document.addEventListener("DOMContentLoaded", ()=>{ verifySession(); });
 // هر بار برگردیم روی تب/پنجره
-document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) verifySession(); });
-window.addEventListener("focus", ()=> verifySession());
 
 // --- sync helpers ---
 // همگام‌سازی پایین‌کش: سرور ← لوکال (سرور مرجع است، اما تازه‌تر برنده)
