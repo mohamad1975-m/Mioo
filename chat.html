@@ -123,6 +123,42 @@ background: #f8f9fb url('https://s34.picofile.com/file/8487624900/10_11zon_2_.jp
 }
 .rendered { direction: rtl; unicode-bidi: plaintext; }
 .rendered pre, .rendered code { direction: ltr; unicode-bidi: embed; } /* کد همیشه چپ‌به‌راست */
+/* لودر انیمیشنی حباب بات */
+.typing-loader{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:2px 0;
+}
+
+.typing-loader span{
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:#4b5563;
+  opacity:0.3;
+  animation:typingBounce 1s infinite ease-in-out;
+}
+
+.typing-loader span:nth-child(2){
+  animation-delay:0.15s;
+}
+.typing-loader span:nth-child(3){
+  animation-delay:0.30s;
+}
+
+@keyframes typingBounce{
+  0%,80%,100%{
+    transform:translateY(0);
+    opacity:0.3;
+  }
+  40%{
+    transform:translateY(-4px);
+    opacity:1;
+  }
+}
+
 
 /* تصاویر داخل پاسخ‌ها (حباب بات/کاربر) */
 .rendered img{
@@ -1452,25 +1488,42 @@ function isWebQuery(t=""){
   const starters = ["جستجو کن", "جستجو:", "سرچ", "search", "وب:", "گوگل", "🔎"];
   return starters.some(s => text.startsWith(s)) || /جستجو کن|سرچ کن|تو گوگل/i.test(text);
 }
-function wantsImage(t=""){
-  const s = (t||"").trim();
-  // اگر کلمه‌ی «عکس/تصویر» یا آیکن‌های مرتبط داخل جمله بود
-  const markers = ["عکس", "تصویر", "photo", "image", "🖼️", "📷"];
-  if (!markers.some(k => s.toLowerCase().includes(k))) return null;
+function wantsImage(t = "") {
+  if (!t || typeof t !== "string") return null;
 
-  // الگوهای متداول فارسی: «عکس ... رو بفرست / بده / ارسال کن / نشون بده ...»
+  const s = t.trim();
+  const lower = s.toLowerCase();
+
+  // 🔹 اگر کاربر واضحاً راهنما / آموزش می‌خواهد (نه خودِ تصویر)
+  if (/(فتوشاپ|photoshop|چطور|چجوری|آموزش|راهنما|به من یاد بده|راهکار)/i.test(lower)) {
+    return null;
+  }
+
+  // 🔹 باید کلمه‌ی مربوط به تصویر تو جمله باشد
+  const hasMarker = /(عکس|تصویر|photo|image|🖼️|📷)/i.test(s);
+  if (!hasMarker) return null;
+
+  // 🔹 و باید شبیه «عکس بساز/بکش/بفرست…» باشد
+  const hasCreateVerb = /(بفرست|بده|بزار|بذار|ارسال کن|نشون بده|بساز|بکش|رسم کن|طراحی کن|generate|draw|create|design|make)/i.test(s);
+
+  // یا جمله با «یه عکس/یک عکس/تصویر از…» شروع شده باشد
+  const startsLikeImageRequest = /^\s*((بفرست|یه|یک)\s*)?(عکس|تصویر)\b/i.test(s);
+
+  if (!hasCreateVerb && !startsLikeImageRequest) {
+    // یعنی فقط گفته «عکس من»، «عکس‌هام» و… → جواب متنی بده
+    return null;
+  }
+
+  // 🔹 تمیز کردن جمله برای کوئری تصویر
   let q = s
-    // اگر ابتدای جمله «عکس/تصویر از ...» بود، همان را حذف کن
     .replace(/^((بفرست|یه|یک)\s*)?(عکس|تصویر)\s*(از|:)?/i, "")
-    // پایان‌های دستوری رایج را حذف کن
-    .replace(/\s+(رو\s*)?(بفرست|بده|بزار|بذار|ارسال کن|نشون بده)\s*$/i, "")
-    // کلمات ربط رایج بی‌فایده را حذف کن
+    .replace(/\s+(رو\s*)?(بفرست|بده|بزار|بذار|ارسال کن|نشون بده|بساز|بکش|رسم کن|طراحی کن)\s*$/i, "")
     .replace(/\s+(رو|را|یه|یک)\s+/g, " ")
     .trim();
 
-  // اگر چیزی باقی نماند، همان ورودی اصلی را برگردان تا حداقل امتحان شود
   return q || s;
 }
+
 
 
 const $ = id => document.getElementById(id);
@@ -1634,9 +1687,14 @@ async function flyFromInputToBubble(text, bubbleEl){
         setTimeout(()=>{ if(!done) try{ obs.disconnect(); }catch{} }, 3000);
       }
 
-// همگام‌سازی خودکار غیرفعال شد (فقط روی رفرش صفحه)
-try { await Promise.resolve(p); } catch {}
-return p;
+      // بعد از اتمام ارسال، چت‌ها را با سرور همگام کن تا در صفحهٔ ادمین دیده شوند
+      try {
+        await Promise.resolve(p);
+      } finally {
+        try { await safeSync("up"); } catch {}
+      }
+      return p;
+
 
     };
 
@@ -3023,10 +3081,9 @@ function attachActions(row, bubbleEl, msgObj){
     setTimeout(()=>copyBtn.innerHTML = SVGs.copy, 1200);
   });
 
-  const infoBtn = btn("جزئیات پیام", SVGsOutline.info, ()=>{
-    toggleInfoUI(infoBtn, true);
-    openInfo();
-  });
+const infoBtn = btn("جزئیات پیام", SVGsOutline.info, ()=>{
+  openMsgInfo(msgObj, bubbleEl);
+});
 
   const retryBtn = btn("دریافت مجدد", SVGs.retry, ()=>{
     retryAssistant(msgObj, row, bubbleEl);
@@ -3042,15 +3099,15 @@ function attachActions(row, bubbleEl, msgObj){
 }
 
 
-  // --- پیام‌های کاربر
-  else {
+// --- پیام‌های کاربر
+else {
   const infoBtn = btn("جزئیات پیام", SVGsOutline.info, ()=>{
-    toggleInfoUI(infoBtn, true);
-    openInfo();
+    openMsgInfo(msgObj, bubbleEl);
   });
   inline.appendChild(infoBtn);
   bubbleEl.appendChild(inline);
 }
+
 
   // بعد از ساخت دکمه‌ها و قبل از خروج از attachActions:
 const saved = loadRatings()[msgObj.id];
@@ -3064,72 +3121,163 @@ if (saved === "up"){
 
 }
 
+// باز کردن مودال «جزئیات پیام»
 // جزییات پیام
 function openMsgInfo(msgObj, bubbleEl){
-  const v = msgObj.versions[msgObj.active];
-const fmt = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { dateStyle:"medium", timeStyle:"short" });
-const model = v.meta?.model || "-";
-const text = (msgObj.role === "assistant" ? bubbleEl.querySelector(".rendered")?.innerText || v.content : v.content) || "";
-const tokenEst = estimateTokens(text);
+  if (!msgObj) return;
 
-// دو شناسه را جداگانه محاسبه کن
-const cid = v.meta?.client_id || msgObj.id;          // همیشه موجود است
-const sid = v.meta?.server_id || "-";                // اگر سرور داده باشد
+  // المان‌های مودال
+  const msgInfo       = document.getElementById("msgInfo");
+  const msgInfoBody   = document.getElementById("msgInfoBody");
+  const msgInfoActions= document.getElementById("msgInfoActions");
 
-msgInfoBody.innerHTML =
-  `<div>شناسهٔ کلاینت (CID): <b class="mono">${cid}</b> <button id="copyCid" class="link ghost" style="margin-inline-start:8px">کپی</button></div>` +
-  `<div>شناسهٔ سرور (SID): <b class="mono">${sid}</b></div>` +
-  `<div>تاریخ/ساعت: <b>${fmt.format(new Date(v.ts))}</b></div>` +
-  (msgObj.role==="assistant" ? `<div>مدل: <b>${model}</b></div>` : ``) +
-  `<div>تخمین توکن: <b>${tokenEst}</b></div>`;
+  if (!msgInfo || !msgInfoBody || !msgInfoActions) return;
 
-  // دکمهٔ کپی CID
-setTimeout(() => {
-  const btnCopyCid = document.getElementById("copyCid");
-  if (btnCopyCid) {
-    btnCopyCid.onclick = async () => {
-      await navigator.clipboard.writeText(cid);
-      btnCopyCid.textContent = "کپی شد";
-      setTimeout(() => btnCopyCid.textContent = "کپی", 1200);
+  // نسخهٔ فعال پیام (مثل ساختار ادمین)
+  const v = Array.isArray(msgObj.versions)
+    ? (msgObj.versions[msgObj.active || 0] || msgObj.versions[0])
+    : msgObj;
+
+  const meta = (v && typeof v.meta === "object")
+    ? v.meta
+    : (msgObj.meta || {});
+
+  // زمان پیام
+  const ts =
+    v.ts ||
+    msgObj.ts ||
+    msgObj.createdAt ||
+    meta.ts ||
+    Date.now();
+
+  const dt = (typeof ts === "number") ? new Date(ts) : new Date(String(ts));
+  const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+  const faDateTime = fmt.format(dt);
+
+  // مدل (اگر پیام دستیار باشد)
+  const model =
+    meta.model ||
+    meta.usedModel ||
+    meta.actualModel ||
+    "-";
+
+  // متن واقعی پیام (برای تخمین توکن و کپی متن)
+  const text = (
+    msgObj.role === "assistant"
+      ? (bubbleEl.querySelector(".rendered")?.innerText || v.content || msgObj.content || "")
+      : (v.content || msgObj.content || "")
+  ) || "";
+
+  const tokenEst = estimateTokens(text);
+
+  // شناسهٔ کلاینتی (همان که در ادمین می‌بینی)
+  // شناسهٔ کلاینتی (همان که در ادمین و روی حباب می‌بینی)
+  const cid =
+    meta.client_id ||
+    meta.clientId ||
+    meta.client ||
+    meta.clientID ||
+    msgObj.id || "";
+
+
+  // تابع escape برای HTML
+  const esc = s => String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+
+  // ساخت بدنهٔ مودال
+  let html = "";
+
+  // ⬅️ اول: شناسهٔ کلاینت (همان 21-52 و …)
+  if (cid) {
+    html += `
+      <div>
+        شناسهٔ کلاینت (CID):
+        <b class="mono" id="msgInfoCid">${esc(cid)}</b>
+        <button id="msgInfoCopyCid" class="link ghost" style="margin-inline-start:8px">
+          کپی
+        </button>
+      </div>
+    `;
+  }
+
+  // ⬅️ بعد: تاریخ/ساعت و مدل و توکن
+  html += `
+    <div>تاریخ/ساعت: <b>${esc(faDateTime)}</b></div>
+    ${msgObj.role === "assistant" ? `<div>مدل: <b class="mono">${esc(model)}</b></div>` : ""}
+    <div>برآورد تعداد توکن (تقریبی): <b>${tokenEst}</b></div>
+  `;
+
+  // تزریق محتوا در مودال
+  msgInfoBody.innerHTML = html;
+
+  // نوار اکشن‌ها پایین مودال
+  msgInfoActions.innerHTML = "";
+
+  // دکمهٔ کپی CID (اگر وجود داشته باشد)
+  const copyCidBtn = document.getElementById("msgInfoCopyCid");
+  if (copyCidBtn && cid) {
+    copyCidBtn.onclick = async () => {
+      try { await navigator.clipboard.writeText(String(cid)); } catch {}
     };
   }
-}, 0);
 
+  // دکمهٔ «کپی پیام»
+  const copyMsgBtn = document.createElement("button");
+  copyMsgBtn.className = "link ghost";
+  copyMsgBtn.textContent = "کپی پیام";
+  copyMsgBtn.onclick = async () => {
+    try { await navigator.clipboard.writeText(text); } catch {}
+  };
+  msgInfoActions.appendChild(copyMsgBtn);
 
-  // اکشن‌های مخصوص
-  msgInfoActions.innerHTML="";
-  const copyBtn=document.createElement("button");
-  copyBtn.className="link ghost"; copyBtn.textContent="کپی پیام";
-  copyBtn.onclick=async()=>{ await navigator.clipboard.writeText(text); };
-  msgInfoActions.appendChild(copyBtn);
-
-  if(msgObj.role==="user"){
-    const editBtn=document.createElement("button");
-    editBtn.className="link"; editBtn.textContent="ویرایش پیام";
-    editBtn.onclick=()=>{ editUserMessage(msgObj, bubbleEl.parentElement, bubbleEl); };
+  // اگر پیام کاربر بود، دکمهٔ «ویرایش پیام»
+  if (msgObj.role === "user") {
+    const editBtn = document.createElement("button");
+    editBtn.className = "link";
+    editBtn.textContent = "ویرایش پیام";
+    editBtn.onclick = () => {
+      editUserMessage(msgObj, bubbleEl.parentElement, bubbleEl);
+    };
     msgInfoActions.appendChild(editBtn);
   }
 
-  const ok=document.createElement("button");
-  ok.className="link"; ok.textContent="بستن";
-  ok.onclick=()=>{ msgInfo.classList.remove("show"); msgInfo.setAttribute("aria-hidden","true"); };
+  // دکمهٔ بستن
+  const ok = document.createElement("button");
+  ok.className = "link";
+  ok.textContent = "بستن";
+  ok.onclick = () => {
+    msgInfo.classList.remove("show");
+    msgInfo.setAttribute("aria-hidden","true");
+  };
   msgInfoActions.appendChild(ok);
-  
 
-  
-
-  msgInfo.classList.add("show"); msgInfo.setAttribute("aria-hidden","false");
+  // نمایش مودال
+  msgInfo.classList.add("show");
+  msgInfo.setAttribute("aria-hidden","false");
 }
+
 
 // متوقف‌شدن
 function showStopped(){ addBot("متوقف شد"); }
 function setBusy(b){
-  busy=b;
-  btn.disabled=false;
+  busy = b;
+  btn.disabled = false;
   sendIcon.style.display = b ? "none" : "inline";
   stopIcon.style.display = b ? "inline" : "none";
-  statusEl.textContent=b?"درحال پاسخ…":"آماده";
+  // دیگه وقتی بات مشغوله، متن «درحال پاسخ…» تنظیم نمی‌کنیم
+  // فقط وقتی کارش تموم شد، وضعیت رو برمی‌گردونیم به «آماده»
+  if (!b) {
+    statusEl.textContent = "آماده";
+  }
 }
+
 btn.onclick=()=> { if(busy){ stop(); } else send(); };
 inp.addEventListener("keydown",(e)=>{
   const mode=localStorage.getItem(KEY_SHORTCUT)||"enter";
@@ -3267,19 +3415,22 @@ function safeMsgs(){
 
 // ارسال
 async function send(){
-  await checkBanOrBlock();
+  // checkBanOrBlock(); // اگر خواستی هر از گاهی دستی صدا بزنی، اینجا بدون await بنویس
 
   const text = inp.value.trim(); 
   if (!text || busy) return;
-
-  // اول تشخیص بده آیا درخواستِ عکس است
+  // اول پیام کاربر را همان لحظه در چت نشان بده
   const imageQuery = wantsImage(text);
+  // متغیرهای حباب موقت بات (در حال پاسخ)
+  let pendingBot = null;
+  let pendingMeta = null;
 
   // ✅ پیام کاربر فقط یک‌بار اضافه شود
   const userCid = await addUser(text);
   inp.value = "";
   inp.focus();
   maybeSetTitle();
+
 
   if (imageQuery) {
     try {
@@ -3352,9 +3503,8 @@ async function send(){
   }
 
   setBusy(true); stoppedByUser=false; shouldStopStreaming=false; controller=new AbortController();
-
-  if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
-else statusEl.textContent = "درحال پاسخ…";
+if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
+else statusEl.textContent = "⏳";
 
   try{
     // قبل از ساخت payload، مدل و provider را بگیر
@@ -3369,16 +3519,28 @@ const titleCandidateSource = [...userHunks, text].join(" \n ").trim();
 // اینجا همان منطق فعلی خلاصه‌سازی/حذف سلام و … خودت را اجرا کن اگر داری
 
 // تمام پیام‌های فعلیِ چت (پیام کاربر که همین الان addUser شده هم داخلشه)
-const messagesToSend = safeMsgs().map(m => ({
-  role: m.role,
-  content: m.versions?.[m.active]?.content ?? m.content ?? "",
-  id: m.id,
-  meta: m.versions?.[m.active]?.meta ?? m.meta ?? null
-}));
+  // تمام پیام‌های فعلیِ چت (پیام کاربر که همین الان addUser شده هم داخلشه)
+  const messagesToSend = safeMsgs().map(m => ({
+    role: m.role,
+    content: m.versions?.[m.active]?.content ?? m.content ?? "",
+    id: m.id,
+    meta: m.versions?.[m.active]?.meta ?? m.meta ?? null
+  }));
 
+// 🔵 همین‌جا یک حباب موقت برای بات بسازیم تا کاربر بداند در حال پاسخ است
+pendingMeta = { model, server_id: null };
 
-// درخواست به سرور
-const r = await fetch(API, {
+// HTML لودر انیمیشنی داخل حباب بات
+const loaderHtml = '<div class="typing-loader"><span></span><span></span><span></span></div>';
+
+pendingBot = addBot(loaderHtml, false, pendingMeta);
+if (pendingBot && pendingBot.id) {
+  pendingMeta.client_id = pendingBot.id;  // CID فعلاً همین‌جا ذخیره می‌شود
+}
+
+  // درخواست به سرور
+  const r = await fetch(API, {
+
   method: "POST",
   signal: controller.signal,
   headers: {
@@ -3397,7 +3559,7 @@ const r = await fetch(API, {
 });
 
 if (WEB_ON) statusEl.textContent = "در حال جستجو در وب…";
-else statusEl.textContent = "درحال پاسخ…";
+else statusEl.textContent = "⏳";
 
 
 const raw = await r.text();
@@ -3425,51 +3587,67 @@ if (j && j.user_msg_id) {
     }
   }
 }
-
-if (j?.content) {
+if (j?.content) { 
   const usedModel = j.model || model;
-  if (getMode() === "auto") { setAutoLastModel(usedModel); refreshModelChip(); } // نمایش مدل واقعی
+  if (getMode() === "auto") {
+    setAutoLastModel(usedModel);
+    refreshModelChip();
+  } // نمایش مدل واقعی
 
-  // متادیتای اولیهٔ پیام دستیار (شامل SID اگر سرور داد)
-  const meta = { model: usedModel, server_id: (j.assistant_msg_id || null) };
+  // اگر حباب موقت قبلاً ساخته شده، از همان استفاده می‌کنیم
+  const meta = pendingMeta || {
+    model: usedModel,
+    server_id: null
+  };
 
-  // پیام دستیار را اضافه کن
-  const res = addBot("", false, meta);
-  await typewriter(res.bubble.querySelector(".rendered"), j.content);
+  // SID که از سرور آمده را روی meta بگذار
+  meta.server_id = (j.assistant_msg_id || null);
+
+  // اگر به هر دلیلی حباب موقت ساخته نشده بود، الان بساز
+  let res = pendingBot;
+  if (!res) {
+    res = addBot("", false, meta);
+    if (res && res.id) {
+      meta.client_id = res.id;
+    }
+  }
+
+  // 🔹 اینجا: مپ کردن client_id پیام بات بین چت و ادمین
+  if (j.assistant_msg_id && res && res.id && j.chat_id) {
+    // ریشه‌ی API (حذف /api از آخر)
+    const API_ROOT = API_BASE.replace(/\/api$/, "");
+    fetch(API_ROOT + "/mapCid", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: j.chat_id,              // شناسهٔ چت در دیتابیس
+        message_id: j.assistant_msg_id,  // ID پیام بات در جدول messages
+        client_id: res.id                // همون ID که توی صفحهٔ چت می‌بینی
+      })
+    }).catch(()=>{ /* مهم نیست اگر خطا داد */ });
+  }
+
+  // تایپ‌نویسی متن بات داخل همان حباب
+  const targetEl = res.bubble.querySelector(".rendered");
+  if (targetEl) {
+    targetEl.innerHTML = "";           // آیکون ⏳ را پاک کن
+    await typewriter(targetEl, j.content);
+  } else {
+    await typewriter(res.bubble.querySelector(".rendered"), j.content);
+  }
   appendVersion(res.id, j.content, meta);
-    // ✅ به‌روزرسانی عنوان و ذخیره در لیست گفتگوها
-    persistCurrentChat?.();
+
+  // ✅ به‌روزرسانی عنوان و ذخیره در لیست گفتگوها
+  persistCurrentChat?.();
   maybeSetTitle?.();
   if (typeof renderChatList === "function") {
     renderChatList(chatSearch?.value || "");
   }
 
-  persistCurrentChat?.();
-maybeSetTitle?.();
-if (typeof renderChatList === "function") {
-  renderChatList(chatSearch?.value || "");
-}
-
-
-  // ✅ (اختیاری اما پیشنهادی): مپ‌کردن CID دستیار به سرور، برای اینکه در ادمین هم CID بات دیده شود
-  try {
-    if (j.assistant_msg_id && j.chat_id && res?.id) {
-      fetch(API.replace("/api/chat","/mapCid"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: j.chat_id,                 // شناسه چت سمت کلاینت/سرور
-          message_id: j.assistant_msg_id,     // SID پیام دستیار
-          client_id: res.id                   // CID پیام دستیار در کلاینت
-        })
-      });
-    }
-  } catch {}
-
-  res.row.ensureArrows && res.row.ensureArrows?.();
 } else {
   addBot(`خطا: ${j?.error || "unknown"}\n\nRaw: ${JSON.stringify(j?.detail ?? j)}`, true);
 }
+
 
   }catch(e){
     if(stoppedByUser) showStopped(); else addBot("خطای شبکه/مرورگر: "+(e?.message||e), true);
@@ -3658,16 +3836,32 @@ async function rateMessage(msgId, delta, upBtn, downBtn){
     // 2) آپدیت UI فوری
     setThumbUI(upBtn, downBtn, newState);
 
-    const ch = currentChat();
-const msg = ch?.messages?.find(m => m.id === msgId);
-const sid = msg?.versions?.[msg.active||0]?.meta?.server_id || msgId;
+const ch   = currentChat();
+const msg  = ch?.messages?.find(m => m.id === msgId) || {};
+const meta =
+  (Array.isArray(msg.versions)
+    ? (msg.versions[msg.active || 0]?.meta || {})
+    : (msg.meta || {}));
+
+const clientMessageId =
+  meta.clientMessageId ||
+  meta.client_id ||
+  meta.clientId ||
+  null;
+
+const serverId = meta.server_id || null;
+
+// شناسه‌ای که به سرور می‌فرستیم:
+// اولویت با شناسهٔ جدید کلاینتی، بعد سروری، در نهایت همان msgId
+const remoteId = clientMessageId || serverId || msgId;
 
     // 3) ارسال به سرور (فقط وقتی حالت null نیست؛ می‌تونی دلخواه null هم بفرستی و سمت ورکر هندل کنی)
     if (newState){
       await fetch(API.replace("/api/chat","/api/track/rate"), {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ chat_id: chatId, msg_id: sid, rating: newState })
+        body: JSON.stringify({ chat_id: chatId, msg_id: remoteId, rating: newState })
+
       });
     }
   }catch{}
