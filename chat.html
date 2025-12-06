@@ -1251,9 +1251,16 @@ function setAuth(username, token){
   }
   if (token) {
     localStorage.setItem(KEY_AUTH_TOKEN, token);
+
+    // بعد از ذخیره‌ی توکن، چت‌ها را از سرور پایین بکش
+    try {
+      if (typeof safeSync === "function") {
+        safeSync("down");
+      }
+    } catch(_) {}
+
   }
 }
-
 
 
 
@@ -1308,10 +1315,15 @@ async function verifySession(){
   }
 }
 
-
 // اجرا در شروع
-document.addEventListener("DOMContentLoaded", ()=>{ verifySession(); });
-// هر بار برگردیم روی تب/پنجره
+document.addEventListener("DOMContentLoaded", async ()=>{
+  const ok = await verifySession();
+  if (ok && typeof safeSync === "function") {
+    await safeSync("down");   // ⬅️ همین باعث می‌شود همه‌ی گفتگوهای ذخیره‌شده روی سرور کشیده شوند
+  }
+});
+
+
 
 // --- sync helpers ---
 // همگام‌سازی پایین‌کش: سرور ← لوکال (سرور مرجع است، اما تازه‌تر برنده)
@@ -2070,6 +2082,7 @@ async function ensureAuth(){
 }
 
 let busy=false, controller=null, stoppedByUser=false, shouldStopStreaming=false;
+let pendingBot = null, pendingMeta = null;
 
 // KEYS
 const KEY_RULES="custom_rules_v1";
@@ -2086,6 +2099,8 @@ const KEY_MODEL_MANUAL="model_manual_v1";  // string model id
 const KEY_RATINGS="message_ratings_v1";    // { [msgId]: 'up' | 'down' }
 const KEY_LOCAL_RATINGS = "local_ratings_v1"; // { [msgId]: "up" | "down" }
 const KEY_CHAT_SEQ_PREFIX = "chat_seq_counter__";
+const KEY_PENDING_BOT = "pending_bot_v1";
+const KEY_PENDING_META = "pending_meta_v1";
 function seqKey(){
   const u = (getAuth()?.username || "guest").trim();
   return KEY_CHAT_SEQ_PREFIX + u;
@@ -2275,21 +2290,40 @@ settingsModal.addEventListener("click",(e)=>{ if(e.target===settingsModal) close
 // chat storage helpers
 const uid=()=> "c_"+Math.random().toString(36).slice(2,9);
 const mid=()=> "m_"+Math.random().toString(36).slice(2,10);
-const loadChats=()=>{ try{return JSON.parse(localStorage.getItem(KEY_CHATS)||"[]")}catch{return[]} };
+const loadChats = () => { 
+  try { 
+    return JSON.parse(localStorage.getItem(KEY_CHATS) || "[]"); 
+  } catch { 
+    return []; 
+  }
+};
+
+// آخرین باری که به سرور فرستادیم، برای اینکه خیلی پشت‌سرهم نفرستیم
+let lastRemoteSave = 0;
+
 async function saveChats(chs){
   if (!Array.isArray(chs)) return;
+
+  // ۱) همیشه فوراً توی لوکال‌استورِج ذخیره کن (این سریع است)
   localStorage.setItem(KEY_CHATS, JSON.stringify(chs));
-  // ✅ با هدر صحیح و صبر برای اطمینان از آپلود
-  try{
-    await fetch(API.replace("/api/chat","/api/user/chats"),{
-  method:"POST",
-  headers: Object.assign({"Content-Type":"application/json"}, authHeaders()),
-  body: JSON.stringify({chats: chs})
-});
 
-  }catch{}
+  // ۲) اگر از آخرین ارسال کمتر از ۳ ثانیه گذشته، دیگه درخواست جدید نده
+  const now = Date.now();
+  if (now - lastRemoteSave < 3000) {
+    return;
+  }
+  lastRemoteSave = now;
+
+  // ۳) ارسال به سرور به‌صورت «فایِر-اَند-فِرگِت» (منتظر جوابش نمی‌مونیم)
+  // ۳) ارسال به سرور به /api/user/chats روی همان دامنه
+  try {
+    fetch(API_BASE + "/user/chats", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+      body: JSON.stringify({ chats: chs })
+    });
+  } catch {}
 }
-
 
 
 
@@ -2443,7 +2477,6 @@ function setActiveChat(id){
 }
 
 
-// رندر
 function renderActiveChat(){
   const a = getAuth();
   if (!a?.username || !a?.token) {
@@ -2457,33 +2490,44 @@ function renderActiveChat(){
     if(m.role==="user"){
       const row=makeRow(); const b=document.createElement("div"); b.className="bubble user"; b.textContent=m.versions[m.active].content; row.appendChild(b); msgsEl.appendChild(row); row.dataset.id=m.id; attachActions(row,b,m);
     } else {
-      const row=makeRow(); const b=document.createElement("div"); b.className="bubble bot";const r = document.createElement("div");
-r.className = "rendered";
-r.innerHTML = marked.parse(m.versions[m.active].content);
-applyMath(r);
-
-applyMath(r);   // ← رندر فرمول‌ها بعد از Markdown
-b.appendChild(r); msgsEl.appendChild(row); row.appendChild(b); row.dataset.id=m.id; attachActions(row,b,m); normalizeLinks(r);
+      const row=makeRow(); const b=document.createElement("div"); b.className="bubble bot";
+      const r = document.createElement("div");
+      r.className = "rendered";
       
+      // بررسی آیا این پیام باید "متوقف شده" نمایش داده شود
+      const stoppedStates = JSON.parse(localStorage.getItem("stopped_states") || "{}");
+      const chatId = localStorage.getItem(KEY_ACTIVE_CHAT);
+      const isStopped = chatId && stoppedStates[chatId]?.includes(m.id);
+      
+      if (isStopped) {
+        r.innerHTML = marked.parse(m.versions[m.active].content) + '<div class="stopped-text" style="color: #6b7280; font-style: italic; padding: 8px 0;">متوقف شد</div>';
+        b.dataset.stopped = "true";
+      } else {
+        r.innerHTML = marked.parse(m.versions[m.active].content);
+      }
+      
+      applyMath(r);
+      b.appendChild(r); 
+      msgsEl.appendChild(row); 
+      row.appendChild(b); 
+      row.dataset.id=m.id; 
+      attachActions(row,b,m); 
+      normalizeLinks(r);
       ensureCodeCopyButtons(r);
-
     }
   });
+  
+  // بازیابی وضعیت‌های توقف
+  setTimeout(restoreStoppedStates, 100);
+  
   if (justOpened) {
     requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
   } else if (shouldFollowBottom()) {
-    if (shouldFollowBottom() || justOpened) {
     requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
   }
 
-  }
-
-
-
-
   try{ hljs.highlightAll(); }catch{}
 }
-
 // first start (ban check + login track)
 
 
@@ -3265,26 +3309,199 @@ function openMsgInfo(msgObj, bubbleEl){
 
 
 // متوقف‌شدن
-function showStopped(){ addBot("متوقف شد"); }
+// متوقف‌شدن
+// متوقف‌شدن پاسخ بات - نسخه اصلاح شده
+// تابع جدید برای ذخیره وضعیت توقف
+function saveStoppedState(bubbleEl) {
+  try {
+    const chatId = localStorage.getItem(KEY_ACTIVE_CHAT);
+    if (!chatId) return;
+    
+    const stoppedStates = JSON.parse(localStorage.getItem("stopped_states") || "{}");
+    if (!stoppedStates[chatId]) {
+      stoppedStates[chatId] = [];
+    }
+    
+    const messageId = bubbleEl.closest('.msg-row')?.dataset?.id;
+    if (messageId && !stoppedStates[chatId].includes(messageId)) {
+      stoppedStates[chatId].push(messageId);
+      localStorage.setItem("stopped_states", JSON.stringify(stoppedStates));
+    }
+  } catch (e) {
+    console.warn("خطا در ذخیره وضعیت توقف:", e);
+  }
+}
+
+// تابع جدید برای بازیابی وضعیت توقف
+
+
+
+
+
+
+// تابع جدید برای بازیابی وضعیت توقف - جایگزین نسخه قبلی
+
+
+// تابع جدید برای بازیابی وضعیت توقف - جایگزین نسخه قبلی
+function restoreStoppedStates() {
+  try {
+    const chatId = localStorage.getItem(KEY_ACTIVE_CHAT);
+    if (!chatId) return;
+    
+    const stoppedStates = JSON.parse(localStorage.getItem("stopped_states") || "{}");
+    const stoppedMessageIds = stoppedStates[chatId] || [];
+    
+    stoppedMessageIds.forEach(messageId => {
+      const messageRow = document.querySelector(`[data-id="${messageId}"]`);
+      if (messageRow) {
+        const bubble = messageRow.querySelector('.bubble.bot');
+        if (bubble && !bubble.querySelector('.stopped-text')) {
+          // حذف لودر اگر وجود دارد
+          const loader = bubble.querySelector('.typing-loader');
+          if (loader) loader.remove();
+          
+          // اضافه کردن متن "متوقف شد"
+          const stoppedText = document.createElement('div');
+          stoppedText.textContent = "متوقف شد";
+          stoppedText.style.color = "#6b7280";
+          stoppedText.style.fontStyle = "italic";
+          stoppedText.style.padding = "8px 0";
+          stoppedText.className = "stopped-text";
+          
+          const renderedEl = bubble.querySelector('.rendered');
+          if (renderedEl) {
+            renderedEl.appendChild(stoppedText);
+          }
+          
+          // علامت‌گذاری حباب
+          bubble.dataset.stopped = "true";
+        }
+      }
+    });
+  } catch (e) {
+    console.warn("خطا در بازیابی وضعیت توقف:", e);
+  }
+}
+
+// تابع جدید برای نمایش وضعیت توقف - جایگزین نسخه قبلی
+
+
+// تابع جدید برای نمایش وضعیت توقف - جایگزین نسخه قبلی
+function showStopped() {
+  try {
+    // ابتدا وضعیت pending را به طور کامل پاک کن
+    localStorage.removeItem(KEY_PENDING_BOT);
+    localStorage.removeItem(KEY_PENDING_META);
+    window.pendingBot = null;
+    window.pendingMeta = null;
+    
+    // همچنین کلیدهای مربوط به وضعیت متوقف شده را هم پاک کن
+    localStorage.removeItem("chat_stopped_state");
+
+    const botBubbles = document.querySelectorAll('.bubble.bot');
+    let targetBubble = null;
+    
+    // از آخر به اول جستجو کن تا آخرین حباب بات را پیدا کنیم
+    for (let i = botBubbles.length - 1; i >= 0; i--) {
+      const bubble = botBubbles[i];
+      const loader = bubble.querySelector('.typing-loader');
+      if (loader) {
+        targetBubble = bubble;
+        break;
+      }
+    }
+    
+    if (!targetBubble) {
+      console.log("هیچ حباب در حال پردازش پیدا نشد");
+      return;
+    }
+
+    const renderedEl = targetBubble.querySelector('.rendered');
+    if (!renderedEl) {
+      console.log("المان rendered پیدا نشد");
+      return;
+    }
+
+    const loaderEl = renderedEl.querySelector('.typing-loader');
+    if (loaderEl) {
+      loaderEl.style.transition = "opacity 160ms ease, transform 160ms ease";
+      loaderEl.style.opacity = "1";
+      loaderEl.style.transform = "translateY(0)";
+
+      requestAnimationFrame(() => {
+        loaderEl.style.opacity = "0";
+        loaderEl.style.transform = "translateY(4px)";
+      });
+
+      setTimeout(() => {
+        loaderEl.remove();
+        
+        const stoppedText = document.createElement('div');
+        stoppedText.textContent = "متوقف شد";
+        stoppedText.style.color = "#6b7280";
+        stoppedText.style.fontStyle = "italic";
+        stoppedText.style.padding = "8px 0";
+        
+        renderedEl.appendChild(stoppedText);
+        
+        // علامت گذاری که این پیام متوقف شده - این مهمترین تغییر است
+        targetBubble.dataset.stopped = "true";
+        
+        // ذخیره وضعیت توقف در localStorage
+        saveStoppedState(targetBubble);
+      }, 180);
+    } else {
+      const stoppedText = document.createElement('div');
+      stoppedText.textContent = "متوقف شد";
+      stoppedText.style.color = "#6b7280";
+      stoppedText.style.fontStyle = "italic";
+      stoppedText.style.padding = "8px 0";
+      
+      renderedEl.appendChild(stoppedText);
+      targetBubble.dataset.stopped = "true";
+      
+      // ذخیره وضعیت توقف در localStorage
+      saveStoppedState(targetBubble);
+    }
+
+  } catch (e) {
+    console.error("خطا در showStopped:", e);
+  }
+}
+
+
+
 function setBusy(b){
   busy = b;
   btn.disabled = false;
   sendIcon.style.display = b ? "none" : "inline";
   stopIcon.style.display = b ? "inline" : "none";
-  // دیگه وقتی بات مشغوله، متن «درحال پاسخ…» تنظیم نمی‌کنیم
-  // فقط وقتی کارش تموم شد، وضعیت رو برمی‌گردونیم به «آماده»
+  
   if (!b) {
     statusEl.textContent = "آماده";
+    // وقتی کار تمام شد، وضعیت pending را پاک کن
+    localStorage.removeItem(KEY_PENDING_BOT);
+    localStorage.removeItem(KEY_PENDING_META);
+    window.pendingBot = null;
+    window.pendingMeta = null;
   }
 }
-
 btn.onclick=()=> { if(busy){ stop(); } else send(); };
 inp.addEventListener("keydown",(e)=>{
   const mode=localStorage.getItem(KEY_SHORTCUT)||"enter";
   const isEnter=e.key==="Enter"&&!e.shiftKey, isCtrl=e.key==="Enter"&&(e.ctrlKey||e.metaKey);
   if( (mode==="enter"&&isEnter) || (mode==="ctrlenter"&&isCtrl) ){ e.preventDefault(); busy?stop():send(); }
 });
-function stop(){ shouldStopStreaming=true; if(controller) controller.abort("user_stop"); stoppedByUser=true; setBusy(false); }
+function stop(){ 
+  shouldStopStreaming = true; 
+  if(controller) controller.abort("user_stop"); 
+  stoppedByUser = true; 
+  
+  // نمایش فوری وضعیت توقف
+  showStopped();
+  
+  setBusy(false); 
+}
 
 // تایپر
 async function typewriter(container, text, onTick){
@@ -3413,6 +3630,63 @@ function safeMsgs(){
   return Array.isArray(ch?.messages) ? ch.messages : [];
 }
 
+
+// تابع جدید برای بازیابی وضعیت pending - جایگزین نسخه قبلی
+
+
+// تابع جدید برای بازیابی وضعیت pending - جایگزین نسخه قبلی
+
+
+// تابع جدید برای بازیابی وضعیت pending - نسخه‌ی ضد برگشتِ لودر
+function restorePendingState() {
+  try {
+    // ۱) اگر هر پیامی متوقف شده، همه‌چیزِ pending را پاک کن و اجازه نده لودر برگردد
+    const stoppedBubbles = document.querySelectorAll('.bubble.bot[data-stopped="true"]');
+    const hasStoppedText = document.querySelector('.stopped-text');
+
+    if (stoppedBubbles.length > 0 || hasStoppedText) {
+      // تمام لودرها را (اگر احیاناً دوباره ساخته شده باشند) حذف کن
+      document.querySelectorAll('.typing-loader').forEach(el => el.remove());
+
+      // وضعیت pending را هم کامل پاک کن
+      localStorage.removeItem(KEY_PENDING_BOT);
+      localStorage.removeItem(KEY_PENDING_META);
+      window.pendingBot = null;
+      window.pendingMeta = null;
+      return;
+    }
+
+    // ۲) در غیر این صورت، مثل قبل فقط اگر واقعاً pending و لودر داریم، آن را نگه می‌داریم
+    const pendingBotData  = localStorage.getItem(KEY_PENDING_BOT);
+    const pendingMetaData = localStorage.getItem(KEY_PENDING_META);
+
+    if (pendingBotData && pendingMetaData) {
+      const hasLoader = document.querySelector('.typing-loader');
+
+      // اگر دادهٔ pending هست ولی لودری در صفحه نیست، بی‌معناست → پاک کن
+      if (!hasLoader) {
+        localStorage.removeItem(KEY_PENDING_BOT);
+        localStorage.removeItem(KEY_PENDING_META);
+        window.pendingBot = null;
+        window.pendingMeta = null;
+        return;
+      }
+
+      // فقط اگر لودرِ واقعی داریم، state را برگردان
+      window.pendingBot  = JSON.parse(pendingBotData);
+      window.pendingMeta = JSON.parse(pendingMetaData);
+    }
+  } catch (e) {
+    console.warn("خطا در بازیابی وضعیت pending:", e);
+    // در صورت خطا، وضعیت را هم پاک کن
+    localStorage.removeItem(KEY_PENDING_BOT);
+    localStorage.removeItem(KEY_PENDING_META);
+    window.pendingBot = null;
+    window.pendingMeta = null;
+  }
+}
+
+
 // ارسال
 async function send(){
   // checkBanOrBlock(); // اگر خواستی هر از گاهی دستی صدا بزنی، اینجا بدون await بنویس
@@ -3531,11 +3805,33 @@ const titleCandidateSource = [...userHunks, text].join(" \n ").trim();
 pendingMeta = { model, server_id: null };
 
 // HTML لودر انیمیشنی داخل حباب بات
+// 🔵 همین‌جا یک حباب موقت برای بات بسازیم تا کاربر بداند در حال پاسخ است
+pendingMeta = { model, server_id: null };
+
+// HTML لودر انیمیشنی داخل حباب بات
 const loaderHtml = '<div class="typing-loader"><span></span><span></span><span></span></div>';
 
 pendingBot = addBot(loaderHtml, false, pendingMeta);
 if (pendingBot && pendingBot.id) {
-  pendingMeta.client_id = pendingBot.id;  // CID فعلاً همین‌جا ذخیره می‌شود
+  // CID فعلاً همین‌جا ذخیره می‌شود
+  pendingMeta.client_id = pendingBot.id;
+
+  // وضعیت pending را در localStorage ذخیره کن
+  try {
+    localStorage.setItem(KEY_PENDING_BOT, JSON.stringify(pendingBot));
+    localStorage.setItem(KEY_PENDING_META, JSON.stringify(pendingMeta));
+  } catch (e) {
+    console.warn("خطا در ذخیره وضعیت pending:", e);
+  }
+
+  // بقیه کد بدون تغییر...
+  try {
+    if (msgsEl && typeof msgsEl.scrollTop === "number") {
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    } else if (pendingBot.scrollIntoView) {
+      pendingBot.scrollIntoView({ block: "end" });
+    }
+  } catch {}
 }
 
   // درخواست به سرور
@@ -3627,15 +3923,32 @@ if (j?.content) {
     }).catch(()=>{ /* مهم نیست اگر خطا داد */ });
   }
 
-  // تایپ‌نویسی متن بات داخل همان حباب
-  const targetEl = res.bubble.querySelector(".rendered");
-  if (targetEl) {
-    targetEl.innerHTML = "";           // آیکون ⏳ را پاک کن
-    await typewriter(targetEl, j.content);
-  } else {
-    await typewriter(res.bubble.querySelector(".rendered"), j.content);
+// تایپ‌نویسی متن بات داخل همان حباب
+const targetEl = res.bubble.querySelector(".rendered");
+
+if (targetEl) {
+  // اگر لودر سه‌نقطه‌ای داخل حباب هست، پاکش کن
+  const loaderEl = targetEl.querySelector(".typing-loader");
+  if (loaderEl) loaderEl.remove();
+
+  // اگر قبلش چیزی بوده، خالی کن
+  targetEl.innerHTML = "";
+
+  // متن جواب بات را تایپ کن
+  await typewriter(targetEl, j.content);
+} else {
+  // حالت احتیاطی: اگر به هر دلیل targetEl پیدا نشد
+  const fallback = res.bubble.querySelector(".rendered");
+  if (fallback) {
+    const loaderEl = fallback.querySelector(".typing-loader");
+    if (loaderEl) loaderEl.remove();
+    fallback.innerHTML = "";
+    await typewriter(fallback, j.content);
   }
-  appendVersion(res.id, j.content, meta);
+}
+
+appendVersion(res.id, j.content, meta);
+
 
   // ✅ به‌روزرسانی عنوان و ذخیره در لیست گفتگوها
   persistCurrentChat?.();
@@ -3789,14 +4102,29 @@ maybeSetTitle?.();        // تلاش برای تعیین/به‌روزرسان�
 
 
 function addBot(markdown, asError=false, meta={}, existingRow=null, existingId=null){
-  const row= existingRow || makeRow(); const b=document.createElement("div");
-  b.className="bubble bot"+(asError?" err":"");
-const r=document.createElement("div"); r.className="rendered"; r.innerHTML=marked.parse(markdown||""); applyMath(r); b.appendChild(r);
+  const row = existingRow || makeRow(); 
+  const b = document.createElement("div");
+  b.className = "bubble bot" + (asError ? " err" : "");
+  
+  const r = document.createElement("div"); 
+  r.className = "rendered"; 
+  
+  // اگر markdown حاوی لودر است، مستقیماً قرار بده
+  if (markdown.includes('typing-loader')) {
+    r.innerHTML = markdown;
+  } else {
+    r.innerHTML = marked.parse(markdown || "");
+    applyMath(r);
+  }
+  
+  b.appendChild(r);
+  
+  if(!existingRow){ 
+    row.appendChild(b); 
+    msgsEl.appendChild(row); 
+  }
+  
 
-  normalizeLinks(r);
-  ensureCodeCopyButtons(r);
-
-  if(!existingRow){ row.appendChild(b); msgsEl.appendChild(row); }
   if (justOpened) {
     requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; justOpened = false; });
   } else if (shouldFollowBottom()) {
@@ -4063,9 +4391,37 @@ if (btnLogout){
   window.addEventListener('auth:idle',  ()=> setAuthButtonsBusy(false));
 
   // اتصال به اوورلی بالا (در همان پچ fetch):
+  // اتصال به اوورلی بالا (در همان پچ fetch):
   // اگر خواستی دقیقاً هماهنگ شود، می‌شود اینجا شنود URL را هم گذاشت؛
   // اما چون fetch پچ شده، همین کافی است.
 </script>
+
+<script>
+// بازیابی وضعیت هنگام بازگشت به تب
+// بازیابی وضعیت هنگام بازگشت به تب - نسخه اصلاح شده
+// بازیابی وضعیت هنگام بازگشت به تب
+// بازیابی وضعیت هنگام بازگشت به تب
+// بازیابی وضعیت هنگام بازگشت به تب - جایگزین نسخه قبلی
+// بازیابی وضعیت هنگام بازگشت به تب - جایگزین نسخه قبلی
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    // تاخیر کوچک برای اطمینان از رندر کامل DOM
+    setTimeout(() => {
+      restoreStoppedStates(); // اول وضعیت توقف رو بازیابی کن
+      restorePendingState();  // سپس وضعیت pending رو بررسی کن
+    }, 100);
+  }
+});
+
+// همچنین هنگام لود صفحه وضعیت را بررسی کن
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    restoreStoppedStates();
+    restorePendingState();
+  }, 200);
+});
+</script>
+
 
 <script>
   // رندر فرمول‌ها روی هر پیام تازه
